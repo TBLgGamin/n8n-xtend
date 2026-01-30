@@ -1,13 +1,20 @@
-import { fetchFolders } from '../api/client';
+import { fetchFolders, fetchFolderPath } from '../api/client';
 import { createFolderElement } from '../components/folder';
 import { createWorkflowElement } from '../components/workflow';
 import { isFolder } from '../types';
 import { logger } from '../utils/logger';
+import { setFolderExpanded } from '../utils/storage';
+import { getFolderIdFromUrl } from '../utils/url';
 
 export async function loadTree(
   container: HTMLElement,
   projectId: string
 ): Promise<void> {
+  const currentFolderId = getFolderIdFromUrl();
+  if (currentFolderId) {
+    const path = await fetchFolderPath(currentFolderId);
+    path.forEach((folderId) => setFolderExpanded(folderId, true));
+  }
 
   try {
     const items = await fetchFolders(projectId, '0');

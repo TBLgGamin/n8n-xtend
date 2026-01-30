@@ -4,6 +4,11 @@ export interface Folder {
   resource: 'folder';
   workflowCount?: number;
   subFolderCount?: number;
+  parentFolderId?: string;
+}
+
+export interface FolderResponse {
+  data: Folder;
 }
 
 export interface Workflow {

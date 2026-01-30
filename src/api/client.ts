@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger';
 import { getBrowserId } from '../utils/storage';
-import type { FoldersResponse, WorkflowResponse, FolderFilter, TreeItem } from '../types';
+import type { FoldersResponse, FolderResponse, WorkflowResponse, FolderFilter, TreeItem } from '../types';
 
 class ApiError extends Error {
   constructor(
@@ -45,6 +45,28 @@ export async function fetchFolders(
 
   const data = await request<FoldersResponse>(endpoint);
   return data.data ?? [];
+}
+
+export async function fetchFolder(folderId: string): Promise<FolderResponse['data'] | null> {
+  try {
+    const data = await request<FolderResponse>(`/rest/folders/${folderId}`);
+    return data.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchFolderPath(folderId: string): Promise<string[]> {
+  const path: string[] = [];
+  let currentId: string | undefined = folderId;
+
+  while (currentId && currentId !== '0') {
+    path.unshift(currentId);
+    const folder = await fetchFolder(currentId);
+    currentId = folder?.parentFolderId;
+  }
+
+  return path;
 }
 
 const workflowProjectCache = new Map<string, string>();

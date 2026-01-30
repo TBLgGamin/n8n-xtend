@@ -32,6 +32,8 @@ export function createFolderElement(
     return node;
   }
 
+  const folderUrl = `${location.origin}/projects/${projectId}/folders/${folder.id}/workflows`;
+
   let loaded = false;
   let open = false;
 
@@ -75,13 +77,21 @@ export function createFolderElement(
     setFolderExpanded(folder.id, false);
   }
 
-  item.onclick = async (event) => {
+  const toggle = async (event: MouseEvent) => {
     event.stopPropagation();
     if (!open) {
       await expand();
     } else {
       collapse();
     }
+  };
+
+  chevron.onclick = toggle;
+  (item.querySelector('.n8n-tree-label') as HTMLElement).onclick = toggle;
+
+  icon.onclick = (event) => {
+    event.stopPropagation();
+    location.href = folderUrl;
   };
 
   if (isFolderExpanded(folder.id)) {

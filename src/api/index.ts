@@ -1,1 +1,1 @@
-export { fetchFolders, fetchWorkflowProjectId } from './client';
+export { fetchFolders, fetchFolder, fetchFolderPath, fetchWorkflowProjectId } from './client';

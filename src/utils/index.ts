@@ -9,6 +9,7 @@ export {
 export {
   getProjectIdFromUrl,
   getWorkflowIdFromUrl,
+  getFolderIdFromUrl,
   isAuthPage,
   isN8nHost,
   buildWorkflowUrl,

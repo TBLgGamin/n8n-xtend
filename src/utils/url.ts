@@ -8,6 +8,11 @@ export function getWorkflowIdFromUrl(): string | null {
   return match ? match[1] : null;
 }
 
+export function getFolderIdFromUrl(): string | null {
+  const match = location.pathname.match(/\/folders\/([^/]+)/);
+  return match ? match[1] : null;
+}
+
 export function isAuthPage(): boolean {
   return (
     location.pathname.includes('/signin') ||
