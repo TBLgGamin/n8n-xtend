@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "n8n Tree Folder View",
+  "version": "1.0.0",
+  "description": "Tree-style folder navigation for n8n workflows based on tags",
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content.js"],
+      "css": ["style.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
