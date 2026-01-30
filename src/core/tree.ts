@@ -18,22 +18,27 @@ export async function loadTree(
 
   try {
     const items = await fetchFolders(projectId, '0');
-    container.innerHTML = '';
 
     const folders = items.filter(isFolder);
     const workflows = items.filter((i) => !isFolder(i));
 
     if (folders.length === 0 && workflows.length === 0) {
+      container.innerHTML = '';
       return;
     }
 
-    folders.forEach((folder) => {
-      container.appendChild(createFolderElement(folder, projectId));
-    });
+    const fragment = document.createDocumentFragment();
 
-    workflows.forEach((workflow) => {
-      container.appendChild(createWorkflowElement(workflow));
-    });
+    for (const folder of folders) {
+      fragment.appendChild(createFolderElement(folder, projectId));
+    }
+
+    for (const workflow of workflows) {
+      fragment.appendChild(createWorkflowElement(workflow));
+    }
+
+    container.innerHTML = '';
+    container.appendChild(fragment);
   } catch (error) {
     logger.error('Failed to load tree', error);
     container.innerHTML =

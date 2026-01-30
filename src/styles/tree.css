@@ -50,6 +50,10 @@
   background: #f8f9f9;
 }
 
+.n8n-tree-item.active {
+  background: #f8f9f9;
+}
+
 .n8n-tree-spacer {
   width: 18px;
   flex-shrink: 0;
@@ -85,6 +89,38 @@
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
+  cursor: default;
+}
+
+.n8n-tree-context-menu {
+  position: fixed;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px 0;
+  min-width: 160px;
+  z-index: 10000;
+}
+
+.n8n-tree-context-menu-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.n8n-tree-context-menu-item:hover {
+  background: #f5f5f5;
+}
+
+.n8n-tree-context-menu-separator {
+  height: 1px;
+  background: #eee;
+  margin: 4px 0;
 }
 
 .n8n-tree-count {

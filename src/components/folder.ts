@@ -1,7 +1,9 @@
 import { icons } from '../icons';
 import { fetchFolders } from '../api/client';
 import { isFolderExpanded, setFolderExpanded } from '../utils/storage';
+import { getFolderIdFromUrl } from '../utils/url';
 import { createWorkflowElement } from './workflow';
+import { showContextMenu, copyToClipboard } from './contextMenu';
 import { isFolder, type Folder } from '../types';
 
 export function createFolderElement(
@@ -12,12 +14,13 @@ export function createFolderElement(
   node.className = 'n8n-tree-node';
 
   const count = (folder.workflowCount ?? 0) + (folder.subFolderCount ?? 0);
+  const isActive = getFolderIdFromUrl() === folder.id;
 
   node.innerHTML = `
-    <div class="n8n-tree-item">
+    <div class="n8n-tree-item${isActive ? ' active' : ''}">
       <span class="n8n-tree-chevron collapsed">${icons.chevron}</span>
       <span class="n8n-tree-icon folder">${icons.folder}</span>
-      <span class="n8n-tree-label">${escapeHtml(folder.name)}</span>
+      <span class="n8n-tree-label" title="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</span>
       ${count ? `<span class="n8n-tree-count">${count}</span>` : ''}
     </div>
     <div class="n8n-tree-children collapsed"></div>
@@ -43,18 +46,21 @@ export function createFolderElement(
 
       try {
         const items = await fetchFolders(projectId, folder.id);
-        children!.innerHTML = '';
+        const fragment = document.createDocumentFragment();
 
         const folders = items.filter(isFolder);
         const workflows = items.filter((i) => !isFolder(i));
 
-        folders.forEach((sub) => {
-          children!.appendChild(createFolderElement(sub, projectId));
-        });
+        for (const sub of folders) {
+          fragment.appendChild(createFolderElement(sub, projectId));
+        }
 
-        workflows.forEach((w) => {
-          children!.appendChild(createWorkflowElement(w));
-        });
+        for (const w of workflows) {
+          fragment.appendChild(createWorkflowElement(w));
+        }
+
+        children!.innerHTML = '';
+        children!.appendChild(fragment);
       } catch {
         children!.innerHTML =
           '<div class="n8n-tree-empty n8n-tree-error">Error</div>';
@@ -94,8 +100,21 @@ export function createFolderElement(
     location.href = folderUrl;
   };
 
+  item.oncontextmenu = (event) => {
+    showContextMenu(event, [
+      {
+        label: 'Open in new tab',
+        action: () => window.open(folderUrl, '_blank'),
+      },
+      {
+        label: 'Copy link',
+        action: () => copyToClipboard(folderUrl),
+      },
+    ]);
+  };
+
   if (isFolderExpanded(folder.id)) {
-    setTimeout(() => expand(), 10);
+    requestAnimationFrame(() => expand());
   }
 
   return node;
