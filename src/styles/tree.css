@@ -1,0 +1,132 @@
+@font-face {
+  font-family: 'N8nTree';
+  src: url('../fonts/n8n-tree.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+#n8n-tree-view {
+  display: flex;
+  flex-direction: column;
+  max-height: 100%;
+  overflow: hidden;
+  font-family: 'N8nTree', system-ui, -apple-system, sans-serif;
+}
+
+#n8n-tree-view .tree-header {
+  padding: 12px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: #949595;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#n8n-tree-content {
+  padding: 0 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 500px;
+  max-height: 500px;
+}
+
+.n8n-tree-node {
+  user-select: none;
+}
+
+.n8n-tree-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  margin: 1px 0;
+  white-space: nowrap;
+}
+
+.n8n-tree-item:hover {
+  background: #f8f9f9;
+}
+
+.n8n-tree-spacer {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.n8n-tree-chevron {
+  width: 18px;
+  height: 18px;
+  color: #666;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+
+.n8n-tree-chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+.n8n-tree-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.n8n-tree-icon.folder {
+  color: #757574;
+}
+
+.n8n-tree-label {
+  color: #000;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.n8n-tree-count {
+  color: #666;
+  font-size: 11px;
+  margin-left: 6px;
+  flex-shrink: 0;
+}
+
+.n8n-tree-children {
+  margin-left: 12px;
+}
+
+.n8n-tree-children.collapsed {
+  display: none;
+}
+
+.n8n-tree-empty {
+  color: #999;
+  font-size: 12px;
+  padding: 4px 8px;
+  font-style: italic;
+}
+
+.n8n-tree-error {
+  color: #e55;
+}
+
+#n8n-tree-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+#n8n-tree-content::-webkit-scrollbar-track {
+  background: #eee;
+}
+
+#n8n-tree-content::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+#n8n-tree-content::-webkit-scrollbar-thumb:hover {
+  background: #aaa;
+}
+
