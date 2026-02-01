@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Extension icons (16x16, 48x48, 128x128) with auto-generation script
+- Smart n8n detection using DOM indicators and URL patterns for custom domain support
+
 ### Changed
 - Restructured README with professional layout showcasing all extensions
 - Added demo videos for Tree Navigation, Workflow Capture, and Variables extensions
+- Build script now auto-syncs version from package.json to manifest.json
+- Manifest uses `<all_urls>` with runtime detection for self-hosted n8n instances
 
 ## [1.3.0] - 2026-02-01
 

@@ -33,6 +33,48 @@ export function isAuthPage(): boolean {
   return location.pathname.includes('/signin') || location.pathname.includes('/login');
 }
 
+function hasN8nDomIndicators(): boolean {
+  const n8nRoot = document.getElementById('app');
+  if (!n8nRoot) {
+    return false;
+  }
+
+  const hasN8nClasses = document.querySelector(
+    '[class*="n8n"], [data-test-id^="workflow"], [data-test-id^="node"]',
+  );
+  if (hasN8nClasses) {
+    return true;
+  }
+
+  const hasVueFlow = document.querySelector('.vue-flow, .vue-flow__viewport');
+  if (hasVueFlow) {
+    return true;
+  }
+
+  const hasSidebar = document.querySelector('[class*="sidebar"], [data-test-id="main-sidebar"]');
+  const hasCanvas = document.querySelector('[class*="canvas"], [class*="workflow"]');
+  if (hasSidebar && hasCanvas) {
+    return true;
+  }
+
+  return false;
+}
+
+function hasN8nUrlPatterns(): boolean {
+  const n8nPaths = [
+    '/workflow/',
+    '/workflows',
+    '/projects/',
+    '/credentials',
+    '/variables',
+    '/executions',
+    '/settings/',
+    '/templates',
+  ];
+
+  return n8nPaths.some((path) => location.pathname.includes(path));
+}
+
 export function isN8nHost(): boolean {
   const hostname = location.hostname;
 
@@ -40,7 +82,11 @@ export function isN8nHost(): boolean {
     return true;
   }
 
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+  if (hasN8nUrlPatterns()) {
+    return true;
+  }
+
+  if (hasN8nDomIndicators()) {
     return true;
   }
 

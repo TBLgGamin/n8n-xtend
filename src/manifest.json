@@ -1,17 +1,10 @@
 {
   "manifest_version": 3,
   "name": "n8n-xtend",
-  "version": "1.0.0",
-  "description": "Extend your n8n experience - tree navigation and more",
+  "description": "Extend your n8n experience with tree navigation, workflow capture, and more",
   "content_scripts": [
     {
-      "matches": [
-        "*://*.n8n.cloud/*",
-        "*://localhost/*",
-        "*://localhost:*/*",
-        "*://127.0.0.1/*",
-        "*://127.0.0.1:*/*"
-      ],
+      "matches": ["<all_urls>"],
       "js": ["content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"

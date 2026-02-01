@@ -1,14 +1,58 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 
 const isWatch = process.argv.includes('--watch');
-const srcDir = join(import.meta.dir, '..', 'src');
-const distDir = join(import.meta.dir, '..', 'dist');
+const rootDir = join(import.meta.dir, '..');
+const srcDir = join(rootDir, 'src');
+const distDir = join(rootDir, 'dist');
+
+function getVersionFromPackageJson(): string {
+  const packageJson = JSON.parse(
+    readFileSync(join(rootDir, 'package.json'), 'utf-8')
+  );
+  return packageJson.version;
+}
+
+interface Manifest {
+  manifest_version: number;
+  name: string;
+  version: string;
+  description: string;
+  icons: Record<string, string>;
+  content_scripts: Array<{
+    matches: string[];
+    js: string[];
+    css: string[];
+    run_at: string;
+  }>;
+}
+
+function generateManifest(): Manifest {
+  const sourceManifest = JSON.parse(
+    readFileSync(join(srcDir, 'manifest.json'), 'utf-8')
+  );
+
+  return {
+    ...sourceManifest,
+    version: getVersionFromPackageJson(),
+    icons: {
+      '16': 'icons/icon-16.png',
+      '48': 'icons/icon-48.png',
+      '128': 'icons/icon-128.png',
+    },
+  };
+}
 
 async function build() {
   console.log('Building n8n-xtend...');
 
-  // Clean dist directory
   if (existsSync(distDir)) {
     rmSync(distDir, { recursive: true });
   }
@@ -26,7 +70,6 @@ async function build() {
     },
   });
 
-  // Rename the output to content.js (Bun outputs to index.js by default)
   const outputPath = join(distDir, 'content.js');
   if (!existsSync(outputPath)) {
     const indexPath = join(distDir, 'index.js');
@@ -45,10 +88,8 @@ async function build() {
   }
 
   const treeCssPath = join(srcDir, 'extensions', 'tree', 'styles', 'tree.css');
-
   let css = readFileSync(treeCssPath, 'utf-8');
 
-  // Embed font as base64
   const fontPath = join(srcDir, 'fonts', 'n8n.woff2');
   if (existsSync(fontPath)) {
     const fontData = readFileSync(fontPath);
@@ -59,13 +100,20 @@ async function build() {
     );
   }
 
-  // Write processed CSS
   writeFileSync(join(distDir, 'content.css'), css);
 
-  // Copy manifest
-  cpSync(join(srcDir, 'manifest.json'), join(distDir, 'manifest.json'));
+  const manifest = generateManifest();
+  writeFileSync(join(distDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
 
-  console.log('Build complete!');
+  const iconsDir = join(distDir, 'icons');
+  mkdirSync(iconsDir, { recursive: true });
+
+  const srcIconsDir = join(srcDir, 'icons');
+  if (existsSync(srcIconsDir)) {
+    cpSync(srcIconsDir, iconsDir, { recursive: true });
+  }
+
+  console.log(`Build complete! (v${manifest.version})`);
 }
 
 if (isWatch) {
@@ -73,10 +121,8 @@ if (isWatch) {
 
   console.log('Watching for changes...');
 
-  // Initial build
   await build();
 
-  // Watch for changes using Node's fs.watch
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   watch(srcDir, { recursive: true }, (_eventType, filename) => {
@@ -89,7 +135,6 @@ if (isWatch) {
     }, 100);
   });
 
-  // Keep the process running
   process.on('SIGINT', () => {
     console.log('\nStopping watch mode...');
     process.exit(0);
