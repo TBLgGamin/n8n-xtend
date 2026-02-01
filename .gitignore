@@ -4,6 +4,9 @@ node_modules/
 # Build output
 dist/
 
+# Bun
+bun.lock
+
 # IDE
 .idea/
 .vscode/
@@ -16,7 +19,6 @@ Thumbs.db
 
 # Logs
 *.log
-npm-debug.log*
 
 # Environment
 .env

@@ -1,14 +1,14 @@
-# Privacy Policy for n8n Tree
+# Privacy Policy for n8n-xtend
 
 **Last updated:** January 2025
 
 ## Overview
 
-n8n Tree is a browser extension that adds tree-style folder navigation to n8n workflow automation instances. This policy explains how the extension handles your data.
+n8n-xtend is a browser extension that adds client-side enhancements to n8n workflow automation instances. This policy explains how the extension handles your data.
 
 ## Data Collection
 
-**n8n Tree does not collect, store, or transmit any personal data.**
+**n8n-xtend does not collect, store, or transmit any personal data.**
 
 ## How the Extension Works
 
@@ -43,4 +43,4 @@ Any changes to this privacy policy will be reflected in the extension update not
 
 ## Contact
 
-For questions about this privacy policy, please email directly to info@wena.one
+For questions about this privacy policy, please open an issue on the GitHub repository.

@@ -1,15 +1,14 @@
-import './styles/tree.css';
-import { logger } from './utils/logger';
-import { isN8nHost } from './utils/url';
-import { startMonitor } from './core/monitor';
+import { initTreeExtension } from '@/extensions/tree';
+import { isN8nHost, logger } from '@/shared/utils';
 
 function init(): void {
   if (!isN8nHost()) {
     return;
   }
 
-  logger.info('Extension loaded');
-  startMonitor();
+  logger.info('n8n-xtend loaded');
+
+  initTreeExtension();
 }
 
 init();

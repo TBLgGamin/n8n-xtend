@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "n8n Tree",
+  "name": "n8n-xtend",
   "version": "1.0.0",
-  "description": "Tree-style folder navigation for n8n workflows",
+  "description": "Extend your n8n experience - tree navigation and more",
   "content_scripts": [
     {
       "matches": [

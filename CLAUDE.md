@@ -1,92 +1,85 @@
-# n8n Tree
+# n8n-xtend Development Guidelines
 
-Browser extension that adds tree-style folder navigation to n8n using the REST API.
+## Code Quality - MANDATORY
+
+After EVERY code change, run:
+```bash
+bun run lint:fix && bun run typecheck
+```
+
+This is automated via Claude Code hooks but verify manually if needed.
+
+## Code Style
+
+### No Comments Policy
+- NEVER add code comments
+- Code must be self-documenting through:
+  - Clear, descriptive function names
+  - Meaningful variable names
+  - Small, focused functions
+  - TypeScript types as documentation
+
+### Naming Conventions
+- Functions: verb + noun (e.g., `fetchFolders`, `createWorkflowElement`)
+- Booleans: is/has/should prefix (e.g., `isExpanded`, `hasChildren`)
+- Constants: UPPER_SNAKE_CASE
+- Types/Interfaces: PascalCase
 
 ## Project Structure
 
 ```
-n8ntree/
-├── src/
-│   ├── api/              # API client for n8n REST endpoints
-│   │   ├── client.ts     # Fetch functions for folders/workflows
-│   │   └── index.ts
-│   ├── components/       # UI components
-│   │   ├── folder.ts     # Folder tree node element
-│   │   ├── workflow.ts   # Workflow tree node element
-│   │   └── index.ts
-│   ├── core/             # Core extension logic
-│   │   ├── injector.ts   # DOM injection into n8n sidebar
-│   │   ├── monitor.ts    # URL change detection and auto-inject
-│   │   ├── tree.ts       # Tree loading and rendering
-│   │   └── index.ts
-│   ├── icons/            # SVG icons
-│   │   └── index.ts
-│   ├── styles/           # CSS styles
-│   │   └── tree.css
-│   ├── types/            # TypeScript interfaces
-│   │   └── index.ts
-│   ├── utils/            # Utility functions
-│   │   ├── logger.ts     # Structured logging
-│   │   ├── storage.ts    # localStorage helpers
-│   │   ├── url.ts        # URL parsing utilities
-│   │   └── index.ts
-│   ├── index.ts          # Entry point
-│   └── manifest.json     # Extension manifest (v3)
-├── dist/                 # Build output (gitignored)
-├── package.json
-├── tsconfig.json
-└── webpack.config.js
+src/
+├── shared/           # Reusable across all extensions
+│   ├── api/          # n8n REST API client
+│   ├── types/        # Common TypeScript interfaces
+│   ├── utils/        # Logger, storage, URL helpers
+│   └── ui/           # Shared UI components (context menu)
+├── extensions/       # Individual extension features
+│   └── tree/         # Tree navigation extension
+│       ├── components/
+│       ├── core/
+│       └── icons/
+└── index.ts          # Extension loader
 ```
 
-## Development
+## Commands
+- `bun run build` - Production build
+- `bun run dev` - Watch mode
+- `bun run lint` - Check linting
+- `bun run lint:fix` - Fix linting issues
+- `bun run typecheck` - Type checking
 
+## Git Workflow
+
+### Committing Changes
+When committing, use the full git commit command to trigger the Husky pre-commit hooks:
 ```bash
-# Install dependencies
-npm install
-
-# Build for production
-npm run build
-
-# Watch mode for development
-npm run dev
-
-# Type check
-npm run typecheck
+git add <files>
+git commit -m "message"
 ```
 
-## Installation
+The pre-commit hooks will automatically run linting and type checking before the commit is created.
 
-1. Run `npm install && npm run build`
-2. Open `chrome://extensions/`
-3. Enable Developer Mode
-4. Click "Load unpacked"
-5. Select the `dist/` folder
-6. Navigate to your n8n instance
+### Releases & Documentation
 
-## How It Works
+After every release:
+1. Update `CHANGELOG.md` with the new version, date, and changes
+2. Review and update `README.md` if features changed
+3. Review and update `CONTRIBUTING.md` if development workflow changed
 
-1. Extension detects n8n by checking hostname
-2. Monitors URL changes for project context
-3. Lists projects at top level
-4. Lazy-loads folders/workflows on expand via REST API
-5. Uses session cookies for auth (no credentials stored)
+#### CHANGELOG.md Format
+```markdown
+## [X.Y.Z] - YYYY-MM-DD
 
-## API Endpoints
+### Added
+- New features
 
-- `GET /rest/workflows/{id}` - Get workflow details (for project lookup)
-- `GET /rest/workflows?includeFolders=true&filter={...}` - List folders and workflows
+### Changed
+- Changes to existing features
 
-## Features
+### Fixed
+- Bug fixes
 
-- Projects > Folders > Subfolders > Workflows hierarchy
-- Lazy loading (folders load on first expand)
-- Click workflow to open it
-- Folder counts show items inside
-- Persists expanded/collapsed state
-
-## Security
-
-- Fully client-side
-- No external requests
-- Uses existing session auth
-- No credentials stored
+### Removed
+- Removed features
+```
