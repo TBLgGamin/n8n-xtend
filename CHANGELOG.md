@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Test infrastructure with Vitest, jsdom, and Istanbul coverage
+- Unit tests for HTML escaping and URL parsing utilities
+- API client timeout (10s) and retry logic for transient failures
+- Error boundaries for extension initialization to prevent crashes
+- Bundle size check in CI (fails if content.js exceeds 150KB)
+- Codecov integration for coverage reporting
+- Coverage badge in README
+- Branch protection documentation in CONTRIBUTING.md
+
+### Changed
+- CI workflow now includes test, security audit, and bundle size jobs
+- lint-staged now runs TypeScript type checking on staged files
+- Release command uses conventional-changelog for auto-generated changelogs
+
+### Removed
+- Unused sharp dependency
+
 ## [1.3.2] - 2026-02-01
 
 ### Changed

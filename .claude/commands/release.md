@@ -21,9 +21,12 @@ Create a new release with built extension and GitHub release.
 
 5. Update version in `package.json`
 
-6. Update `CHANGELOG.md`:
-   - Change `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`
-   - Add new empty `## [Unreleased]` section above it with empty categories
+6. Generate changelog from commits:
+   ```bash
+   bunx conventional-changelog -p angular -i CHANGELOG.md -s -r 0
+   ```
+   - This auto-generates changelog entries from conventional commits
+   - Review the generated changes and fix any formatting if needed
 
 7. Commit the version bump:
    ```bash

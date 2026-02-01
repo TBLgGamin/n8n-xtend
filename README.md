@@ -7,6 +7,7 @@
 **Extend your n8n experience**
 
 [![CI](https://github.com/TBLgGamin/n8n-xtend/actions/workflows/ci.yml/badge.svg)](https://github.com/TBLgGamin/n8n-xtend/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/TBLgGamin/n8n-xtend/graph/badge.svg)](https://codecov.io/gh/TBLgGamin/n8n-xtend)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://github.com/TBLgGamin/n8n-xtend/releases)
 

@@ -1,5 +1,10 @@
 import { getBrowserId } from '@/shared/utils/storage';
 
+const REQUEST_TIMEOUT_MS = 10000;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 1000;
+const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -18,8 +23,59 @@ function getHeaders(): Record<string, string> {
   };
 }
 
+function isRetryable(status: number): boolean {
+  return RETRYABLE_STATUS_CODES.includes(status);
+}
+
+async function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function attemptFetch(url: string, options: RequestInit): Promise<Response | null> {
+  try {
+    const response = await fetchWithTimeout(url, options);
+    if (response.ok || !isRetryable(response.status)) {
+      return response;
+    }
+    return null;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const response = await attemptFetch(url, options);
+    if (response) {
+      return response;
+    }
+    if (attempt < MAX_RETRIES) {
+      await delay(RETRY_DELAY_MS * (attempt + 1));
+    }
+  }
+  throw new ApiError('Request timeout', 408);
+}
+
 export async function request<T>(endpoint: string): Promise<T> {
-  const response = await fetch(location.origin + endpoint, {
+  const response = await fetchWithRetry(location.origin + endpoint, {
     method: 'GET',
     credentials: 'include',
     headers: getHeaders(),
@@ -33,7 +89,7 @@ export async function request<T>(endpoint: string): Promise<T> {
 }
 
 export async function patch<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
-  const response = await fetch(location.origin + endpoint, {
+  const response = await fetchWithRetry(location.origin + endpoint, {
     method: 'PATCH',
     credentials: 'include',
     headers: getHeaders(),
