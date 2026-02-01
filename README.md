@@ -1,110 +1,104 @@
+<div align="center">
+
 # n8n-xtend
 
 **Extend your n8n experience**
 
 [![CI](https://github.com/TBLgGamin/n8n-xtend/actions/workflows/ci.yml/badge.svg)](https://github.com/TBLgGamin/n8n-xtend/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white)](https://github.com/TBLgGamin/n8n-xtend/releases)
 
-A browser extension that adds client-side enhancements to n8n, starting with tree-style folder navigation.
+A browser extension that enhances n8n with powerful client-side features.
+
+[Installation](#installation) • [Features](#features) •  [Contributing](#contributing)
+
+</div>
+
+---
 
 ## Features
 
-- **Tree Navigation** - Browse projects, folders, and workflows in a collapsible tree view
-- **Lazy Loading** - Folders load on demand for fast performance
-- **Persistent State** - Remembers which folders you had expanded
-- **Click to Open** - Navigate directly to any workflow
-- **Folder Counts** - See how many items are in each folder
+### Tree Navigation
+
+Navigate your n8n projects with a collapsible tree view that makes finding workflows effortless.
+<div align="center">
+                    
+https://github.com/user-attachments/assets/de497413-538c-40ed-9cea-81b63aadf925
+
+</div>
+
+**Highlights:**
+- **Hierarchical View** — Browse projects, folders, and workflows in an intuitive tree structure
+- **Drag & Drop** — Reorganize workflows and folders by dragging them
+- **Keyboard Navigation** — Full keyboard support (arrow keys, Enter, Space)
+
+---
+
+### Workflow Capture
+
+Export your workflow diagrams as high-quality images with a single click.
+
+<div align="center">
+
+https://github.com/user-attachments/assets/de497413-538c-40ed-9cea-81b63aadf925
+
+</div>
+
+**Highlights:**
+- **PNG Export** — High-resolution raster images (2x scale) perfect for documentation
+- **SVG Export** — Scalable vector graphics for presentations and editing
+- **Smart Bounds** — Automatically calculates optimal image boundaries around your nodes
+- **Menu Integration** — Access via the workflow context menu alongside other actions
+
+---
+
+### Variables Enhancement
+
+Work with n8n variables more efficiently with improved syntax display and quick copy.
+
+<div align="center">
+
+https://github.com/user-attachments/assets/583726e8-dcc7-4657-9f3f-91034ee6ec9b
+
+</div>
+
+**Highlights:**
+- **Syntax Wrapping** — Variable usage automatically wrapped with `{{ }}` for clarity
+- **Click to Copy** — One click copies the complete syntax to your clipboard
+
+---
 
 ## Installation
 
-### Chrome / Chromium-based browsers
+### Chrome / Chromium-based Browsers
 
 1. Download the latest release from [Releases](https://github.com/TBLgGamin/n8n-xtend/releases)
 2. Extract the zip file
-3. Go to `chrome://extensions/`
-4. Enable "Developer mode" (top right)
-5. Click "Load unpacked"
+3. Navigate to `chrome://extensions/`
+4. Enable **Developer mode** (top right toggle)
+5. Click **Load unpacked**
 6. Select the extracted folder
-7. Navigate to your n8n instance
+7. Visit your n8n instance and enjoy!
 
-### From Source
+### Build from Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/TBLgGamin/n8n-xtend.git
 cd n8n-xtend
-
-# Install dependencies
 bun install
-
-# Build the extension
 bun run build
-
-# Load the dist/ folder as an unpacked extension
 ```
 
-## Development
+Then load the `dist/` folder as an unpacked extension.
 
-This project uses [Bun](https://bun.sh/) for fast builds and development.
-
-```bash
-# Install dependencies
-bun install
-
-# Start development mode (watch for changes)
-bun run dev
-
-# Build for production
-bun run build
-
-# Run linter
-bun run lint
-
-# Fix linting issues
-bun run lint:fix
-
-# Type check
-bun run typecheck
-```
-
-## How It Works
-
-1. The extension detects when you're on an n8n instance
-2. It injects a tree view into the sidebar
-3. Projects are shown at the top level
-4. Expanding a project or folder fetches its contents via the n8n REST API
-5. Uses your existing session cookies for authentication (no credentials stored)
-
-## Project Structure
-
-```
-n8n-xtend/
-├── src/
-│   ├── api/          # API client for n8n REST endpoints
-│   ├── components/   # UI components (folder, workflow nodes)
-│   ├── core/         # Core logic (injection, monitoring, tree)
-│   ├── fonts/        # Custom icon font
-│   ├── icons/        # SVG icons
-│   ├── styles/       # CSS styles
-│   ├── types/        # TypeScript interfaces
-│   ├── utils/        # Utility functions
-│   └── index.ts      # Entry point
-├── scripts/
-│   └── build.ts      # Bun build script
-└── dist/             # Build output
-```
-
-## Security
-
-- Fully client-side - no data leaves your browser
-- No external requests except to your n8n instance
-- Uses existing session authentication
-- No credentials or tokens are stored
+---
 
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
+---
+
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — Built with ❤️ for the n8n community

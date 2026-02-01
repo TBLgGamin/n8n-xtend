@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Restructured README with professional layout showcasing all extensions
+- Added demo videos for Tree Navigation, Workflow Capture, and Variables extensions
+
 ## [1.3.0] - 2026-02-01
 
 ### Added
