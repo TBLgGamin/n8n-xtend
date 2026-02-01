@@ -54,6 +54,7 @@ src/
 ### Custom Commands
 - `/commit` - Create a conventional commit with Husky hooks
 - `/push` - Push commits to remote
+- `/release` - Build, test locally, and create a GitHub release
 
 ### Committing Changes
 Use `/commit` or run manually to trigger Husky pre-commit hooks:
@@ -64,12 +65,15 @@ git commit -m "message"
 
 The pre-commit hooks automatically run linting and type checking.
 
-### Releases & Documentation
+### Releases
 
-After every release:
-1. Update `CHANGELOG.md` with the new version, date, and changes
-2. Review and update `README.md` if features changed
-3. Review and update `CONTRIBUTING.md` if development workflow changed
+Use `/release` to create a new version. This will:
+1. Build the extension
+2. Wait for local testing confirmation
+3. Update version in `package.json` and `CHANGELOG.md`
+4. Create git tag and GitHub release with built extension
+
+After releases, review and update `README.md` and `CONTRIBUTING.md` if needed.
 
 #### CHANGELOG.md Format
 ```markdown

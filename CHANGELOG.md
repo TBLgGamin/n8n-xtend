@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Custom Claude Code commands for `/commit` and `/push` workflows
+- Custom Claude Code commands for `/commit`, `/push`, and `/release` workflows
 
 ### Changed
 - Updated GitHub repository name to `n8n-xtend`
