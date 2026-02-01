@@ -10,6 +10,7 @@
     "@biomejs/biome": "^1.9.4",
     "@commitlint/cli": "20.4.0",
     "@commitlint/config-conventional": "20.4.0",
+    "@playwright/test": "1.58.1",
     "@types/bun": "^1.1.14",
     "@types/chrome": "^0.0.287",
     "@vitest/coverage-istanbul": "4.0.18",
@@ -49,6 +50,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
     "prepare": "husky"
   },

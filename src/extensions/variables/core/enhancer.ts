@@ -13,19 +13,20 @@ function wrapWithBraces(text: string): string {
   return `{{ ${trimmed} }}`;
 }
 
-function enhanceElement(element: HTMLElement): void {
+function enhanceElement(element: HTMLElement): boolean {
   if (element.hasAttribute(ENHANCED_ATTR)) {
-    return;
+    return false;
   }
 
   const originalText = element.textContent?.trim() ?? '';
-  if (!originalText) return;
+  if (!originalText) return false;
 
   const enhancedText = wrapWithBraces(originalText);
   element.textContent = enhancedText;
   element.setAttribute(ENHANCED_ATTR, originalText);
 
   element.addEventListener('click', handleCopy);
+  return true;
 }
 
 function handleCopy(event: Event): void {
@@ -44,8 +45,7 @@ export function enhanceUsageSyntax(): number {
   let enhanced = 0;
 
   for (const element of elements) {
-    if (!element.hasAttribute(ENHANCED_ATTR)) {
-      enhanceElement(element);
+    if (enhanceElement(element)) {
       enhanced++;
     }
   }

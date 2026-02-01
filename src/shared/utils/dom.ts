@@ -15,6 +15,9 @@ export function findElementByClassPattern(
   parent: Element,
   patterns: readonly string[],
 ): Element | null {
+  if (patterns.length === 0) {
+    return null;
+  }
   const selector = patterns.map((pattern) => `[class*="${pattern}"]`).join(',');
   const element = parent.querySelector(selector);
 
