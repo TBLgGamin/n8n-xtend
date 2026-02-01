@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Custom Claude Code commands for `/commit` and `/push` workflows
+
 ### Changed
+- Updated CLAUDE.md with custom command documentation
 - Migrated build system from Webpack to Bun
 - Added Biome for linting and formatting
 - Added Husky for git hooks

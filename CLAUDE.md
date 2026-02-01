@@ -51,14 +51,18 @@ src/
 
 ## Git Workflow
 
+### Custom Commands
+- `/commit` - Create a conventional commit with Husky hooks
+- `/push` - Push commits to remote
+
 ### Committing Changes
-When committing, use the full git commit command to trigger the Husky pre-commit hooks:
+Use `/commit` or run manually to trigger Husky pre-commit hooks:
 ```bash
 git add <files>
 git commit -m "message"
 ```
 
-The pre-commit hooks will automatically run linting and type checking before the commit is created.
+The pre-commit hooks automatically run linting and type checking.
 
 ### Releases & Documentation
 
