@@ -2,7 +2,7 @@
 
 **Extend your n8n experience**
 
-[![CI](https://github.com/YOUR_USERNAME/n8n-xtend/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/n8n-xtend/actions/workflows/ci.yml)
+[![CI](https://github.com/TBLgGamin/n8n-xtend/actions/workflows/ci.yml/badge.svg)](https://github.com/TBLgGamin/n8n-xtend/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A browser extension that adds client-side enhancements to n8n, starting with tree-style folder navigation.
@@ -19,7 +19,7 @@ A browser extension that adds client-side enhancements to n8n, starting with tre
 
 ### Chrome / Chromium-based browsers
 
-1. Download the latest release from [Releases](https://github.com/YOUR_USERNAME/n8n-xtend/releases)
+1. Download the latest release from [Releases](https://github.com/TBLgGamin/n8n-xtend/releases)
 2. Extract the zip file
 3. Go to `chrome://extensions/`
 4. Enable "Developer mode" (top right)
@@ -31,7 +31,7 @@ A browser extension that adds client-side enhancements to n8n, starting with tre
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/n8n-xtend.git
+git clone https://github.com/TBLgGamin/n8n-xtend.git
 cd n8n-xtend
 
 # Install dependencies

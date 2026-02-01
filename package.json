@@ -2,6 +2,24 @@
   "name": "n8n-xtend",
   "version": "1.0.0",
   "description": "Extend your n8n experience - client-side enhancements for n8n",
+  "author": "TBLgGamin",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TBLgGamin/n8n-xtend.git"
+  },
+  "homepage": "https://github.com/TBLgGamin/n8n-xtend",
+  "bugs": {
+    "url": "https://github.com/TBLgGamin/n8n-xtend/issues"
+  },
+  "keywords": [
+    "n8n",
+    "browser-extension",
+    "chrome-extension",
+    "automation",
+    "workflow",
+    "tree-view"
+  ],
   "private": true,
   "type": "module",
   "scripts": {

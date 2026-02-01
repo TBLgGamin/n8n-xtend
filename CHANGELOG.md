@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom Claude Code commands for `/commit` and `/push` workflows
 
 ### Changed
+- Updated GitHub repository name to `n8n-xtend`
+- Added package.json metadata (author, license, repository, homepage, bugs, keywords)
+- Updated README.md with correct GitHub URLs
 - Updated `/push` command to include CHANGELOG.md verification
 - Updated CLAUDE.md with custom command documentation
 - Migrated build system from Webpack to Bun
