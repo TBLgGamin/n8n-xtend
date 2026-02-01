@@ -1,35 +1,10 @@
 {
   "name": "n8n-xtend",
   "version": "1.2.0",
-  "description": "Extend your n8n experience - client-side enhancements for n8n",
   "author": "TBLgGamin",
-  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/TBLgGamin/n8n-xtend.git"
-  },
-  "homepage": "https://github.com/TBLgGamin/n8n-xtend",
-  "bugs": {
-    "url": "https://github.com/TBLgGamin/n8n-xtend/issues"
-  },
-  "keywords": [
-    "n8n",
-    "browser-extension",
-    "chrome-extension",
-    "automation",
-    "workflow",
-    "tree-view"
-  ],
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "build": "bun run scripts/build.ts",
-    "dev": "bun run scripts/build.ts --watch",
-    "typecheck": "bun x tsc --noEmit",
-    "lint": "biome check src",
-    "lint:fix": "biome check --write src",
-    "format": "biome format --write src",
-    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
@@ -41,7 +16,35 @@
     "lint-staged": "^15.3.0",
     "typescript": "^5.7.2"
   },
+  "bugs": {
+    "url": "https://github.com/TBLgGamin/n8n-xtend/issues"
+  },
+  "description": "Extend your n8n experience - client-side enhancements for n8n",
   "engines": {
     "bun": ">=1.0.0"
+  },
+  "homepage": "https://github.com/TBLgGamin/n8n-xtend",
+  "keywords": [
+    "n8n",
+    "browser-extension",
+    "chrome-extension",
+    "automation",
+    "workflow",
+    "tree-view"
+  ],
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "bun run scripts/build.ts",
+    "dev": "bun run scripts/build.ts --watch",
+    "typecheck": "bun x tsc --noEmit",
+    "lint": "biome check src",
+    "lint:fix": "biome check --write src",
+    "format": "biome format --write src",
+    "prepare": "husky"
+  },
+  "type": "module",
+  "dependencies": {
+    "modern-screenshot": "4.6.8"
   }
 }

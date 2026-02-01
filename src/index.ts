@@ -1,3 +1,4 @@
+import { initCaptureExtension } from '@/extensions/capture';
 import { initTreeExtension } from '@/extensions/tree';
 import { initVariablesExtension } from '@/extensions/variables';
 import { isN8nHost, logger } from '@/shared/utils';
@@ -11,6 +12,7 @@ function init(): void {
 
   initTreeExtension();
   initVariablesExtension();
+  initCaptureExtension();
 }
 
 init();

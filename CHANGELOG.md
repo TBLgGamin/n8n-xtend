@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Capture extension to export workflows as PNG or SVG images
+- Element capture development script for inspecting n8n UI styles
+
 ## [1.2.0] - 2026-02-01
 
 ### Added

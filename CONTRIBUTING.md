@@ -75,6 +75,38 @@ docs: update installation instructions
 6. Push to your fork and open a pull request
 7. Describe your changes in the PR description
 
+## Development Tools
+
+### Element Capture Script
+
+The `scripts/capture-element.js` script helps you inspect n8n's UI elements to match their exact styling. This is useful when creating new UI components that need to look native to n8n.
+
+**Usage:**
+
+1. Open n8n in your browser
+2. Open the browser console (F12)
+3. Paste the contents of `scripts/capture-element.js` and press Enter
+4. Interact with n8n to show the element you want to capture (e.g., open a dropdown menu)
+5. Run the capture command:
+
+```javascript
+// Capture a dropdown menu
+captureElement('.el-dropdown-menu')
+
+// Capture a dialog/modal
+captureElement('.el-dialog')
+
+// Capture any element by selector or reference
+captureElement(document.querySelector('.some-element'))
+```
+
+The script will:
+- Log the full HTML structure with all classes and attributes
+- Log the computed CSS styles for each element
+- Auto-download a `.txt` file with both HTML and CSS
+
+This helps you understand n8n's exact element structure and styles so you can replicate them in your extensions.
+
 ## Reporting Issues
 
 When reporting issues, please include:
