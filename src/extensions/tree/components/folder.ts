@@ -1,5 +1,5 @@
 import { type Folder, isFolder } from '@/shared/types';
-import { getFolderIdFromUrl } from '@/shared/utils';
+import { escapeHtml, getFolderIdFromUrl } from '@/shared/utils';
 import { fetchFolders } from '../api';
 import { setupDraggable, setupDropTarget } from '../core/dragdrop';
 import { isFolderExpanded, setFolderExpanded } from '../core/state';
@@ -105,10 +105,4 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
   }
 
   return node;
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }

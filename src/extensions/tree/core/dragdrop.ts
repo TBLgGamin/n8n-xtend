@@ -24,19 +24,30 @@ export function setDragContext(projectId: string, refreshCallback: () => void): 
 }
 
 function clearDropTargetClasses(): void {
-  for (const el of document.querySelectorAll('.n8n-tree-can-drop')) {
-    el.classList.remove('n8n-tree-can-drop');
-  }
-  for (const el of document.querySelectorAll('.n8n-tree-drag-over')) {
-    el.classList.remove('n8n-tree-drag-over');
-  }
+  const elements = document.querySelectorAll('.n8n-tree-can-drop, .n8n-tree-drag-over');
+  requestAnimationFrame(() => {
+    for (const el of elements) {
+      el.classList.remove('n8n-tree-can-drop', 'n8n-tree-drag-over');
+    }
+  });
 }
 
 function highlightDropTargets(element: HTMLElement, itemId: string): void {
-  for (const el of document.querySelectorAll<HTMLElement>('.n8n-tree-drop-target')) {
+  const elements = document.querySelectorAll<HTMLElement>('.n8n-tree-drop-target');
+  const toHighlight: HTMLElement[] = [];
+
+  for (const el of elements) {
     if (el !== element && el.dataset.itemId !== itemId) {
-      el.classList.add('n8n-tree-can-drop');
+      toHighlight.push(el);
     }
+  }
+
+  if (toHighlight.length > 0) {
+    requestAnimationFrame(() => {
+      for (const el of toHighlight) {
+        el.classList.add('n8n-tree-can-drop');
+      }
+    });
   }
 }
 

@@ -3,9 +3,16 @@ const FOCUSABLE_SELECTOR = '.n8n-tree-item';
 let currentFocusIndex = -1;
 
 function getVisibleItems(container: HTMLElement): HTMLElement[] {
-  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
-    (el) => el.offsetParent !== null,
-  );
+  const nodeList = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+  const items: HTMLElement[] = [];
+
+  for (const el of nodeList) {
+    if (el.offsetParent !== null) {
+      items.push(el);
+    }
+  }
+
+  return items;
 }
 
 function setFocusedItem(container: HTMLElement, index: number): void {

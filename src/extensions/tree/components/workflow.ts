@@ -1,5 +1,5 @@
 import type { Workflow } from '@/shared/types';
-import { buildWorkflowUrl, getWorkflowIdFromUrl } from '@/shared/utils';
+import { buildWorkflowUrl, escapeHtml, getWorkflowIdFromUrl } from '@/shared/utils';
 import { setupDraggable } from '../core/dragdrop';
 import { icons } from '../icons';
 
@@ -25,10 +25,4 @@ export function createWorkflowElement(workflow: Workflow): HTMLDivElement {
   }
 
   return node;
-}
-
-function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
 }

@@ -38,8 +38,13 @@ function setupResizeObserver(sidebar: Element): void {
     sidebarResizeObserver.disconnect();
   }
 
+  let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+
   sidebarResizeObserver = new ResizeObserver(() => {
-    updateTreeVisibility(sidebar);
+    if (resizeTimeout) clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      updateTreeVisibility(sidebar);
+    }, 16);
   });
 
   sidebarResizeObserver.observe(sidebar);
@@ -47,16 +52,17 @@ function setupResizeObserver(sidebar: Element): void {
 }
 
 function findElementByClassPattern(parent: Element, patterns: readonly string[]): Element | null {
-  const elements = parent.querySelectorAll('*');
+  const selector = patterns.map((pattern) => `[class*="${pattern}"]`).join(',');
+  const element = parent.querySelector(selector);
 
-  for (const element of elements) {
+  if (element) {
     const className = element.className;
-    if (typeof className !== 'string') continue;
-
-    for (const pattern of patterns) {
-      if (className.includes(pattern)) {
-        log.debug('Found element matching pattern', pattern);
-        return element;
+    if (typeof className === 'string') {
+      for (const pattern of patterns) {
+        if (className.includes(pattern)) {
+          log.debug('Found element matching pattern', pattern);
+          return element;
+        }
       }
     }
   }

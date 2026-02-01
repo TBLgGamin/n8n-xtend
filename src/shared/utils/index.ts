@@ -1,3 +1,5 @@
+export { findElementByClassPattern, findElementBySelectors } from './dom';
+export { escapeHtml } from './html';
 export { logger } from './logger';
 export { getBrowserId, getStorageItem, setStorageItem } from './storage';
 export { getCurrentTheme, isDarkMode, onThemeChange, type Theme } from './theme';

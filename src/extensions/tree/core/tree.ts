@@ -11,32 +11,8 @@ import { setFolderExpanded } from './state';
 
 let cleanupKeyboard: (() => void) | null = null;
 
-function createSkeletonLoader(): HTMLElement {
-  const skeleton = document.createElement('div');
-  skeleton.className = 'n8n-tree-loading';
-  skeleton.innerHTML = `
-    <div class="n8n-tree-skeleton">
-      <div class="n8n-tree-skeleton-chevron"></div>
-      <div class="n8n-tree-skeleton-icon"></div>
-      <div class="n8n-tree-skeleton-text"></div>
-    </div>
-    <div class="n8n-tree-skeleton">
-      <div class="n8n-tree-skeleton-chevron"></div>
-      <div class="n8n-tree-skeleton-icon"></div>
-      <div class="n8n-tree-skeleton-text"></div>
-    </div>
-    <div class="n8n-tree-skeleton">
-      <div class="n8n-tree-skeleton-chevron"></div>
-      <div class="n8n-tree-skeleton-icon"></div>
-      <div class="n8n-tree-skeleton-text"></div>
-    </div>
-  `;
-  return skeleton;
-}
-
 export async function loadTree(container: HTMLElement, projectId: string): Promise<void> {
   container.innerHTML = '';
-  container.appendChild(createSkeletonLoader());
 
   const currentFolderId = getFolderIdFromUrl();
   if (currentFolderId) {

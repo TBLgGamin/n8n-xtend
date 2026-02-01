@@ -1,4 +1,4 @@
-import { logger } from '@/shared/utils';
+import { findElementBySelectors, logger } from '@/shared/utils';
 import { domToBlob, domToSvg } from 'modern-screenshot';
 
 const log = logger.child('capture:utils');
@@ -10,31 +10,13 @@ const NODE_SELECTOR = '.vue-flow__node';
 const PADDING = 50;
 const SCALE = 2;
 
-function findElement<T extends Element>(parent: Element | Document, selectors: string[]): T | null {
-  for (const selector of selectors) {
-    const el = parent.querySelector(selector);
-    if (el) {
-      return el as T;
-    }
-  }
-  return null;
-}
+const WORKFLOW_NAME_SELECTOR =
+  '[data-test-id="workflow-name-input"] input, input[placeholder*="workflow"], .workflow-name input';
+const INVALID_FILENAME_CHARS = /[/\\?%*:|"<>]/g;
 
 function getWorkflowName(): string {
-  const selectors = [
-    '[data-test-id="workflow-name-input"] input',
-    'input[placeholder*="workflow"]',
-    '.workflow-name input',
-  ];
-
-  for (const selector of selectors) {
-    const el = document.querySelector(selector) as HTMLInputElement | null;
-    if (el?.value) {
-      return el.value.replace(/[/\\?%*:|"<>]/g, '-');
-    }
-  }
-
-  return 'workflow';
+  const el = document.querySelector(WORKFLOW_NAME_SELECTOR) as HTMLInputElement | null;
+  return el?.value ? el.value.replace(INVALID_FILENAME_CHARS, '-') : 'workflow';
 }
 
 function downloadFile(blob: Blob, filename: string): void {
@@ -121,13 +103,13 @@ function getViewportTransform(viewport: Element): { x: number; y: number; scale:
 }
 
 async function capturePng(): Promise<void> {
-  const canvas = findElement<HTMLElement>(document, CANVAS_SELECTORS);
+  const canvas = findElementBySelectors<HTMLElement>(document, CANVAS_SELECTORS);
   if (!canvas) {
     log.error('Canvas not found');
     return;
   }
 
-  const viewport = findElement<HTMLElement>(canvas, VIEWPORT_SELECTORS);
+  const viewport = findElementBySelectors<HTMLElement>(canvas, VIEWPORT_SELECTORS);
   if (!viewport) {
     log.error('Viewport not found');
     return;
@@ -187,13 +169,13 @@ async function capturePng(): Promise<void> {
 }
 
 async function captureSvg(): Promise<void> {
-  const canvas = findElement<HTMLElement>(document, CANVAS_SELECTORS);
+  const canvas = findElementBySelectors<HTMLElement>(document, CANVAS_SELECTORS);
   if (!canvas) {
     log.error('Canvas not found');
     return;
   }
 
-  const viewport = findElement<HTMLElement>(canvas, VIEWPORT_SELECTORS);
+  const viewport = findElementBySelectors<HTMLElement>(canvas, VIEWPORT_SELECTORS);
   if (!viewport) {
     log.error('Viewport not found');
     return;

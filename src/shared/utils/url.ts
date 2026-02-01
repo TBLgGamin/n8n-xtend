@@ -8,20 +8,30 @@ export function getWorkflowIdFromUrl(): string | null {
   return match?.[1] ?? null;
 }
 
+function extractPathSegment(pathname: string, prefix: string): string | null {
+  const index = pathname.indexOf(prefix);
+  if (index === -1) return null;
+
+  const start = index + prefix.length;
+  const end = pathname.indexOf('/', start);
+  return end === -1 ? pathname.slice(start) : pathname.slice(start, end);
+}
+
 export function getNormalizedContextPath(): string {
-  const projectMatch = location.pathname.match(/\/projects\/([^/]+)/);
-  const workflowMatch = location.pathname.match(/\/workflow\/([^/]+)/);
-  const folderMatch = location.pathname.match(/\/folders\/([^/]+)/);
+  const pathname = location.pathname;
+  const projectId = extractPathSegment(pathname, '/projects/');
 
-  if (projectMatch) {
-    return `/projects/${projectMatch[1]}${folderMatch ? `/folders/${folderMatch[1]}` : ''}`;
+  if (projectId) {
+    const folderId = extractPathSegment(pathname, '/folders/');
+    return folderId ? `/projects/${projectId}/folders/${folderId}` : `/projects/${projectId}`;
   }
 
-  if (workflowMatch) {
-    return `/workflow/${workflowMatch[1]}`;
+  const workflowId = extractPathSegment(pathname, '/workflow/');
+  if (workflowId) {
+    return `/workflow/${workflowId}`;
   }
 
-  return location.pathname;
+  return pathname;
 }
 
 export function getFolderIdFromUrl(): string | null {
@@ -34,30 +44,20 @@ export function isAuthPage(): boolean {
 }
 
 function hasN8nDomIndicators(): boolean {
-  const n8nRoot = document.getElementById('app');
-  if (!n8nRoot) {
+  if (!document.getElementById('app')) {
     return false;
   }
 
-  const hasN8nClasses = document.querySelector(
-    '[class*="n8n"], [data-test-id^="workflow"], [data-test-id^="node"]',
+  const primarySelector =
+    '[class*="n8n"], [data-test-id^="workflow"], [data-test-id^="node"], .vue-flow, .vue-flow__viewport';
+  if (document.querySelector(primarySelector)) {
+    return true;
+  }
+
+  return Boolean(
+    document.querySelector('[class*="sidebar"], [data-test-id="main-sidebar"]') &&
+      document.querySelector('[class*="canvas"], [class*="workflow"]'),
   );
-  if (hasN8nClasses) {
-    return true;
-  }
-
-  const hasVueFlow = document.querySelector('.vue-flow, .vue-flow__viewport');
-  if (hasVueFlow) {
-    return true;
-  }
-
-  const hasSidebar = document.querySelector('[class*="sidebar"], [data-test-id="main-sidebar"]');
-  const hasCanvas = document.querySelector('[class*="canvas"], [class*="workflow"]');
-  if (hasSidebar && hasCanvas) {
-    return true;
-  }
-
-  return false;
 }
 
 function hasN8nUrlPatterns(): boolean {

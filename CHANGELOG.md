@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Consolidated shared utilities (escapeHtml, findElementBySelectors, findElementByClassPattern)
+- Improved drag-drop performance with requestAnimationFrame batching
+- Added idle polling to reduce CPU usage when user is inactive
+- Optimized DOM selector queries in injector
+- Debounced resize observer callbacks
+- Switched to system font stack, removed custom font
+- Consolidated extension exports into single index file
+
+### Removed
+- Skeleton loading animation (faster perceived load without it)
+- Unused icon generation and element capture dev scripts
+
+### Fixed
+- TypeScript strict mode errors in keyboard navigation and HTML escaping
+
 ## [1.3.1] - 2026-02-01
 
 ### Added

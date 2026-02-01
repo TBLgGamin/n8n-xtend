@@ -5,6 +5,11 @@ export type Theme = 'dark' | 'light';
 function getStoredTheme(): string | null {
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
   if (!stored) return null;
+
+  if (stored === 'dark' || stored === 'light') return stored;
+  if (stored === '"dark"') return 'dark';
+  if (stored === '"light"') return 'light';
+
   try {
     return JSON.parse(stored) as string;
   } catch {

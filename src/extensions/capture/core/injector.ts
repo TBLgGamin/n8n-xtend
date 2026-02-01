@@ -53,10 +53,14 @@ function createCaptureMenuItem(): HTMLLIElement {
 
   li.addEventListener('mouseenter', () => {
     li.style.backgroundColor = 'rgb(245, 245, 245)';
+    li.style.color = 'rgb(43, 43, 43)';
+    label.style.color = 'rgb(43, 43, 43)';
   });
 
   li.addEventListener('mouseleave', () => {
     li.style.backgroundColor = '';
+    li.style.color = 'rgb(117, 117, 117)';
+    label.style.color = 'rgb(117, 117, 117)';
   });
 
   return li;
