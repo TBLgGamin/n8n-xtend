@@ -40,7 +40,7 @@ Export your workflow diagrams as high-quality images with a single click.
 
 <div align="center">
 
-https://github.com/user-attachments/assets/de497413-538c-40ed-9cea-81b63aadf925
+https://github.com/user-attachments/assets/514d303f-9b9d-4c26-a266-5f0fa9c08800
 
 </div>
 
