@@ -1,5 +1,8 @@
-import { request } from '@/shared/api';
+import { patch, request } from '@/shared/api';
 import type { FolderFilter, FolderResponse, FoldersResponse, TreeItem } from '@/shared/types';
+import { logger } from '@/shared/utils';
+
+const log = logger.child('api');
 
 export async function fetchFolders(projectId: string, parentFolderId = '0'): Promise<TreeItem[]> {
   const filter: FolderFilter = {
@@ -35,4 +38,18 @@ export async function fetchFolderPath(folderId: string): Promise<string[]> {
   }
 
   return path;
+}
+
+export async function moveFolder(
+  projectId: string,
+  folderId: string,
+  parentFolderId: string,
+): Promise<boolean> {
+  try {
+    await patch(`/rest/projects/${projectId}/folders/${folderId}`, { parentFolderId });
+    return true;
+  } catch (error) {
+    log.error('Failed to move folder', error);
+    return false;
+  }
 }

@@ -1,4 +1,12 @@
-import { getProjectIdFromUrl, getWorkflowIdFromUrl, isAuthPage, logger } from '@/shared/utils';
+import {
+  getNormalizedContextPath,
+  getProjectIdFromUrl,
+  getWorkflowIdFromUrl,
+  isAuthPage,
+  logger,
+} from '@/shared/utils';
+
+const log = logger.child('monitor');
 import { fetchWorkflowProjectId } from '../api';
 import { removeTree, tryInject } from './injector';
 
@@ -38,24 +46,25 @@ async function checkAndInject(): Promise<void> {
     return;
   }
 
+  const normalizedPath = getNormalizedContextPath();
   const contextChanged =
-    projectId !== state.currentProjectId || location.pathname !== state.currentPath;
+    projectId !== state.currentProjectId || normalizedPath !== state.currentPath;
 
   if (contextChanged) {
-    logger.info('Context changed', {
+    log.info('Context changed', {
       from: state.currentProjectId,
       to: projectId,
     });
 
     removeTree();
     state.currentProjectId = projectId;
-    state.currentPath = location.pathname;
+    state.currentPath = normalizedPath;
 
     tryInject(projectId);
   }
 }
 
 export function startMonitor(): void {
-  logger.info('Monitor started');
+  log.info('Monitor started');
   setInterval(checkAndInject, POLL_INTERVAL);
 }

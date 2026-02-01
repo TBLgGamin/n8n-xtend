@@ -14,7 +14,6 @@ async function build() {
   }
   mkdirSync(distDir, { recursive: true });
 
-  // Build TypeScript
   const result = await Bun.build({
     entrypoints: [join(srcDir, 'index.ts')],
     outdir: distDir,
@@ -22,6 +21,9 @@ async function build() {
     target: 'browser',
     minify: !isWatch,
     sourcemap: isWatch ? 'external' : 'none',
+    define: {
+      __DEV__: String(isWatch),
+    },
   });
 
   // Rename the output to content.js (Bun outputs to index.js by default)

@@ -1,14 +1,50 @@
-import { logger } from '@/shared/utils';
+import { getCurrentTheme, logger, onThemeChange } from '@/shared/utils';
 import { loadTree } from './tree';
+
+const log = logger.child('injector');
 
 const TREE_CONTAINER_ID = 'n8n-tree-view';
 const TREE_CONTENT_ID = 'n8n-tree-content';
+const COLLAPSED_WIDTH_THRESHOLD = 100;
+const DARK_MODE_CLASS = 'n8n-tree-dark';
 
 const SIDEBAR_SELECTORS = {
   sidebar: '#sidebar',
   sideMenu: ['_sideMenu_', '_projects_', '_menuContent_'],
   bottomMenu: ['_bottomMenu_', '_menuFooter_'],
 } as const;
+
+let sidebarResizeObserver: ResizeObserver | null = null;
+let themeCleanup: (() => void) | null = null;
+
+function updateTheme(): void {
+  const container = document.getElementById(TREE_CONTAINER_ID);
+  if (!container) return;
+
+  const isDark = getCurrentTheme() === 'dark';
+  container.classList.toggle(DARK_MODE_CLASS, isDark);
+}
+
+function updateTreeVisibility(sidebar: Element): void {
+  const container = document.getElementById(TREE_CONTAINER_ID);
+  if (!container) return;
+
+  const isCollapsed = sidebar.clientWidth < COLLAPSED_WIDTH_THRESHOLD;
+  container.classList.toggle('hidden', isCollapsed);
+}
+
+function setupResizeObserver(sidebar: Element): void {
+  if (sidebarResizeObserver) {
+    sidebarResizeObserver.disconnect();
+  }
+
+  sidebarResizeObserver = new ResizeObserver(() => {
+    updateTreeVisibility(sidebar);
+  });
+
+  sidebarResizeObserver.observe(sidebar);
+  updateTreeVisibility(sidebar);
+}
 
 function findElementByClassPattern(parent: Element, patterns: readonly string[]): Element | null {
   const elements = parent.querySelectorAll('*');
@@ -19,7 +55,7 @@ function findElementByClassPattern(parent: Element, patterns: readonly string[])
 
     for (const pattern of patterns) {
       if (className.includes(pattern)) {
-        logger.debug('Found element matching pattern', pattern);
+        log.debug('Found element matching pattern', pattern);
         return element;
       }
     }
@@ -39,27 +75,27 @@ function createTreeContainer(): HTMLElement {
 }
 
 export function inject(projectId: string): boolean {
-  logger.debug('Injecting tree view for project', projectId);
+  log.debug('Injecting tree view for project', projectId);
 
   if (document.getElementById(TREE_CONTAINER_ID)) {
-    logger.debug('Tree already exists');
+    log.debug('Tree already exists');
     return true;
   }
 
   if (!projectId) {
-    logger.debug('No project ID provided');
+    log.debug('No project ID provided');
     return true;
   }
 
   const sidebar = document.querySelector(SIDEBAR_SELECTORS.sidebar);
   if (!sidebar) {
-    logger.debug('Sidebar not found');
+    log.debug('Sidebar not found');
     return false;
   }
 
   const sideMenu = findElementByClassPattern(sidebar, SIDEBAR_SELECTORS.sideMenu);
   if (!sideMenu) {
-    logger.debug('Side menu element not found');
+    log.debug('Side menu element not found');
     return false;
   }
 
@@ -69,14 +105,17 @@ export function inject(projectId: string): boolean {
 
   if (bottomMenu?.parentElement) {
     bottomMenu.parentElement.insertBefore(container, bottomMenu);
-    logger.debug('Inserted before bottom menu');
+    log.debug('Inserted before bottom menu');
   } else {
     sideMenu.appendChild(container);
-    logger.debug('Appended to side menu');
+    log.debug('Appended to side menu');
   }
 
   const content = document.getElementById(TREE_CONTENT_ID);
   if (content) {
+    setupResizeObserver(sidebar);
+    updateTheme();
+    themeCleanup = onThemeChange(updateTheme);
     loadTree(content, projectId);
     return true;
   }
@@ -85,10 +124,20 @@ export function inject(projectId: string): boolean {
 }
 
 export function removeTree(): void {
+  if (sidebarResizeObserver) {
+    sidebarResizeObserver.disconnect();
+    sidebarResizeObserver = null;
+  }
+
+  if (themeCleanup) {
+    themeCleanup();
+    themeCleanup = null;
+  }
+
   const existing = document.getElementById(TREE_CONTAINER_ID);
   if (existing) {
     existing.remove();
-    logger.debug('Tree removed');
+    log.debug('Tree removed');
   }
 }
 
@@ -97,14 +146,14 @@ export function tryInject(projectId: string, maxRetries = 10, delay = 300): void
 
   function attempt(): void {
     if (retries <= 0) {
-      logger.warn('Injection failed after max retries');
+      log.warn('Injection failed after max retries');
       return;
     }
 
     const success = inject(projectId);
     if (!success) {
       retries--;
-      logger.debug('Injection failed, retrying', { retriesLeft: retries });
+      log.debug('Injection failed, retrying', { retriesLeft: retries });
       setTimeout(attempt, delay);
     }
   }

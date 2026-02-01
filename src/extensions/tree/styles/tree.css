@@ -17,11 +17,16 @@
 #n8n-tree-view .tree-header {
   padding: 12px;
   font-size: 12px;
+  font-weight: 600;
   letter-spacing: 0.5px;
   color: #949595;
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+#n8n-tree-view.hidden {
+  display: none;
 }
 
 #n8n-tree-content {
@@ -89,38 +94,21 @@
   text-overflow: ellipsis;
   flex: 1;
   min-width: 0;
-  cursor: default;
 }
 
-.n8n-tree-context-menu {
-  position: fixed;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  padding: 4px 0;
-  min-width: 160px;
-  z-index: 10000;
+a.n8n-tree-item {
+  text-decoration: none;
+  color: inherit;
 }
 
-.n8n-tree-context-menu-item {
-  padding: 8px 12px;
-  font-size: 13px;
-  color: #333;
-  cursor: pointer;
+.n8n-tree-folder-link {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.n8n-tree-context-menu-item:hover {
-  background: #f5f5f5;
-}
-
-.n8n-tree-context-menu-separator {
-  height: 1px;
-  background: #eee;
-  margin: 4px 0;
+  text-decoration: none;
+  color: inherit;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .n8n-tree-count {
@@ -164,4 +152,146 @@
 
 #n8n-tree-content::-webkit-scrollbar-thumb:hover {
   background: #aaa;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+.n8n-tree-skeleton {
+  display: flex;
+  align-items: center;
+  padding: 5px 8px;
+  margin: 1px 0;
+}
+
+.n8n-tree-skeleton-chevron {
+  width: 18px;
+  height: 18px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.n8n-tree-skeleton-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+  margin-left: 4px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.n8n-tree-skeleton-text {
+  height: 14px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200px 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 3px;
+  flex: 1;
+}
+
+.n8n-tree-skeleton:nth-child(1) .n8n-tree-skeleton-text {
+  width: 70%;
+}
+.n8n-tree-skeleton:nth-child(2) .n8n-tree-skeleton-text {
+  width: 85%;
+}
+.n8n-tree-skeleton:nth-child(3) .n8n-tree-skeleton-text {
+  width: 60%;
+}
+
+#n8n-tree-content.loading {
+  opacity: 1;
+}
+
+#n8n-tree-content {
+  transition: opacity 0.15s ease-out;
+}
+
+#n8n-tree-content:focus {
+  outline: none;
+}
+
+.n8n-tree-item.n8n-tree-focused {
+  outline: 2px solid #ff6d5a;
+  outline-offset: -2px;
+}
+
+.n8n-tree-item.n8n-tree-dragging {
+  opacity: 0.5;
+}
+
+.n8n-tree-item.n8n-tree-drag-over {
+  background: #f0f0f0;
+}
+
+#n8n-tree-content.n8n-tree-drag-over {
+  background: #fafafa;
+}
+
+#n8n-tree-view.n8n-tree-dark .tree-header {
+  color: #7d7d7d !important;
+}
+
+#n8n-tree-view.n8n-tree-dark .n8n-tree-item:hover,
+#n8n-tree-view.n8n-tree-dark .n8n-tree-item.active {
+  background: #2d2d2d !important;
+}
+
+#n8n-tree-view.n8n-tree-dark .n8n-tree-chevron {
+  color: #909090 !important;
+}
+
+#n8n-tree-view.n8n-tree-dark .n8n-tree-icon.folder {
+  color: #909090 !important;
+}
+
+#n8n-tree-view.n8n-tree-dark .n8n-tree-label {
+  color: #e0e0e0 !important;
+}
+
+#n8n-tree-view.n8n-tree-dark .n8n-tree-count {
+  color: #7d7d7d !important;
+}
+
+#n8n-tree-view.n8n-tree-dark .n8n-tree-empty {
+  color: #6d6d6d !important;
+}
+
+#n8n-tree-view.n8n-tree-dark #n8n-tree-content::-webkit-scrollbar-track {
+  background: #2a2a2a !important;
+}
+
+#n8n-tree-view.n8n-tree-dark #n8n-tree-content::-webkit-scrollbar-thumb {
+  background: #4a4a4a !important;
+}
+
+#n8n-tree-view.n8n-tree-dark #n8n-tree-content::-webkit-scrollbar-thumb:hover {
+  background: #5a5a5a !important;
+}
+
+#n8n-tree-view.n8n-tree-dark .n8n-tree-skeleton-chevron,
+#n8n-tree-view.n8n-tree-dark .n8n-tree-skeleton-icon,
+#n8n-tree-view.n8n-tree-dark .n8n-tree-skeleton-text {
+  background: linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%) !important;
+  background-size: 200px 100% !important;
+}
+
+#n8n-tree-view.n8n-tree-dark .n8n-tree-item.n8n-tree-drag-over {
+  background: #333 !important;
+}
+
+#n8n-tree-view.n8n-tree-dark #n8n-tree-content.n8n-tree-drag-over {
+  background: #252525 !important;
 }

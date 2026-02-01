@@ -1,9 +1,6 @@
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+declare const __DEV__: boolean;
 
-interface LoggerConfig {
-  prefix: string;
-  level: LogLevel;
-}
+type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const LOG_LEVELS: Record<LogLevel, number> = {
   debug: 0,
@@ -12,22 +9,24 @@ const LOG_LEVELS: Record<LogLevel, number> = {
   error: 3,
 };
 
-class Logger {
-  private config: LoggerConfig;
+const BASE_PREFIX = 'n8n-xtend';
 
-  constructor(config: Partial<LoggerConfig> = {}) {
-    this.config = {
-      prefix: config.prefix ?? 'n8ntree',
-      level: config.level ?? 'info',
-    };
+class Logger {
+  private component: string | null;
+  private minLevel: LogLevel;
+
+  constructor(component?: string) {
+    this.component = component ?? null;
+    this.minLevel = typeof __DEV__ !== 'undefined' && __DEV__ ? 'debug' : 'info';
   }
 
   private shouldLog(level: LogLevel): boolean {
-    return LOG_LEVELS[level] >= LOG_LEVELS[this.config.level];
+    return LOG_LEVELS[level] >= LOG_LEVELS[this.minLevel];
   }
 
   private format(level: LogLevel, message: string): string {
-    return `[${this.config.prefix}:${level}] ${message}`;
+    const prefix = this.component ? `${BASE_PREFIX}:${this.component}` : BASE_PREFIX;
+    return `[${prefix}:${level}] ${message}`;
   }
 
   debug(message: string, ...args: unknown[]): void {
@@ -52,6 +51,11 @@ class Logger {
     if (this.shouldLog('error')) {
       console.error(this.format('error', message), ...args);
     }
+  }
+
+  child(component: string): Logger {
+    const childComponent = this.component ? `${this.component}:${component}` : component;
+    return new Logger(childComponent);
   }
 }
 

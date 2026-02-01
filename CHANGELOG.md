@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Drag and drop support for moving workflows and folders
+- Keyboard navigation for tree (arrow keys, Enter to open)
+- Variables extension with `{{ }}` syntax wrapper for global variables
+- Dark mode support with automatic theme detection
+- Shared theme utility reading from N8N_THEME localStorage
+
+### Changed
+- Improved logger with component-specific prefixes (e.g., `[n8n-xtend:tree:info]`)
+- Debug logging now only shows in dev builds (`bun run dev`)
+- Workflows now display above folders at each tree level
+- Build system now injects `__DEV__` flag for dev mode detection
+
+### Fixed
+- Fixed drag-drop causing infinite request loop (duplicate event listeners)
+- Fixed workflow move to root folder (API expects `null` not `'0'`)
+
 ## [1.1.0] - 2026-02-01
 
 ### Added
@@ -25,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added GitHub Actions CI/CD pipeline
 - Renamed project from "n8n Tree" to "n8n-xtend"
 
-## [1.0.0] - 2025-02-01
+## [1.0.0] - 2026-02-01
 
 ### Added
 - Initial release

@@ -1,4 +1,5 @@
 import { initTreeExtension } from '@/extensions/tree';
+import { initVariablesExtension } from '@/extensions/variables';
 import { isN8nHost, logger } from '@/shared/utils';
 
 function init(): void {
@@ -9,6 +10,7 @@ function init(): void {
   logger.info('n8n-xtend loaded');
 
   initTreeExtension();
+  initVariablesExtension();
 }
 
 init();

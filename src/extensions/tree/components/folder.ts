@@ -1,7 +1,7 @@
 import { type Folder, isFolder } from '@/shared/types';
-import { copyToClipboard, showContextMenu } from '@/shared/ui';
 import { getFolderIdFromUrl } from '@/shared/utils';
 import { fetchFolders } from '../api';
+import { setupDraggable, setupDropTarget } from '../core/dragdrop';
 import { isFolderExpanded, setFolderExpanded } from '../core/state';
 import { icons } from '../icons';
 import { createWorkflowElement } from './workflow';
@@ -9,15 +9,19 @@ import { createWorkflowElement } from './workflow';
 export function createFolderElement(folder: Folder, projectId: string): HTMLDivElement {
   const node = document.createElement('div');
   node.className = 'n8n-tree-node';
+  node.dataset.folderId = folder.id;
 
   const count = (folder.workflowCount ?? 0) + (folder.subFolderCount ?? 0);
   const isActive = getFolderIdFromUrl() === folder.id;
+  const folderUrl = `${location.origin}/projects/${projectId}/folders/${folder.id}/workflows`;
 
   node.innerHTML = `
     <div class="n8n-tree-item${isActive ? ' active' : ''}">
       <span class="n8n-tree-chevron collapsed">${icons.chevron}</span>
-      <span class="n8n-tree-icon folder">${icons.folder}</span>
-      <span class="n8n-tree-label" title="${escapeHtml(folder.name)}">${escapeHtml(folder.name)}</span>
+      <a href="${folderUrl}" class="n8n-tree-folder-link" title="${escapeHtml(folder.name)}">
+        <span class="n8n-tree-icon folder">${icons.folder}</span>
+        <span class="n8n-tree-label">${escapeHtml(folder.name)}</span>
+      </a>
       ${count ? `<span class="n8n-tree-count">${count}</span>` : ''}
     </div>
     <div class="n8n-tree-children collapsed"></div>
@@ -32,11 +36,12 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
     return node;
   }
 
+  setupDraggable(item, 'folder', folder.id, folder.name, folder.parentFolderId);
+  setupDropTarget(item, folder.id);
+
   const childrenEl = children;
   const chevronEl = chevron;
   const iconEl = icon;
-
-  const folderUrl = `${location.origin}/projects/${projectId}/folders/${folder.id}/workflows`;
 
   let loaded = false;
   let open = false;
@@ -52,12 +57,12 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
         const folders = items.filter(isFolder);
         const workflows = items.filter((i) => !isFolder(i));
 
-        for (const sub of folders) {
-          fragment.appendChild(createFolderElement(sub, projectId));
+        for (const workflow of workflows) {
+          fragment.appendChild(createWorkflowElement(workflow));
         }
 
-        for (const w of workflows) {
-          fragment.appendChild(createWorkflowElement(w));
+        for (const folder of folders) {
+          fragment.appendChild(createFolderElement(folder, projectId));
         }
 
         childrenEl.innerHTML = '';
@@ -83,35 +88,17 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
     setFolderExpanded(folder.id, false);
   }
 
-  const toggle = async (event: MouseEvent) => {
+  async function toggle(event: MouseEvent): Promise<void> {
+    event.preventDefault();
     event.stopPropagation();
     if (!open) {
       await expand();
     } else {
       collapse();
     }
-  };
+  }
 
   chevron.onclick = toggle;
-  (item.querySelector('.n8n-tree-label') as HTMLElement).onclick = toggle;
-
-  icon.onclick = (event) => {
-    event.stopPropagation();
-    location.href = folderUrl;
-  };
-
-  item.oncontextmenu = (event) => {
-    showContextMenu(event, [
-      {
-        label: 'Open in new tab',
-        action: () => window.open(folderUrl, '_blank'),
-      },
-      {
-        label: 'Copy link',
-        action: () => copyToClipboard(folderUrl),
-      },
-    ]);
-  };
 
   if (isFolderExpanded(folder.id)) {
     requestAnimationFrame(() => expand());
