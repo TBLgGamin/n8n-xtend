@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-02-01
+
 ### Added
 - Extension icons (16x16, 48x48, 128x128) with auto-generation script
 - Smart n8n detection using DOM indicators and URL patterns for custom domain support
