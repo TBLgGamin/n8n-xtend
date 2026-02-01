@@ -1,2 +1,2 @@
-export { fetchFolder, fetchFolderPath, fetchFolders } from './folders';
-export { fetchWorkflowProjectId } from './workflows';
+export { fetchFolder, fetchFolderPath, fetchFolders, moveFolder } from './folders';
+export { fetchWorkflowProjectId, moveWorkflow } from './workflows';

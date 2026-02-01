@@ -41,15 +41,28 @@ Create a new release with built extension and GitHub release.
    git push && git push --tags
    ```
 
-10. Create GitHub release with the built extension:
-    - Create a zip of the `dist/` folder
-    - Use `gh release create` with the changelog section as release notes
+10. Create zip of the built extension:
     ```bash
     cd dist && zip -r ../n8n-xtend-vX.Y.Z.zip . && cd ..
-    gh release create vX.Y.Z n8n-xtend-vX.Y.Z.zip --title "vX.Y.Z" --notes "$(changelog notes)"
     ```
 
-11. Clean up the zip file after upload
+11. Wait for CI to create the release (check with `gh release view vX.Y.Z`), then:
+    - Upload the locally-tested build to the release
+    - Update release notes from changelog using a temp file
+    ```bash
+    gh release upload vX.Y.Z n8n-xtend-vX.Y.Z.zip --clobber
+    ```
+
+12. Update release notes via GitHub API:
+    - Extract the section for this version from CHANGELOG.md
+    - Write to a temp file
+    - Get release ID and update body via API:
+    ```bash
+    RELEASE_ID=$(gh api repos/TBLgGamin/n8n-xtend/releases/tags/vX.Y.Z --jq '.id')
+    gh api repos/TBLgGamin/n8n-xtend/releases/$RELEASE_ID -X PATCH -f body="$(cat /tmp/release-notes.md)"
+    ```
+
+13. Clean up the zip file and temp notes file
 
 ## Rules
 - NEVER release with uncommitted changes

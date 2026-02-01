@@ -1,1 +1,1 @@
-export { ApiError, request } from './client';
+export { ApiError, patch, request } from './client';

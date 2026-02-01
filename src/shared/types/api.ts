@@ -15,6 +15,8 @@ export interface Workflow {
   id: string;
   name: string;
   resource?: string;
+  versionId?: string;
+  parentFolderId?: string;
   homeProject?: {
     id: string;
   };

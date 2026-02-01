@@ -8,6 +8,22 @@ export function getWorkflowIdFromUrl(): string | null {
   return match?.[1] ?? null;
 }
 
+export function getNormalizedContextPath(): string {
+  const projectMatch = location.pathname.match(/\/projects\/([^/]+)/);
+  const workflowMatch = location.pathname.match(/\/workflow\/([^/]+)/);
+  const folderMatch = location.pathname.match(/\/folders\/([^/]+)/);
+
+  if (projectMatch) {
+    return `/projects/${projectMatch[1]}${folderMatch ? `/folders/${folderMatch[1]}` : ''}`;
+  }
+
+  if (workflowMatch) {
+    return `/workflow/${workflowMatch[1]}`;
+  }
+
+  return location.pathname;
+}
+
 export function getFolderIdFromUrl(): string | null {
   const match = location.pathname.match(/\/folders\/([^/]+)/);
   return match?.[1] ?? null;
