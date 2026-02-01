@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="src/images/favicon.svg" alt="n8n-xtend logo" width="120" height="120">
+
 # n8n-xtend
 
 **Extend your n8n experience**
