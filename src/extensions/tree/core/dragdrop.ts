@@ -82,7 +82,7 @@ export function setupDraggable(
       type: itemType,
       id: itemId,
       name: itemName,
-      parentFolderId,
+      ...(parentFolderId && { parentFolderId }),
     };
 
     event.dataTransfer.setData('application/json', JSON.stringify(data));

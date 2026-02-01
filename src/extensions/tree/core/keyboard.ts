@@ -88,8 +88,8 @@ function collapseFocusedItem(container: HTMLElement, items: HTMLElement[]): void
 type KeyHandler = (container: HTMLElement, items: HTMLElement[]) => void;
 
 const keyHandlers: Record<string, KeyHandler> = {
-  ArrowDown: (container, items) => setFocusedItem(container, currentFocusIndex + 1),
-  ArrowUp: (container, items) => setFocusedItem(container, currentFocusIndex - 1),
+  ArrowDown: (container, _items) => setFocusedItem(container, currentFocusIndex + 1),
+  ArrowUp: (container, _items) => setFocusedItem(container, currentFocusIndex - 1),
   Enter: (_container, items) => navigateToItem(items),
   ' ': (_container, items) => toggleFocusedItem(items),
   ArrowRight: (_container, items) => expandFocusedItem(items),
