@@ -59,6 +59,7 @@ export async function moveFolder(
 ): Promise<boolean> {
   try {
     await patch(`/rest/projects/${projectId}/folders/${folderId}`, { parentFolderId });
+    clearFolderCache();
     return true;
   } catch (error) {
     log.debug('Failed to move folder', error);

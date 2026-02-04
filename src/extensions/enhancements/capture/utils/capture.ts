@@ -39,6 +39,14 @@ interface Bounds {
   height: number;
 }
 
+interface CaptureContext {
+  canvas: HTMLElement;
+  viewport: HTMLElement;
+  bounds: Bounds;
+  captureWidth: number;
+  captureHeight: number;
+}
+
 function calculateNodeBounds(viewport: Element): Bounds | null {
   const nodes = viewport.querySelectorAll(NODE_SELECTOR);
 
@@ -86,45 +94,25 @@ function calculateNodeBounds(viewport: Element): Bounds | null {
   };
 }
 
-function getViewportTransform(viewport: Element): { x: number; y: number; scale: number } | null {
-  const el = viewport as HTMLElement;
-  const transform = el.style.transform;
-  const match = transform.match(/translate\((-?[\d.]+)px,\s*(-?[\d.]+)px\)\s*scale\(([\d.]+)\)/);
-
-  if (match?.[1] && match[2] && match[3]) {
-    return {
-      x: Number.parseFloat(match[1]),
-      y: Number.parseFloat(match[2]),
-      scale: Number.parseFloat(match[3]),
-    };
-  }
-
-  return null;
-}
-
-async function capturePng(): Promise<void> {
+async function withAdjustedViewport<T>(
+  callback: (ctx: CaptureContext) => Promise<T>,
+): Promise<T | null> {
   const canvas = findElementBySelectors<HTMLElement>(document, CANVAS_SELECTORS);
   if (!canvas) {
     log.debug('Canvas not found');
-    return;
+    return null;
   }
 
   const viewport = findElementBySelectors<HTMLElement>(canvas, VIEWPORT_SELECTORS);
   if (!viewport) {
     log.debug('Viewport not found');
-    return;
+    return null;
   }
 
   const bounds = calculateNodeBounds(viewport);
   if (!bounds) {
     log.debug('Could not calculate bounds');
-    return;
-  }
-
-  const currentTransform = getViewportTransform(viewport);
-  if (!currentTransform) {
-    log.debug('Could not get viewport transform');
-    return;
+    return null;
   }
 
   const captureWidth = bounds.width + PADDING * 2;
@@ -134,17 +122,27 @@ async function capturePng(): Promise<void> {
   const newY = -bounds.minY + PADDING;
 
   const originalTransform = viewport.style.transform;
-  viewport.style.transform = `translate(${newX}px, ${newY}px) scale(1)`;
-
   const originalCanvasWidth = canvas.style.width;
   const originalCanvasHeight = canvas.style.height;
   const originalCanvasOverflow = canvas.style.overflow;
 
+  viewport.style.transform = `translate(${newX}px, ${newY}px) scale(1)`;
   canvas.style.width = `${captureWidth}px`;
   canvas.style.height = `${captureHeight}px`;
   canvas.style.overflow = 'hidden';
 
   try {
+    return await callback({ canvas, viewport, bounds, captureWidth, captureHeight });
+  } finally {
+    viewport.style.transform = originalTransform;
+    canvas.style.width = originalCanvasWidth;
+    canvas.style.height = originalCanvasHeight;
+    canvas.style.overflow = originalCanvasOverflow;
+  }
+}
+
+async function capturePng(): Promise<void> {
+  await withAdjustedViewport(async ({ canvas, captureWidth, captureHeight }) => {
     const blob = await domToBlob(canvas, {
       width: captureWidth,
       height: captureHeight,
@@ -160,51 +158,11 @@ async function capturePng(): Promise<void> {
       downloadFile(blob, filename);
       log.debug(`Captured as ${filename}`);
     }
-  } finally {
-    viewport.style.transform = originalTransform;
-    canvas.style.width = originalCanvasWidth;
-    canvas.style.height = originalCanvasHeight;
-    canvas.style.overflow = originalCanvasOverflow;
-  }
+  });
 }
 
 async function captureSvg(): Promise<void> {
-  const canvas = findElementBySelectors<HTMLElement>(document, CANVAS_SELECTORS);
-  if (!canvas) {
-    log.debug('Canvas not found');
-    return;
-  }
-
-  const viewport = findElementBySelectors<HTMLElement>(canvas, VIEWPORT_SELECTORS);
-  if (!viewport) {
-    log.debug('Viewport not found');
-    return;
-  }
-
-  const bounds = calculateNodeBounds(viewport);
-  if (!bounds) {
-    log.debug('Could not calculate bounds');
-    return;
-  }
-
-  const captureWidth = bounds.width + PADDING * 2;
-  const captureHeight = bounds.height + PADDING * 2;
-
-  const newX = -bounds.minX + PADDING;
-  const newY = -bounds.minY + PADDING;
-
-  const originalTransform = viewport.style.transform;
-  viewport.style.transform = `translate(${newX}px, ${newY}px) scale(1)`;
-
-  const originalCanvasWidth = canvas.style.width;
-  const originalCanvasHeight = canvas.style.height;
-  const originalCanvasOverflow = canvas.style.overflow;
-
-  canvas.style.width = `${captureWidth}px`;
-  canvas.style.height = `${captureHeight}px`;
-  canvas.style.overflow = 'hidden';
-
-  try {
+  await withAdjustedViewport(async ({ canvas, captureWidth, captureHeight }) => {
     const svgDataUrl = await domToSvg(canvas, {
       width: captureWidth,
       height: captureHeight,
@@ -232,12 +190,7 @@ async function captureSvg(): Promise<void> {
       downloadFile(blob, filename);
       log.debug(`Captured as ${filename}`);
     }
-  } finally {
-    viewport.style.transform = originalTransform;
-    canvas.style.width = originalCanvasWidth;
-    canvas.style.height = originalCanvasHeight;
-    canvas.style.overflow = originalCanvasOverflow;
-  }
+  });
 }
 
 export async function captureWorkflow(format: 'png' | 'svg'): Promise<void> {

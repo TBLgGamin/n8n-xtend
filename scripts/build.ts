@@ -147,6 +147,8 @@ if (isWatch) {
     console.log('\nStopping watch mode...');
     process.exit(0);
   });
+
+  await new Promise(() => {});
 } else {
   await build();
 }

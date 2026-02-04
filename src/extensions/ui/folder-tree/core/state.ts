@@ -1,15 +1,28 @@
 import { getStorageItem, setStorageItem } from '@/shared/utils/storage';
 
 const EXPANDED_FOLDERS_KEY = 'n8ntree-expanded';
+const SAVE_DEBOUNCE_MS = 150;
 
 type ExpandedFolders = Record<string, boolean>;
 
+let cachedState: ExpandedFolders | null = null;
+let saveTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
 function getExpandedFolders(): ExpandedFolders {
-  return getStorageItem<ExpandedFolders>(EXPANDED_FOLDERS_KEY) ?? {};
+  if (cachedState === null) {
+    cachedState = getStorageItem<ExpandedFolders>(EXPANDED_FOLDERS_KEY) ?? {};
+  }
+  return cachedState;
 }
 
-function saveExpandedFolders(expanded: ExpandedFolders): void {
-  setStorageItem(EXPANDED_FOLDERS_KEY, expanded);
+function scheduleSave(): void {
+  if (saveTimeoutId) clearTimeout(saveTimeoutId);
+  saveTimeoutId = setTimeout(() => {
+    if (cachedState !== null) {
+      setStorageItem(EXPANDED_FOLDERS_KEY, cachedState);
+    }
+    saveTimeoutId = null;
+  }, SAVE_DEBOUNCE_MS);
 }
 
 export function isFolderExpanded(folderId: string): boolean {
@@ -23,5 +36,5 @@ export function setFolderExpanded(folderId: string, isExpanded: boolean): void {
   } else {
     delete expanded[folderId];
   }
-  saveExpandedFolders(expanded);
+  scheduleSave();
 }

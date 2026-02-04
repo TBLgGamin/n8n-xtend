@@ -9,6 +9,16 @@ export function invalidateItemsCache(): void {
   cacheContainer = null;
 }
 
+function isItemVisible(el: HTMLElement): boolean {
+  let parent = el.parentElement;
+  while (parent) {
+    if (parent.classList.contains('collapsed')) return false;
+    if (parent.id === 'n8n-xtend-folder-tree-content') break;
+    parent = parent.parentElement;
+  }
+  return true;
+}
+
 function getVisibleItems(container: HTMLElement): HTMLElement[] {
   if (cachedItems && cacheContainer === container) {
     return cachedItems;
@@ -18,7 +28,7 @@ function getVisibleItems(container: HTMLElement): HTMLElement[] {
   const items: HTMLElement[] = [];
 
   for (const el of nodeList) {
-    if (el.offsetParent !== null) {
+    if (isItemVisible(el)) {
       items.push(el);
     }
   }

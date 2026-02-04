@@ -1,14 +1,27 @@
 export { findElementByClassPattern, findElementBySelectors } from './dom';
 export { escapeHtml } from './html';
 export { logger } from './logger';
-export { getBrowserId, getStorageItem, setStorageItem } from './storage';
 export {
-  getCurrentTheme,
-  interceptLocalStorage,
-  isDarkMode,
-  onThemeChange,
-  type Theme,
-} from './theme';
+  createAdaptivePollMonitor,
+  createMutationMonitor,
+  createPollMonitor,
+  type AdaptivePollMonitor,
+  type AdaptivePollMonitorConfig,
+  type MutationMonitor,
+  type MutationMonitorConfig,
+  type PollMonitor,
+  type PollMonitorConfig,
+} from './monitor';
+export {
+  getBrowserId,
+  getStorageItem,
+  initStorage,
+  isStorageReady,
+  removeStorageItem,
+  setStorageItem,
+  waitForStorage,
+} from './storage';
+export { getCurrentTheme, isDarkMode, onThemeChange, type Theme } from './theme';
 export { getThemeColors, onThemeColorsChange, type ThemeColors } from './theme-colors';
 export {
   cleanupThemeManager,

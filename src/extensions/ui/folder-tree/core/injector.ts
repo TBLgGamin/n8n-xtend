@@ -28,19 +28,15 @@ function setupResizeObserver(sidebar: Element): void {
     sidebarResizeObserver.disconnect();
   }
 
-  let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
-  let pendingUpdate = false;
+  let rafId: number | null = null;
 
   sidebarResizeObserver = new ResizeObserver(() => {
-    if (pendingUpdate) return;
+    if (rafId !== null) return;
 
-    pendingUpdate = true;
-
-    if (resizeTimeout) clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
+    rafId = requestAnimationFrame(() => {
       updateVisibility(sidebar);
-      pendingUpdate = false;
-    }, 150);
+      rafId = null;
+    });
   });
 
   sidebarResizeObserver.observe(sidebar);

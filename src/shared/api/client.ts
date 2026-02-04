@@ -46,32 +46,41 @@ async function fetchWithTimeout(
   }
 }
 
-async function attemptFetch(url: string, options: RequestInit): Promise<Response | null> {
+interface AttemptResult {
+  response: Response | null;
+  status: number;
+}
+
+async function attemptFetch(url: string, options: RequestInit): Promise<AttemptResult> {
   try {
     const response = await fetchWithTimeout(url, options);
     if (response.ok || !isRetryable(response.status)) {
-      return response;
+      return { response, status: response.status };
     }
-    return null;
+    return { response: null, status: response.status };
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      return null;
+      return { response: null, status: 408 };
     }
     throw error;
   }
 }
 
 async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
+  let lastStatus = 408;
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const response = await attemptFetch(url, options);
-    if (response) {
-      return response;
+    const result = await attemptFetch(url, options);
+    if (result.response) {
+      return result.response;
     }
+    lastStatus = result.status;
     if (attempt < MAX_RETRIES) {
       await delay(RETRY_DELAY_MS * (attempt + 1));
     }
   }
-  throw new ApiError('Request timeout', 408);
+
+  throw new ApiError(`Request failed with status ${lastStatus}`, lastStatus);
 }
 
 export async function request<T>(endpoint: string): Promise<T> {

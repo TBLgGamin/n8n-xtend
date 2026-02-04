@@ -6,7 +6,7 @@ import {
   initVariablesExtension,
   isExtensionEnabled,
 } from '@/extensions';
-import { initThemeManager, interceptLocalStorage, isN8nHost, logger } from '@/shared/utils';
+import { initStorage, initThemeManager, isN8nHost, logger } from '@/shared/utils';
 
 function initExtensionSafely(name: string, init: () => void): void {
   try {
@@ -24,12 +24,12 @@ function initIfEnabled(id: string, name: string, init: () => void): void {
   }
 }
 
-function initExtensions(): void {
-  interceptLocalStorage();
-
+async function initExtensions(): Promise<void> {
   if (!isN8nHost()) {
     return;
   }
+
+  await initStorage();
 
   logger.debug('n8n-xtend loaded');
 

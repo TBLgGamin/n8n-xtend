@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- IndexedDB storage via Dexie.js with in-memory caching for fast synchronous reads
+- Reusable monitor utilities: `createPollMonitor`, `createMutationMonitor`, `createAdaptivePollMonitor`
+- Automatic migration from localStorage to IndexedDB on first load
+
+### Changed
+- Storage layer now uses IndexedDB instead of localStorage for persistence
+- All monitors refactored to use shared monitor utilities
+- Capture functions deduplicated with shared `withAdjustedViewport()` helper
+- Folder expansion state now debounced (150ms) to reduce database writes
+- Keyboard navigation visibility check no longer triggers layout reflow
+- ResizeObserver uses requestAnimationFrame instead of setTimeout
+- API client now preserves actual error status codes on retry failure
+- HTML escape simplified to single-pass replace
+
+### Fixed
+- Show-password monitor memory leak (MutationObserver now properly disconnected)
+- Folder cache invalidation after drag-drop moves
+- Clipboard write error handling in variables enhancer
+- Database errors now logged instead of silently swallowed
+
 ## [1.4.1] - 2026-02-04
 
 ### Added

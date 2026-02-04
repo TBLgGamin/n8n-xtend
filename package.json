@@ -47,6 +47,7 @@
   },
   "type": "module",
   "dependencies": {
+    "dexie": "4.3.0",
     "modern-screenshot": "4.6.8"
   },
   "overrides": {

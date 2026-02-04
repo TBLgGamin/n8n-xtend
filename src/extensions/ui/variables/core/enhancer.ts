@@ -35,9 +35,10 @@ function handleCopy(event: Event): void {
 
   if (!text) return;
 
-  navigator.clipboard.writeText(text).then(() => {
-    log.debug('Copied to clipboard', text);
-  });
+  navigator.clipboard
+    .writeText(text)
+    .then(() => log.debug('Copied to clipboard', text))
+    .catch((error) => log.debug('Failed to copy to clipboard', error));
 }
 
 export function enhanceUsageSyntax(): number {
