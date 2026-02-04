@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie';
 import { logger } from './logger';
+import { sanitizeObject } from './validation';
 
 const log = logger.child('database');
 
@@ -35,7 +36,12 @@ async function migrateFromLocalStorage(): Promise<void> {
     const stored = localStorage.getItem(key);
     if (stored && !cache.has(key)) {
       try {
-        const value = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (parsed === null || typeof parsed !== 'object') {
+          log.debug(`Invalid data type for key "${key}"`);
+          continue;
+        }
+        const value = sanitizeObject(parsed as Record<string, unknown>);
         cache.set(key, value);
         await db.storage.put({ key, value, updatedAt: Date.now() });
         localStorage.removeItem(key);

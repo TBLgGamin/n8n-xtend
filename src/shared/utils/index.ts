@@ -29,6 +29,7 @@ export {
   isDarkModeActive,
 } from './theme-manager';
 export {
+  buildFolderUrl,
   buildWorkflowUrl,
   getFolderIdFromUrl,
   getNormalizedContextPath,
@@ -37,3 +38,4 @@ export {
   isAuthPage,
   isN8nHost,
 } from './url';
+export { isValidId, sanitizeId, sanitizeObject, validateAndEncodeId } from './validation';

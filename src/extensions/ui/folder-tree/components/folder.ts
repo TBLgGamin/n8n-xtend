@@ -1,5 +1,5 @@
 import { type Folder, type TreeItem, type Workflow, isFolder } from '@/shared/types';
-import { escapeHtml, getFolderIdFromUrl } from '@/shared/utils';
+import { buildFolderUrl, escapeHtml, getFolderIdFromUrl, isValidId } from '@/shared/utils';
 import { fetchFolders } from '../api';
 import { invalidateItemsCache, setupDraggable, setupDropTarget } from '../core';
 import { isFolderExpanded, setFolderExpanded } from '../core/state';
@@ -26,14 +26,19 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
   node.className = 'n8n-xtend-folder-tree-node';
   node.dataset.folderId = folder.id;
 
+  if (!isValidId(folder.id) || !isValidId(projectId)) {
+    node.innerHTML = '<div class="n8n-xtend-folder-tree-error">Invalid folder</div>';
+    return node;
+  }
+
   const count = (folder.workflowCount ?? 0) + (folder.subFolderCount ?? 0);
   const isActive = getFolderIdFromUrl() === folder.id;
-  const folderUrl = `${location.origin}/projects/${projectId}/folders/${folder.id}/workflows`;
+  const folderUrl = buildFolderUrl(projectId, folder.id);
 
   node.innerHTML = `
     <div class="n8n-xtend-folder-tree-item${isActive ? ' active' : ''}">
       <span class="n8n-xtend-folder-tree-chevron collapsed">${icons.chevron}</span>
-      <a href="${folderUrl}" class="n8n-xtend-folder-tree-folder-link" title="${escapeHtml(folder.name)}">
+      <a href="${escapeHtml(folderUrl)}" class="n8n-xtend-folder-tree-folder-link" title="${escapeHtml(folder.name)}">
         <span class="n8n-xtend-folder-tree-icon folder">${icons.folder}</span>
         <span class="n8n-xtend-folder-tree-label">${escapeHtml(folder.name)}</span>
       </a>

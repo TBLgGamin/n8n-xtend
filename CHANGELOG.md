@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - IndexedDB storage via Dexie.js with in-memory caching for fast synchronous reads
 - Reusable monitor utilities: `createPollMonitor`, `createMutationMonitor`, `createAdaptivePollMonitor`
 - Automatic migration from localStorage to IndexedDB on first load
+- Input validation utilities for IDs with `isValidId()`, `sanitizeId()`, `validateAndEncodeId()`
+- Prototype pollution protection via `sanitizeObject()` utility
+- Content Security Policy in manifest for defense-in-depth
 
 ### Changed
 - Storage layer now uses IndexedDB instead of localStorage for persistence
@@ -21,12 +24,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ResizeObserver uses requestAnimationFrame instead of setTimeout
 - API client now preserves actual error status codes on retry failure
 - HTML escape simplified to single-pass replace
+- URL builders now validate and encode IDs to prevent XSS
+- Manifest URL matching restricted from `<all_urls>` to `http://*/*`, `https://*/*`
+- CLAUDE.md updated with comprehensive architecture documentation
 
 ### Fixed
 - Show-password monitor memory leak (MutationObserver now properly disconnected)
 - Folder cache invalidation after drag-drop moves
 - Clipboard write error handling in variables enhancer
 - Database errors now logged instead of silently swallowed
+- XSS vulnerability in workflow and folder URL construction
+- Prototype pollution risk in localStorage migration
 
 ## [1.4.1] - 2026-02-04
 

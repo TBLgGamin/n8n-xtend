@@ -93,6 +93,21 @@ export function isN8nHost(): boolean {
   return false;
 }
 
+import { isValidId } from './validation';
+
 export function buildWorkflowUrl(workflowId: string): string {
-  return `${location.origin}/workflow/${workflowId}`;
+  if (!isValidId(workflowId)) {
+    throw new Error(`Invalid workflow ID: ${workflowId}`);
+  }
+  return `${location.origin}/workflow/${encodeURIComponent(workflowId)}`;
+}
+
+export function buildFolderUrl(projectId: string, folderId: string): string {
+  if (!isValidId(projectId)) {
+    throw new Error(`Invalid project ID: ${projectId}`);
+  }
+  if (!isValidId(folderId)) {
+    throw new Error(`Invalid folder ID: ${folderId}`);
+  }
+  return `${location.origin}/projects/${encodeURIComponent(projectId)}/folders/${encodeURIComponent(folderId)}/workflows`;
 }
