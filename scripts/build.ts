@@ -87,7 +87,7 @@ async function build() {
     process.exit(1);
   }
 
-  const treeCssPath = join(srcDir, 'extensions', 'tree', 'styles', 'tree.css');
+  const treeCssPath = join(srcDir, 'extensions', 'ui', 'tree', 'styles', 'tree.css');
   let css = readFileSync(treeCssPath, 'utf-8');
 
   const fontPath = join(srcDir, 'fonts', 'n8n.woff2');

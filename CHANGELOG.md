@@ -8,31 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Comprehensive unit test suite with 356 tests across all modules
-- E2E testing infrastructure with Playwright
-- Test coverage thresholds (70% minimum for lines, functions, branches, statements)
-- Unit tests for HTML escaping and URL parsing utilities
-- API client timeout (10s) and retry logic for transient failures
-- Error boundaries for extension initialization to prevent crashes
-- Bundle size check in CI (fails if content.js exceeds 150KB)
-- Codecov integration for coverage reporting
-- Coverage badge in README
-- Branch protection documentation in CONTRIBUTING.md
-- Testing requirements documentation in CLAUDE.md
-
-### Changed
-- CI workflow now includes test, e2e, security audit, and bundle size jobs
-- lint-staged now runs TypeScript type checking on staged files
-- Release command uses conventional-changelog for auto-generated changelogs
-- Commits now require 100% test pass rate
-
-### Fixed
-- Empty patterns array in `findElementByClassPattern` now returns null
-- Variable enhancer correctly skips empty/whitespace elements
-- TypeScript errors in test files (fetch mock typing)
+- Show password extension with eye icon toggle for password field visibility
+- Extensions now organized into `ui/` and `enhancements/` categories
 
 ### Removed
-- Unused sharp dependency
+- Command bar extension
 
 ## [1.3.2] - 2026-02-01
 

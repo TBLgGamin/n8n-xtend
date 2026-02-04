@@ -1,4 +1,9 @@
-import { initCaptureExtension, initTreeExtension, initVariablesExtension } from '@/extensions';
+import {
+  initCaptureExtension,
+  initShowPasswordExtension,
+  initTreeExtension,
+  initVariablesExtension,
+} from '@/extensions';
 import { isN8nHost, logger } from '@/shared/utils';
 
 function initExtensionSafely(name: string, init: () => void): void {
@@ -19,6 +24,7 @@ function init(): void {
   initExtensionSafely('tree', initTreeExtension);
   initExtensionSafely('variables', initVariablesExtension);
   initExtensionSafely('capture', initCaptureExtension);
+  initExtensionSafely('show-password', initShowPasswordExtension);
 }
 
 init();
