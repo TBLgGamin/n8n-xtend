@@ -124,8 +124,12 @@ function showFormatDialog(): void {
     transition: color 0.15s;
   `;
   closeBtn.innerHTML = `<i style="width: 16px; height: 16px;">${CLOSE_ICON}</i>`;
-  closeBtn.onmouseenter = () => (closeBtn.style.color = colors.brandPrimary);
-  closeBtn.onmouseleave = () => (closeBtn.style.color = colors.textMuted);
+  closeBtn.onmouseenter = () => {
+    closeBtn.style.color = colors.brandPrimary;
+  };
+  closeBtn.onmouseleave = () => {
+    closeBtn.style.color = colors.textMuted;
+  };
 
   header.appendChild(title);
   header.appendChild(closeBtn);
