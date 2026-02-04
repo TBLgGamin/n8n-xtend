@@ -1,30 +1,46 @@
 import {
   initCaptureExtension,
+  initFolderTreeExtension,
+  initSettingsExtension,
   initShowPasswordExtension,
-  initTreeExtension,
   initVariablesExtension,
+  isExtensionEnabled,
 } from '@/extensions';
-import { isN8nHost, logger } from '@/shared/utils';
+import { initThemeManager, interceptLocalStorage, isN8nHost, logger } from '@/shared/utils';
 
 function initExtensionSafely(name: string, init: () => void): void {
   try {
     init();
   } catch (error) {
-    logger.error(`Extension "${name}" failed to initialize:`, error);
+    logger.debug(`Extension "${name}" failed to initialize:`, error);
+  }
+}
+
+function initIfEnabled(id: string, name: string, init: () => void): void {
+  if (isExtensionEnabled(id)) {
+    initExtensionSafely(name, init);
+  } else {
+    logger.debug(`Extension "${name}" is disabled`);
   }
 }
 
 function init(): void {
+  interceptLocalStorage();
+
   if (!isN8nHost()) {
     return;
   }
 
-  logger.info('n8n-xtend loaded');
+  logger.debug('n8n-xtend loaded');
 
-  initExtensionSafely('tree', initTreeExtension);
-  initExtensionSafely('variables', initVariablesExtension);
-  initExtensionSafely('capture', initCaptureExtension);
-  initExtensionSafely('show-password', initShowPasswordExtension);
+  initThemeManager();
+
+  initExtensionSafely('settings', initSettingsExtension);
+
+  initIfEnabled('folder-tree', 'folder-tree', initFolderTreeExtension);
+  initIfEnabled('variables', 'variables', initVariablesExtension);
+  initIfEnabled('capture', 'capture', initCaptureExtension);
+  initIfEnabled('show-password', 'show-password', initShowPasswordExtension);
 }
 
 init();

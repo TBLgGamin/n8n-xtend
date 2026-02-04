@@ -60,7 +60,7 @@ export function startMonitor(): void {
     return;
   }
 
-  log.info('Capture monitor started');
+  log.debug('Capture monitor started');
 
   observer = new MutationObserver(handleMutation);
   observer.observe(document.body, {

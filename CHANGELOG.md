@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Settings panel extension for managing n8n-xtend features
+- Theme polling for instant theme change detection without page refresh
+- Shared CSS variables for consistent theming across extensions
+
+### Changed
+- All logs changed to debug level for silent production builds
+- Renamed tree extension to folder-tree for clarity
+- Reorganized theme utilities into separate modules (theme-colors, theme-manager)
+
 ## [1.4.0] - 2026-02-04
 
 ### Added

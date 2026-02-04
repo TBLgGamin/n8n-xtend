@@ -43,7 +43,7 @@ function calculateNodeBounds(viewport: Element): Bounds | null {
   const nodes = viewport.querySelectorAll(NODE_SELECTOR);
 
   if (nodes.length === 0) {
-    log.error('No nodes found');
+    log.debug('No nodes found');
     return null;
   }
 
@@ -105,25 +105,25 @@ function getViewportTransform(viewport: Element): { x: number; y: number; scale:
 async function capturePng(): Promise<void> {
   const canvas = findElementBySelectors<HTMLElement>(document, CANVAS_SELECTORS);
   if (!canvas) {
-    log.error('Canvas not found');
+    log.debug('Canvas not found');
     return;
   }
 
   const viewport = findElementBySelectors<HTMLElement>(canvas, VIEWPORT_SELECTORS);
   if (!viewport) {
-    log.error('Viewport not found');
+    log.debug('Viewport not found');
     return;
   }
 
   const bounds = calculateNodeBounds(viewport);
   if (!bounds) {
-    log.error('Could not calculate bounds');
+    log.debug('Could not calculate bounds');
     return;
   }
 
   const currentTransform = getViewportTransform(viewport);
   if (!currentTransform) {
-    log.error('Could not get viewport transform');
+    log.debug('Could not get viewport transform');
     return;
   }
 
@@ -158,7 +158,7 @@ async function capturePng(): Promise<void> {
     if (blob) {
       const filename = `${getWorkflowName()}.png`;
       downloadFile(blob, filename);
-      log.info(`Captured as ${filename}`);
+      log.debug(`Captured as ${filename}`);
     }
   } finally {
     viewport.style.transform = originalTransform;
@@ -171,19 +171,19 @@ async function capturePng(): Promise<void> {
 async function captureSvg(): Promise<void> {
   const canvas = findElementBySelectors<HTMLElement>(document, CANVAS_SELECTORS);
   if (!canvas) {
-    log.error('Canvas not found');
+    log.debug('Canvas not found');
     return;
   }
 
   const viewport = findElementBySelectors<HTMLElement>(canvas, VIEWPORT_SELECTORS);
   if (!viewport) {
-    log.error('Viewport not found');
+    log.debug('Viewport not found');
     return;
   }
 
   const bounds = calculateNodeBounds(viewport);
   if (!bounds) {
-    log.error('Could not calculate bounds');
+    log.debug('Could not calculate bounds');
     return;
   }
 
@@ -230,7 +230,7 @@ async function captureSvg(): Promise<void> {
       const blob = new Blob([svgContent], { type: 'image/svg+xml' });
       const filename = `${getWorkflowName()}.svg`;
       downloadFile(blob, filename);
-      log.info(`Captured as ${filename}`);
+      log.debug(`Captured as ${filename}`);
     }
   } finally {
     viewport.style.transform = originalTransform;
@@ -248,6 +248,6 @@ export async function captureWorkflow(format: 'png' | 'svg'): Promise<void> {
       await captureSvg();
     }
   } catch (error) {
-    log.error('Failed to capture workflow', error);
+    log.debug('Failed to capture workflow', error);
   }
 }

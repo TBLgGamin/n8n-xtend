@@ -1,7 +1,7 @@
 import { logger } from '@/shared/utils';
 import { moveFolder, moveWorkflow } from '../api';
 
-const log = logger.child('dragdrop');
+const log = logger.child('folder-tree:dragdrop');
 
 export type DragItemType = 'folder' | 'workflow';
 
@@ -24,16 +24,18 @@ export function setDragContext(projectId: string, refreshCallback: () => void): 
 }
 
 function clearDropTargetClasses(): void {
-  const elements = document.querySelectorAll('.n8n-tree-can-drop, .n8n-tree-drag-over');
+  const elements = document.querySelectorAll(
+    '.n8n-xtend-folder-tree-can-drop, .n8n-xtend-folder-tree-drag-over',
+  );
   requestAnimationFrame(() => {
     for (const el of elements) {
-      el.classList.remove('n8n-tree-can-drop', 'n8n-tree-drag-over');
+      el.classList.remove('n8n-xtend-folder-tree-can-drop', 'n8n-xtend-folder-tree-drag-over');
     }
   });
 }
 
 function highlightDropTargets(element: HTMLElement, itemId: string): void {
-  const elements = document.querySelectorAll<HTMLElement>('.n8n-tree-drop-target');
+  const elements = document.querySelectorAll<HTMLElement>('.n8n-xtend-folder-tree-drop-target');
   const toHighlight: HTMLElement[] = [];
 
   for (const el of elements) {
@@ -45,7 +47,7 @@ function highlightDropTargets(element: HTMLElement, itemId: string): void {
   if (toHighlight.length > 0) {
     requestAnimationFrame(() => {
       for (const el of toHighlight) {
-        el.classList.add('n8n-tree-can-drop');
+        el.classList.add('n8n-xtend-folder-tree-can-drop');
       }
     });
   }
@@ -98,13 +100,13 @@ export function setupDraggable(
 
     event.dataTransfer.setData('application/json', JSON.stringify(data));
     event.dataTransfer.effectAllowed = 'move';
-    element.classList.add('n8n-tree-dragging');
+    element.classList.add('n8n-xtend-folder-tree-dragging');
 
     requestAnimationFrame(() => highlightDropTargets(element, itemId));
   });
 
   element.addEventListener('dragend', () => {
-    element.classList.remove('n8n-tree-dragging');
+    element.classList.remove('n8n-xtend-folder-tree-dragging');
     clearDropTargetClasses();
   });
 }
@@ -115,7 +117,7 @@ export function setupDropTarget(element: HTMLElement, folderId: string, isRoot =
   }
   setupDropTargets.add(element);
 
-  element.classList.add('n8n-tree-drop-target');
+  element.classList.add('n8n-xtend-folder-tree-drop-target');
   element.dataset.folderId = folderId;
 
   element.addEventListener('dragover', (event) => {
@@ -123,19 +125,19 @@ export function setupDropTarget(element: HTMLElement, folderId: string, isRoot =
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = 'move';
     }
-    element.classList.add('n8n-tree-drag-over');
+    element.classList.add('n8n-xtend-folder-tree-drag-over');
   });
 
   element.addEventListener('dragleave', (event) => {
     const relatedTarget = event.relatedTarget as HTMLElement | null;
     if (!relatedTarget || !element.contains(relatedTarget)) {
-      element.classList.remove('n8n-tree-drag-over');
+      element.classList.remove('n8n-xtend-folder-tree-drag-over');
     }
   });
 
   element.addEventListener('drop', async (event) => {
     event.preventDefault();
-    element.classList.remove('n8n-tree-drag-over');
+    element.classList.remove('n8n-xtend-folder-tree-drag-over');
 
     const data = parseDragData(event.dataTransfer?.getData('application/json'));
     if (!data) return;
@@ -149,7 +151,7 @@ export function setupDropTarget(element: HTMLElement, folderId: string, isRoot =
     const success = await handleDrop(data, normalizedTarget);
 
     if (success) {
-      log.info(`Moved ${data.type} "${data.name}" to folder`);
+      log.debug(`Moved ${data.type} "${data.name}" to folder`);
       onMoveComplete?.();
     }
   });

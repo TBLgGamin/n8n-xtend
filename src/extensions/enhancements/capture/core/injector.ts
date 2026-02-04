@@ -1,67 +1,45 @@
-import { logger } from '@/shared/utils';
+import { type ThemeColors, getThemeColors, logger } from '@/shared/utils';
 import { captureWorkflow } from '../utils/capture';
 
 const log = logger.child('capture:injector');
 
 const CLOSE_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z"></path></svg>`;
 
-function createCaptureMenuItem(): HTMLLIElement {
+function getExistingMenuItemClasses(menu: HTMLElement): {
+  itemClass: string;
+  containerClass: string;
+  labelClass: string;
+} {
+  const existingItem = menu.querySelector('li[class*="_elementItem"]');
+  const existingContainer = menu.querySelector('div[class*="_itemContainer"]');
+  const existingLabel = menu.querySelector('span[class*="_label"]');
+
+  return {
+    itemClass: existingItem?.className || 'el-dropdown-menu__item',
+    containerClass: existingContainer?.className || '',
+    labelClass: existingLabel?.className || '',
+  };
+}
+
+function createCaptureMenuItem(menu: HTMLElement): HTMLLIElement {
+  const classes = getExistingMenuItemClasses(menu);
+
   const li = document.createElement('li');
-  li.className = 'el-dropdown-menu__item';
+  li.className = classes.itemClass;
+  li.setAttribute('data-el-collection-item', '');
   li.setAttribute('tabindex', '-1');
   li.setAttribute('aria-disabled', 'false');
   li.setAttribute('role', 'menuitem');
-  li.style.cssText = `
-    list-style: none;
-    padding: 0;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 36px;
-    white-space: nowrap;
-    text-align: left;
-    color: rgb(117, 117, 117);
-  `;
 
   const container = document.createElement('div');
-  container.style.cssText = `
-    display: flex;
-    padding: 6px 8px;
-    font-size: 12px;
-    line-height: 18px;
-    text-align: left;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    cursor: pointer;
-  `;
+  container.className = classes.containerClass;
 
   const label = document.createElement('span');
-  label.style.cssText = `
-    display: block;
-    font-size: 12px;
-    font-weight: 400;
-    line-height: 18px;
-    text-align: left;
-    color: rgb(117, 117, 117);
-    flex: 1 1 auto;
-  `;
+  label.className = classes.labelClass;
   label.textContent = 'Capture as image';
 
   container.appendChild(label);
   li.appendChild(container);
-
-  li.addEventListener('mouseenter', () => {
-    li.style.backgroundColor = 'rgb(245, 245, 245)';
-    li.style.color = 'rgb(43, 43, 43)';
-    label.style.color = 'rgb(43, 43, 43)';
-  });
-
-  li.addEventListener('mouseleave', () => {
-    li.style.backgroundColor = '';
-    li.style.color = 'rgb(117, 117, 117)';
-    label.style.color = 'rgb(117, 117, 117)';
-  });
 
   return li;
 }
@@ -98,13 +76,15 @@ function showFormatDialog(): Promise<'png' | 'svg' | null> {
   return new Promise((resolve) => {
     injectDialogStyles();
 
+    const colors = getThemeColors();
+
     const overlay = document.createElement('div');
     overlay.className = 'el-overlay';
     overlay.style.cssText = `
       position: fixed;
       inset: 0;
       z-index: 2100;
-      background-color: rgba(0, 0, 0, 0.5);
+      background-color: ${colors.overlay};
       display: flex;
       align-items: center;
       justify-content: center;
@@ -118,10 +98,10 @@ function showFormatDialog(): Promise<'png' | 'svg' | null> {
       flex-direction: column;
       width: 400px;
       min-width: 300px;
-      border: 1px solid rgb(224, 224, 224);
+      border: 1px solid ${colors.borderPrimary};
       border-radius: 8px;
-      background: rgb(255, 255, 255);
-      box-shadow: rgba(68, 28, 23, 0.06) 0px 6px 16px 0px;
+      background: ${colors.bgPrimary};
+      box-shadow: ${colors.shadow} 0px 6px 16px 0px;
       font-family: InterVariable, sans-serif;
       animation: n8n-capture-dialog-slide-in 0.2s ease-out;
     `;
@@ -141,7 +121,7 @@ function showFormatDialog(): Promise<'png' | 'svg' | null> {
       font-size: 20px;
       font-weight: 400;
       line-height: 25px;
-      color: rgb(43, 43, 43);
+      color: ${colors.textPrimary};
     `;
     title.textContent = 'Capture';
 
@@ -157,16 +137,16 @@ function showFormatDialog(): Promise<'png' | 'svg' | null> {
       padding: 0;
       border: none;
       background: transparent;
-      color: rgb(148, 148, 148);
+      color: ${colors.textMuted};
       cursor: pointer;
     `;
     closeBtn.innerHTML = `<i class="el-icon el-dialog__close" style="width: 16px; height: 16px;">${CLOSE_ICON}</i>`;
 
     closeBtn.addEventListener('mouseenter', () => {
-      closeBtn.style.color = 'rgb(255, 109, 90)';
+      closeBtn.style.color = colors.brandPrimary;
     });
     closeBtn.addEventListener('mouseleave', () => {
-      closeBtn.style.color = 'rgb(148, 148, 148)';
+      closeBtn.style.color = colors.textMuted;
     });
 
     header.appendChild(title);
@@ -176,7 +156,7 @@ function showFormatDialog(): Promise<'png' | 'svg' | null> {
     body.className = 'el-dialog__body';
     body.style.cssText = `
       padding: 0 24px 24px;
-      color: rgb(117, 117, 117);
+      color: ${colors.textSecondary};
       font-size: 14px;
       line-height: 18.9px;
     `;
@@ -193,7 +173,7 @@ function showFormatDialog(): Promise<'png' | 'svg' | null> {
       gap: 8px;
     `;
 
-    const createButton = (text: string, isPrimary: boolean) => {
+    const createButton = (text: string, isPrimary: boolean, themeColors: ThemeColors) => {
       const btn = document.createElement('button');
       btn.style.cssText = `
         display: block;
@@ -206,9 +186,9 @@ function showFormatDialog(): Promise<'png' | 'svg' | null> {
         white-space: nowrap;
         cursor: pointer;
         transition: 0.3s;
-        border: 1px solid ${isPrimary ? 'rgb(255, 109, 90)' : 'rgb(173, 173, 173)'};
-        background: ${isPrimary ? 'rgb(255, 109, 90)' : 'rgb(255, 255, 255)'};
-        color: ${isPrimary ? 'rgb(255, 255, 255)' : 'rgb(77, 77, 77)'};
+        border: 1px solid ${isPrimary ? themeColors.brandPrimary : themeColors.borderButton};
+        background: ${isPrimary ? themeColors.brandPrimary : themeColors.bgPrimary};
+        color: ${isPrimary ? 'rgb(255, 255, 255)' : themeColors.textButton};
       `;
 
       const span = document.createElement('span');
@@ -217,29 +197,29 @@ function showFormatDialog(): Promise<'png' | 'svg' | null> {
 
       btn.addEventListener('mouseenter', () => {
         if (isPrimary) {
-          btn.style.background = 'rgb(255, 85, 69)';
-          btn.style.borderColor = 'rgb(255, 85, 69)';
+          btn.style.background = themeColors.brandHover;
+          btn.style.borderColor = themeColors.brandHover;
         } else {
-          btn.style.borderColor = 'rgb(255, 109, 90)';
-          btn.style.color = 'rgb(255, 109, 90)';
+          btn.style.borderColor = themeColors.brandPrimary;
+          btn.style.color = themeColors.brandPrimary;
         }
       });
 
       btn.addEventListener('mouseleave', () => {
         if (isPrimary) {
-          btn.style.background = 'rgb(255, 109, 90)';
-          btn.style.borderColor = 'rgb(255, 109, 90)';
+          btn.style.background = themeColors.brandPrimary;
+          btn.style.borderColor = themeColors.brandPrimary;
         } else {
-          btn.style.borderColor = 'rgb(173, 173, 173)';
-          btn.style.color = 'rgb(77, 77, 77)';
+          btn.style.borderColor = themeColors.borderButton;
+          btn.style.color = themeColors.textButton;
         }
       });
 
       return btn;
     };
 
-    const svgButton = createButton('SVG', false);
-    const pngButton = createButton('PNG', true);
+    const svgButton = createButton('SVG', false, colors);
+    const pngButton = createButton('PNG', true, colors);
 
     const cleanup = () => overlay.remove();
 
@@ -292,12 +272,12 @@ async function handleCaptureClick(): Promise<void> {
     return;
   }
 
-  log.info(`Capturing workflow as ${format.toUpperCase()}`);
+  log.debug(`Capturing workflow as ${format.toUpperCase()}`);
   await captureWorkflow(format);
 }
 
 export function injectCaptureMenuItem(menu: HTMLElement, downloadItem: HTMLElement): void {
-  const captureItem = createCaptureMenuItem();
+  const captureItem = createCaptureMenuItem(menu);
 
   const handleClick = (e: Event) => {
     e.preventDefault();

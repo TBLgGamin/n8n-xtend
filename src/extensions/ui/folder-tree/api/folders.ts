@@ -49,7 +49,7 @@ export async function moveFolder(
     await patch(`/rest/projects/${projectId}/folders/${folderId}`, { parentFolderId });
     return true;
   } catch (error) {
-    log.error('Failed to move folder', error);
+    log.debug('Failed to move folder', error);
     return false;
   }
 }

@@ -73,9 +73,9 @@ export function createMockSidebar(): HTMLElement {
   return sidebar;
 }
 
-export function createMockTreeView(): HTMLElement {
-  const container = createMockElement('div', { id: 'n8n-tree-view' });
-  const content = createMockElement('div', { id: 'n8n-tree-content' });
+export function createMockFolderTree(): HTMLElement {
+  const container = createMockElement('div', { id: 'n8n-xtend-folder-tree' });
+  const content = createMockElement('div', { id: 'n8n-xtend-folder-tree-content' });
   container.appendChild(content);
   return container;
 }

@@ -1,7 +1,7 @@
 import { isFolder } from '@/shared/types';
 import { logger } from '@/shared/utils';
 
-const log = logger.child('tree');
+const log = logger.child('folder-tree');
 import { getFolderIdFromUrl } from '@/shared/utils/url';
 import { fetchFolderPath, fetchFolders } from '../api';
 import { createFolderElement, createWorkflowElement } from '../components';
@@ -51,14 +51,15 @@ export async function loadTree(container: HTMLElement, projectId: string): Promi
 
     setupDropTarget(container, '0', true);
 
-    const treeView = container.closest('#n8n-tree-view');
-    if (treeView) {
+    const folderTree = container.closest('#n8n-xtend-folder-tree');
+    if (folderTree) {
       cleanupKeyboard?.();
       resetKeyboardFocus();
-      cleanupKeyboard = initKeyboardNavigation(treeView as HTMLElement);
+      cleanupKeyboard = initKeyboardNavigation(folderTree as HTMLElement);
     }
   } catch (error) {
-    log.error('Failed to load tree', error);
-    container.innerHTML = '<div class="n8n-tree-empty n8n-tree-error">Failed to load</div>';
+    log.debug('Failed to load folder tree', error);
+    container.innerHTML =
+      '<div class="n8n-xtend-folder-tree-empty n8n-xtend-folder-tree-error">Failed to load</div>';
   }
 }

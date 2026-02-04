@@ -40,7 +40,7 @@ function mutationsContainPasswordInput(mutations: MutationRecord[]): boolean {
 }
 
 export function startMonitor(): void {
-  log.info('Starting password visibility monitor');
+  log.debug('Starting password visibility monitor');
 
   processPasswordInputs();
 

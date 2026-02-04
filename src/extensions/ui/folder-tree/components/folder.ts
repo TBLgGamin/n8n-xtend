@@ -8,7 +8,7 @@ import { createWorkflowElement } from './workflow';
 
 export function createFolderElement(folder: Folder, projectId: string): HTMLDivElement {
   const node = document.createElement('div');
-  node.className = 'n8n-tree-node';
+  node.className = 'n8n-xtend-folder-tree-node';
   node.dataset.folderId = folder.id;
 
   const count = (folder.workflowCount ?? 0) + (folder.subFolderCount ?? 0);
@@ -16,21 +16,21 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
   const folderUrl = `${location.origin}/projects/${projectId}/folders/${folder.id}/workflows`;
 
   node.innerHTML = `
-    <div class="n8n-tree-item${isActive ? ' active' : ''}">
-      <span class="n8n-tree-chevron collapsed">${icons.chevron}</span>
-      <a href="${folderUrl}" class="n8n-tree-folder-link" title="${escapeHtml(folder.name)}">
-        <span class="n8n-tree-icon folder">${icons.folder}</span>
-        <span class="n8n-tree-label">${escapeHtml(folder.name)}</span>
+    <div class="n8n-xtend-folder-tree-item${isActive ? ' active' : ''}">
+      <span class="n8n-xtend-folder-tree-chevron collapsed">${icons.chevron}</span>
+      <a href="${folderUrl}" class="n8n-xtend-folder-tree-folder-link" title="${escapeHtml(folder.name)}">
+        <span class="n8n-xtend-folder-tree-icon folder">${icons.folder}</span>
+        <span class="n8n-xtend-folder-tree-label">${escapeHtml(folder.name)}</span>
       </a>
-      ${count ? `<span class="n8n-tree-count">${count}</span>` : ''}
+      ${count ? `<span class="n8n-xtend-folder-tree-count">${count}</span>` : ''}
     </div>
-    <div class="n8n-tree-children collapsed"></div>
+    <div class="n8n-xtend-folder-tree-children collapsed"></div>
   `;
 
-  const item = node.querySelector<HTMLElement>('.n8n-tree-item');
-  const chevron = node.querySelector<HTMLElement>('.n8n-tree-chevron');
-  const icon = node.querySelector<HTMLElement>('.n8n-tree-icon');
-  const children = node.querySelector<HTMLElement>('.n8n-tree-children');
+  const item = node.querySelector<HTMLElement>('.n8n-xtend-folder-tree-item');
+  const chevron = node.querySelector<HTMLElement>('.n8n-xtend-folder-tree-chevron');
+  const icon = node.querySelector<HTMLElement>('.n8n-xtend-folder-tree-icon');
+  const children = node.querySelector<HTMLElement>('.n8n-xtend-folder-tree-children');
 
   if (!item || !chevron || !icon || !children) {
     return node;
@@ -68,7 +68,8 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
         childrenEl.innerHTML = '';
         childrenEl.appendChild(fragment);
       } catch {
-        childrenEl.innerHTML = '<div class="n8n-tree-empty n8n-tree-error">Error</div>';
+        childrenEl.innerHTML =
+          '<div class="n8n-xtend-folder-tree-empty n8n-xtend-folder-tree-error">Error</div>';
         loaded = false;
       }
     }

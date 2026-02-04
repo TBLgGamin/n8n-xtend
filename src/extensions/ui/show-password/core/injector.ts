@@ -1,10 +1,12 @@
-import { logger } from '@/shared/utils';
+import { getThemeColors, logger, onThemeColorsChange } from '@/shared/utils';
 import { EYE_ICON, EYE_OFF_ICON } from './icons';
 
 const log = logger.child('show-password:injector');
 const MARKER_ATTR = 'data-xtend-password-toggle';
 
 function createToggleButton(input: HTMLInputElement): HTMLSpanElement {
+  const colors = getThemeColors();
+
   const suffix = document.createElement('span');
   suffix.className = 'el-input__suffix';
   suffix.style.cssText = `
@@ -37,12 +39,18 @@ function createToggleButton(input: HTMLInputElement): HTMLSpanElement {
     width: 24px;
     height: 24px;
     cursor: pointer;
-    color: rgb(148, 148, 148);
+    color: ${colors.textMuted};
     transition: color 0.2s;
   `;
   button.innerHTML = EYE_ICON;
 
   let isVisible = false;
+  let isHovered = false;
+  let currentColors = colors;
+
+  const updateButtonColor = () => {
+    button.style.color = isHovered ? currentColors.brandPrimary : currentColors.textMuted;
+  };
 
   const toggle = () => {
     isVisible = !isVisible;
@@ -65,11 +73,18 @@ function createToggleButton(input: HTMLInputElement): HTMLSpanElement {
   });
 
   button.addEventListener('mouseenter', () => {
-    button.style.color = 'rgb(255, 109, 90)';
+    isHovered = true;
+    updateButtonColor();
   });
 
   button.addEventListener('mouseleave', () => {
-    button.style.color = 'rgb(148, 148, 148)';
+    isHovered = false;
+    updateButtonColor();
+  });
+
+  onThemeColorsChange((newColors) => {
+    currentColors = newColors;
+    updateButtonColor();
   });
 
   inner.appendChild(button);

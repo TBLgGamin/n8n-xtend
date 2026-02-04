@@ -24,7 +24,7 @@ export function startMonitor(): void {
     return;
   }
 
-  log.info('Variables monitor started');
+  log.debug('Variables monitor started');
   intervalId = setInterval(checkAndEnhance, POLL_INTERVAL);
   checkAndEnhance();
 }

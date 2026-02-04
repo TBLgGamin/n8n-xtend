@@ -87,8 +87,16 @@ async function build() {
     process.exit(1);
   }
 
-  const treeCssPath = join(srcDir, 'extensions', 'ui', 'tree', 'styles', 'tree.css');
-  let css = readFileSync(treeCssPath, 'utf-8');
+  const cssPaths = [
+    join(srcDir, 'shared', 'styles', 'variables.css'),
+    join(srcDir, 'extensions', 'ui', 'folder-tree', 'styles', 'folder-tree.css'),
+    join(srcDir, 'extensions', 'ui', 'settings', 'styles', 'settings.css'),
+  ];
+
+  let css = cssPaths
+    .filter((cssPath) => existsSync(cssPath))
+    .map((cssPath) => readFileSync(cssPath, 'utf-8'))
+    .join('\n\n');
 
   const fontPath = join(srcDir, 'fonts', 'n8n.woff2');
   if (existsSync(fontPath)) {

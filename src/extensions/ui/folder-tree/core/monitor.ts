@@ -6,9 +6,9 @@ import {
   logger,
 } from '@/shared/utils';
 
-const log = logger.child('monitor');
+const log = logger.child('folder-tree:monitor');
 import { fetchWorkflowProjectId } from '../api';
-import { removeTree, tryInject } from './injector';
+import { removeFolderTree, tryInject } from './injector';
 
 const POLL_INTERVAL = 500;
 const IDLE_INTERVAL = 2000;
@@ -48,7 +48,7 @@ async function checkAndInject(): Promise<void> {
   }
 
   if (!projectId) {
-    removeTree();
+    removeFolderTree();
     state.currentProjectId = null;
     state.currentPath = null;
     return;
@@ -59,12 +59,12 @@ async function checkAndInject(): Promise<void> {
     projectId !== state.currentProjectId || normalizedPath !== state.currentPath;
 
   if (contextChanged) {
-    log.info('Context changed', {
+    log.debug('Context changed', {
       from: state.currentProjectId,
       to: projectId,
     });
 
-    removeTree();
+    removeFolderTree();
     state.currentProjectId = projectId;
     state.currentPath = normalizedPath;
 
@@ -94,7 +94,7 @@ function resetIdleTimer(): void {
 }
 
 export function startMonitor(): void {
-  log.info('Monitor started');
+  log.debug('Monitor started');
   setPollingRate(POLL_INTERVAL);
 
   document.addEventListener('mousemove', resetIdleTimer, { passive: true });
