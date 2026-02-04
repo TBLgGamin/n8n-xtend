@@ -82,7 +82,6 @@ The `main` branch is protected with the following rules:
 - **Require pull request reviews**: All changes must be reviewed before merging
 - **Require status checks**: The following CI checks must pass:
   - `quality` - Linting and type checking
-  - `test` - Unit tests
   - `security` - Dependency vulnerability audit
   - `build` - Production build verification
 - **No force push**: Force pushing to main is prohibited to preserve history

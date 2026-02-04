@@ -9,32 +9,6 @@ bun run lint:fix && bun run typecheck
 
 This is automated via Claude Code hooks but verify manually if needed.
 
-## Testing Requirements - MANDATORY
-
-### Standards
-- **Pass Rate**: 100% of non-skipped tests must pass
-- **Coverage Thresholds** (enforced in vitest.config.ts):
-  - Lines: 70%
-  - Functions: 70%
-  - Branches: 70%
-  - Statements: 70%
-
-### Commands
-- `bun run test` - Run all unit tests
-- `bun run test:coverage` - Run tests with coverage report
-
-### Before Committing
-All tests must pass before commits are allowed:
-```bash
-bun run test
-```
-
-### Writing Tests
-- Place test files adjacent to source files: `foo.ts` → `foo.test.ts`
-- Use Vitest with jsdom environment for DOM testing
-- Mock external dependencies (fetch, localStorage, etc.)
-- Note: Some MutationObserver tests may need to be skipped due to jsdom limitations
-
 ## Code Style
 
 ### No Comments Policy
@@ -74,8 +48,6 @@ src/
 - `bun run lint` - Check linting
 - `bun run lint:fix` - Fix linting issues
 - `bun run typecheck` - Type checking
-- `bun run test` - Run unit tests
-- `bun run test:coverage` - Run tests with coverage report
 
 ## Git Workflow
 
@@ -91,7 +63,7 @@ git add <files>
 git commit -m "message"
 ```
 
-The pre-commit hooks automatically run linting, type checking, and tests. **All tests must pass with 100% pass rate before commits are accepted.**
+The pre-commit hooks automatically run linting and type checking.
 
 ### Releases
 

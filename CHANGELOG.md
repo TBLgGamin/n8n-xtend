@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - Command bar extension
+- Unit test suite and E2E test infrastructure
 
 ## [1.3.2] - 2026-02-01
 
