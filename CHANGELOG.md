@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-02-04
+
 ### Added
 - IndexedDB storage via Dexie.js with in-memory caching for fast synchronous reads
 - Reusable monitor utilities: `createPollMonitor`, `createMutationMonitor`, `createAdaptivePollMonitor`
