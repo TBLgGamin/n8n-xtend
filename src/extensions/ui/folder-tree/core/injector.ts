@@ -1,4 +1,4 @@
-import { logger } from '@/shared/utils';
+import { findElementByClassPattern, logger } from '@/shared/utils';
 import { loadTree } from './tree';
 
 const log = logger.child('folder-tree:injector');
@@ -29,35 +29,22 @@ function setupResizeObserver(sidebar: Element): void {
   }
 
   let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
+  let pendingUpdate = false;
 
   sidebarResizeObserver = new ResizeObserver(() => {
+    if (pendingUpdate) return;
+
+    pendingUpdate = true;
+
     if (resizeTimeout) clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => {
       updateVisibility(sidebar);
-    }, 16);
+      pendingUpdate = false;
+    }, 150);
   });
 
   sidebarResizeObserver.observe(sidebar);
   updateVisibility(sidebar);
-}
-
-function findElementByClassPattern(parent: Element, patterns: readonly string[]): Element | null {
-  const selector = patterns.map((pattern) => `[class*="${pattern}"]`).join(',');
-  const element = parent.querySelector(selector);
-
-  if (element) {
-    const className = element.className;
-    if (typeof className === 'string') {
-      for (const pattern of patterns) {
-        if (className.includes(pattern)) {
-          log.debug('Found element matching pattern', pattern);
-          return element;
-        }
-      }
-    }
-  }
-
-  return null;
 }
 
 function createContainer(): HTMLElement {
@@ -70,7 +57,7 @@ function createContainer(): HTMLElement {
   return container;
 }
 
-export function inject(projectId: string): boolean {
+export function injectFolderTree(projectId: string): boolean {
   log.debug('Injecting folder tree for project', projectId);
 
   if (document.getElementById(CONTAINER_ID)) {
@@ -139,7 +126,7 @@ export function tryInject(projectId: string, maxRetries = 10, delay = 300): void
       return;
     }
 
-    const success = inject(projectId);
+    const success = injectFolderTree(projectId);
     if (!success) {
       retries--;
       log.debug('Injection failed, retrying', { retriesLeft: retries });

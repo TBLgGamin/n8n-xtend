@@ -27,17 +27,29 @@ export async function fetchFolder(folderId: string): Promise<FolderResponse['dat
   }
 }
 
+const folderCache = new Map<string, FolderResponse['data'] | null>();
+
 export async function fetchFolderPath(folderId: string): Promise<string[]> {
   const path: string[] = [];
   let currentId: string | undefined = folderId;
 
   while (currentId && currentId !== '0') {
     path.unshift(currentId);
-    const folder = await fetchFolder(currentId);
+
+    let folder = folderCache.get(currentId);
+    if (folder === undefined) {
+      folder = await fetchFolder(currentId);
+      folderCache.set(currentId, folder);
+    }
+
     currentId = folder?.parentFolderId;
   }
 
   return path;
+}
+
+export function clearFolderCache(): void {
+  folderCache.clear();
 }
 
 export async function moveFolder(

@@ -3,7 +3,7 @@ import { enhanceUsageSyntax } from './enhancer';
 
 const log = logger.child('variables');
 
-const POLL_INTERVAL = 500;
+const POLL_INTERVAL = 250;
 const VARIABLES_PATH = '/variables';
 
 let intervalId: ReturnType<typeof setInterval> | null = null;

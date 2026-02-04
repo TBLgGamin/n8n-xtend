@@ -11,11 +11,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Settings panel extension for managing n8n-xtend features
 - Theme polling for instant theme change detection without page refresh
 - Shared CSS variables for consistent theming across extensions
+- Keyboard navigation caching with invalidation on expand/collapse
+- Folder path caching to reduce API calls
 
 ### Changed
 - All logs changed to debug level for silent production builds
 - Renamed tree extension to folder-tree for clarity
 - Reorganized theme utilities into separate modules (theme-colors, theme-manager)
+- Capture dialog now closes instantly on format selection (optimistic UI)
+- Reduced theme polling from 500ms to 5000ms (event-driven approach as primary)
+- Variables monitor polling reduced to 250ms for faster response
+- Settings monitor polling increased to 1000ms with page state tracking
+- Single-pass item filtering replaces double filter() calls
+- ResizeObserver debounce increased from 16ms to 150ms
+- Batched drag/drop DOM updates into single requestAnimationFrame
+- Activity detection throttled to 200ms to reduce function calls
+- Optimized HTML escape with early return when no special characters
+- Optimized logger format string construction
+- Optimized findElementByClassPattern with early return on first match
+- Renamed `init()` to `initExtensions()` for clarity
+- Renamed `inject()` to `injectFolderTree()` for consistency
+
+### Fixed
+- Removed duplicate findElementByClassPattern from folder-tree injector
 
 ## [1.4.0] - 2026-02-04
 

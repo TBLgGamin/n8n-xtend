@@ -1,8 +1,19 @@
 const FOCUSABLE_SELECTOR = '.n8n-xtend-folder-tree-item';
 
 let currentFocusIndex = -1;
+let cachedItems: HTMLElement[] | null = null;
+let cacheContainer: HTMLElement | null = null;
+
+export function invalidateItemsCache(): void {
+  cachedItems = null;
+  cacheContainer = null;
+}
 
 function getVisibleItems(container: HTMLElement): HTMLElement[] {
+  if (cachedItems && cacheContainer === container) {
+    return cachedItems;
+  }
+
   const nodeList = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
   const items: HTMLElement[] = [];
 
@@ -12,6 +23,8 @@ function getVisibleItems(container: HTMLElement): HTMLElement[] {
     }
   }
 
+  cachedItems = items;
+  cacheContainer = container;
   return items;
 }
 
@@ -149,4 +162,5 @@ export function initKeyboardNavigation(container: HTMLElement): () => void {
 
 export function resetKeyboardFocus(): void {
   currentFocusIndex = -1;
+  invalidateItemsCache();
 }

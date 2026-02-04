@@ -25,8 +25,10 @@ class Logger {
   }
 
   private format(level: LogLevel, message: string): string {
-    const prefix = this.component ? `${BASE_PREFIX}:${this.component}` : BASE_PREFIX;
-    return `[${prefix}:${level}] ${message}`;
+    if (!this.component) {
+      return `[${BASE_PREFIX}:${level}] ${message}`;
+    }
+    return `[${BASE_PREFIX}:${this.component}:${level}] ${message}`;
   }
 
   debug(message: string, ...args: unknown[]): void {

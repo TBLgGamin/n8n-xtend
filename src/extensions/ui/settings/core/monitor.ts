@@ -1,8 +1,9 @@
 import { logger } from '@/shared/utils';
 import { injectSettingsPanel, removeSettingsPanel } from './injector';
 
-const POLL_INTERVAL = 500;
+const POLL_INTERVAL = 1000;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
+let wasOnPage = false;
 const log = logger.child('settings');
 
 function isSettingsPersonalPage(): boolean {
@@ -11,14 +12,17 @@ function isSettingsPersonalPage(): boolean {
 }
 
 function checkAndInject(): void {
-  const isPage = isSettingsPersonalPage();
-  if (isPage) {
-    log.debug('On settings page, attempting injection');
+  const isOnPage = isSettingsPersonalPage();
+
+  if (isOnPage && !wasOnPage) {
+    log.debug('Entered settings page, attempting injection');
     const result = injectSettingsPanel();
     log.debug('Injection result:', result);
-  } else {
+  } else if (!isOnPage && wasOnPage) {
     removeSettingsPanel();
   }
+
+  wasOnPage = isOnPage;
 }
 
 export function startMonitor(): void {
@@ -27,6 +31,7 @@ export function startMonitor(): void {
   }
 
   log.debug('Settings monitor started, current path:', location.pathname);
+  wasOnPage = isSettingsPersonalPage();
   checkAndInject();
   pollTimer = setInterval(checkAndInject, POLL_INTERVAL);
 }
@@ -36,5 +41,6 @@ export function stopMonitor(): void {
     clearInterval(pollTimer);
     pollTimer = null;
   }
+  wasOnPage = false;
   removeSettingsPanel();
 }

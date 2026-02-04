@@ -1,10 +1,25 @@
-import { type Folder, isFolder } from '@/shared/types';
+import { type Folder, type TreeItem, type Workflow, isFolder } from '@/shared/types';
 import { escapeHtml, getFolderIdFromUrl } from '@/shared/utils';
 import { fetchFolders } from '../api';
-import { setupDraggable, setupDropTarget } from '../core/dragdrop';
+import { invalidateItemsCache, setupDraggable, setupDropTarget } from '../core';
 import { isFolderExpanded, setFolderExpanded } from '../core/state';
 import { icons } from '../icons';
 import { createWorkflowElement } from './workflow';
+
+function partitionItems(items: TreeItem[]): { folders: Folder[]; workflows: Workflow[] } {
+  const folders: Folder[] = [];
+  const workflows: Workflow[] = [];
+
+  for (const item of items) {
+    if (isFolder(item)) {
+      folders.push(item);
+    } else {
+      workflows.push(item);
+    }
+  }
+
+  return { folders, workflows };
+}
 
 export function createFolderElement(folder: Folder, projectId: string): HTMLDivElement {
   const node = document.createElement('div');
@@ -46,30 +61,35 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
   let loaded = false;
   let open = false;
 
+  async function loadChildren(): Promise<boolean> {
+    try {
+      const items = await fetchFolders(projectId, folder.id);
+      const { folders, workflows } = partitionItems(items);
+      const fragment = document.createDocumentFragment();
+
+      for (const workflow of workflows) {
+        fragment.appendChild(createWorkflowElement(workflow));
+      }
+
+      for (const subFolder of folders) {
+        fragment.appendChild(createFolderElement(subFolder, projectId));
+      }
+
+      childrenEl.textContent = '';
+      childrenEl.appendChild(fragment);
+      return true;
+    } catch {
+      childrenEl.innerHTML =
+        '<div class="n8n-xtend-folder-tree-empty n8n-xtend-folder-tree-error">Error</div>';
+      return false;
+    }
+  }
+
   async function expand(): Promise<void> {
     if (!loaded) {
       loaded = true;
-
-      try {
-        const items = await fetchFolders(projectId, folder.id);
-        const fragment = document.createDocumentFragment();
-
-        const folders = items.filter(isFolder);
-        const workflows = items.filter((i) => !isFolder(i));
-
-        for (const workflow of workflows) {
-          fragment.appendChild(createWorkflowElement(workflow));
-        }
-
-        for (const folder of folders) {
-          fragment.appendChild(createFolderElement(folder, projectId));
-        }
-
-        childrenEl.innerHTML = '';
-        childrenEl.appendChild(fragment);
-      } catch {
-        childrenEl.innerHTML =
-          '<div class="n8n-xtend-folder-tree-empty n8n-xtend-folder-tree-error">Error</div>';
+      const success = await loadChildren();
+      if (!success) {
         loaded = false;
       }
     }
@@ -79,6 +99,7 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
     chevronEl.classList.remove('collapsed');
     iconEl.innerHTML = icons.folderOpen;
     setFolderExpanded(folder.id, true);
+    invalidateItemsCache();
   }
 
   function collapse(): void {
@@ -87,6 +108,7 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
     chevronEl.classList.add('collapsed');
     iconEl.innerHTML = icons.folder;
     setFolderExpanded(folder.id, false);
+    invalidateItemsCache();
   }
 
   async function toggle(event: MouseEvent): Promise<void> {

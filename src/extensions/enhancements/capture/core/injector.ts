@@ -1,4 +1,4 @@
-import { type ThemeColors, getThemeColors, logger } from '@/shared/utils';
+import { getThemeColors, logger } from '@/shared/utils';
 import { captureWorkflow } from '../utils/capture';
 
 const log = logger.child('capture:injector');
@@ -44,236 +44,168 @@ function createCaptureMenuItem(menu: HTMLElement): HTMLLIElement {
   return li;
 }
 
-function injectDialogStyles(): void {
-  if (document.getElementById('n8n-capture-dialog-styles')) return;
+function injectStyles(): void {
+  if (document.getElementById('n8n-capture-styles')) return;
 
   const style = document.createElement('style');
-  style.id = 'n8n-capture-dialog-styles';
+  style.id = 'n8n-capture-styles';
   style.textContent = `
-    @keyframes n8n-capture-dialog-fade-in {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
+    @keyframes n8n-capture-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
-    @keyframes n8n-capture-dialog-slide-in {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    @keyframes n8n-capture-slide-in {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   `;
   document.head.appendChild(style);
 }
 
-function showFormatDialog(): Promise<'png' | 'svg' | null> {
-  return new Promise((resolve) => {
-    injectDialogStyles();
+function showFormatDialog(): void {
+  injectStyles();
+  const colors = getThemeColors();
 
-    const colors = getThemeColors();
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    z-index: 2100;
+    background-color: ${colors.overlay};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: n8n-capture-fade-in 0.15s ease-out;
+  `;
 
-    const overlay = document.createElement('div');
-    overlay.className = 'el-overlay';
-    overlay.style.cssText = `
-      position: fixed;
-      inset: 0;
-      z-index: 2100;
-      background-color: ${colors.overlay};
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: n8n-capture-dialog-fade-in 0.2s ease-out;
-    `;
+  const dialog = document.createElement('div');
+  dialog.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    width: 400px;
+    border: 1px solid ${colors.borderPrimary};
+    border-radius: 8px;
+    background: ${colors.bgPrimary};
+    box-shadow: 0 6px 16px ${colors.shadow};
+    font-family: InterVariable, sans-serif;
+    animation: n8n-capture-slide-in 0.15s ease-out;
+  `;
 
-    const dialog = document.createElement('div');
-    dialog.className = 'el-dialog el-dialog--center';
-    dialog.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      width: 400px;
-      min-width: 300px;
-      border: 1px solid ${colors.borderPrimary};
-      border-radius: 8px;
-      background: ${colors.bgPrimary};
-      box-shadow: ${colors.shadow} 0px 6px 16px 0px;
+  const header = document.createElement('header');
+  header.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 24px 16px;
+  `;
+
+  const title = document.createElement('h1');
+  title.style.cssText = `
+    margin: 0;
+    font-size: 20px;
+    font-weight: 400;
+    color: ${colors.textPrimary};
+  `;
+  title.textContent = 'Capture';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.setAttribute('aria-label', 'Close');
+  closeBtn.style.cssText = `
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: ${colors.textMuted};
+    cursor: pointer;
+    transition: color 0.15s;
+  `;
+  closeBtn.innerHTML = `<i style="width: 16px; height: 16px;">${CLOSE_ICON}</i>`;
+  closeBtn.onmouseenter = () => (closeBtn.style.color = colors.brandPrimary);
+  closeBtn.onmouseleave = () => (closeBtn.style.color = colors.textMuted);
+
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+
+  const body = document.createElement('div');
+  body.style.cssText = `
+    padding: 0 24px 24px;
+    color: ${colors.textSecondary};
+    font-size: 14px;
+  `;
+
+  const subtitle = document.createElement('p');
+  subtitle.style.cssText = 'margin: 0 0 24px 0;';
+  subtitle.textContent = 'Export your workflow as an image file';
+
+  const buttonRow = document.createElement('div');
+  buttonRow.style.cssText = 'display: flex; justify-content: flex-end; gap: 8px;';
+
+  const createBtn = (label: string, primary: boolean) => {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.style.cssText = `
+      padding: 8px 16px;
+      border-radius: 4px;
       font-family: InterVariable, sans-serif;
-      animation: n8n-capture-dialog-slide-in 0.2s ease-out;
-    `;
-
-    const header = document.createElement('header');
-    header.className = 'el-dialog__header';
-    header.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 24px 24px 16px;
-    `;
-
-    const title = document.createElement('h1');
-    title.style.cssText = `
-      margin: 0;
-      font-size: 20px;
-      font-weight: 400;
-      line-height: 25px;
-      color: ${colors.textPrimary};
-    `;
-    title.textContent = 'Capture';
-
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'el-dialog__headerbtn';
-    closeBtn.setAttribute('aria-label', 'Close');
-    closeBtn.style.cssText = `
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 16px;
-      height: 16px;
-      padding: 0;
-      border: none;
-      background: transparent;
-      color: ${colors.textMuted};
+      font-size: 13px;
+      font-weight: 500;
       cursor: pointer;
+      transition: all 0.15s;
+      border: 1px solid ${primary ? colors.brandPrimary : colors.borderButton};
+      background: ${primary ? colors.brandPrimary : colors.bgPrimary};
+      color: ${primary ? '#fff' : colors.textButton};
     `;
-    closeBtn.innerHTML = `<i class="el-icon el-dialog__close" style="width: 16px; height: 16px;">${CLOSE_ICON}</i>`;
-
-    closeBtn.addEventListener('mouseenter', () => {
-      closeBtn.style.color = colors.brandPrimary;
-    });
-    closeBtn.addEventListener('mouseleave', () => {
-      closeBtn.style.color = colors.textMuted;
-    });
-
-    header.appendChild(title);
-    header.appendChild(closeBtn);
-
-    const body = document.createElement('div');
-    body.className = 'el-dialog__body';
-    body.style.cssText = `
-      padding: 0 24px 24px;
-      color: ${colors.textSecondary};
-      font-size: 14px;
-      line-height: 18.9px;
-    `;
-
-    const subtitle = document.createElement('p');
-    subtitle.style.cssText = 'margin: 0 0 24px 0;';
-    subtitle.textContent = 'Export your workflow as an image file';
-    body.appendChild(subtitle);
-
-    const footer = document.createElement('div');
-    footer.style.cssText = `
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    `;
-
-    const createButton = (text: string, isPrimary: boolean, themeColors: ThemeColors) => {
-      const btn = document.createElement('button');
-      btn.style.cssText = `
-        display: block;
-        padding: ${isPrimary ? '8px 12px' : '6px 12px'};
-        border-radius: 4px;
-        font-family: InterVariable, sans-serif;
-        font-size: 12px;
-        font-weight: 500;
-        line-height: 12px;
-        white-space: nowrap;
-        cursor: pointer;
-        transition: 0.3s;
-        border: 1px solid ${isPrimary ? themeColors.brandPrimary : themeColors.borderButton};
-        background: ${isPrimary ? themeColors.brandPrimary : themeColors.bgPrimary};
-        color: ${isPrimary ? 'rgb(255, 255, 255)' : themeColors.textButton};
-      `;
-
-      const span = document.createElement('span');
-      span.textContent = text;
-      btn.appendChild(span);
-
-      btn.addEventListener('mouseenter', () => {
-        if (isPrimary) {
-          btn.style.background = themeColors.brandHover;
-          btn.style.borderColor = themeColors.brandHover;
-        } else {
-          btn.style.borderColor = themeColors.brandPrimary;
-          btn.style.color = themeColors.brandPrimary;
-        }
-      });
-
-      btn.addEventListener('mouseleave', () => {
-        if (isPrimary) {
-          btn.style.background = themeColors.brandPrimary;
-          btn.style.borderColor = themeColors.brandPrimary;
-        } else {
-          btn.style.borderColor = themeColors.borderButton;
-          btn.style.color = themeColors.textButton;
-        }
-      });
-
-      return btn;
+    btn.onmouseenter = () => {
+      btn.style.background = primary ? colors.brandHover : colors.bgPrimary;
+      btn.style.borderColor = primary ? colors.brandHover : colors.brandPrimary;
+      if (!primary) btn.style.color = colors.brandPrimary;
     };
+    btn.onmouseleave = () => {
+      btn.style.background = primary ? colors.brandPrimary : colors.bgPrimary;
+      btn.style.borderColor = primary ? colors.brandPrimary : colors.borderButton;
+      if (!primary) btn.style.color = colors.textButton;
+    };
+    return btn;
+  };
 
-    const svgButton = createButton('SVG', false, colors);
-    const pngButton = createButton('PNG', true, colors);
+  const svgBtn = createBtn('SVG', false);
+  const pngBtn = createBtn('PNG', true);
 
-    const cleanup = () => overlay.remove();
+  buttonRow.appendChild(svgBtn);
+  buttonRow.appendChild(pngBtn);
+  body.appendChild(subtitle);
+  body.appendChild(buttonRow);
+  dialog.appendChild(header);
+  dialog.appendChild(body);
+  overlay.appendChild(dialog);
 
-    pngButton.addEventListener('click', () => {
-      cleanup();
-      resolve('png');
-    });
+  const close = () => overlay.remove();
 
-    svgButton.addEventListener('click', () => {
-      cleanup();
-      resolve('svg');
-    });
+  const capture = (format: 'png' | 'svg') => {
+    close();
+    log.debug(`Capturing workflow as ${format.toUpperCase()}`);
+    captureWorkflow(format);
+  };
 
-    closeBtn.addEventListener('click', () => {
-      cleanup();
-      resolve(null);
-    });
+  svgBtn.onclick = () => capture('svg');
+  pngBtn.onclick = () => capture('png');
+  closeBtn.onclick = close;
+  overlay.onclick = (e) => e.target === overlay && close();
 
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) {
-        cleanup();
-        resolve(null);
-      }
-    });
+  const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      close();
+      document.removeEventListener('keydown', onKey);
+    }
+  };
+  document.addEventListener('keydown', onKey);
 
-    document.addEventListener('keydown', function escHandler(e) {
-      if (e.key === 'Escape') {
-        cleanup();
-        resolve(null);
-        document.removeEventListener('keydown', escHandler);
-      }
-    });
-
-    footer.appendChild(svgButton);
-    footer.appendChild(pngButton);
-    body.appendChild(footer);
-
-    dialog.appendChild(header);
-    dialog.appendChild(body);
-    overlay.appendChild(dialog);
-    document.body.appendChild(overlay);
-
-    pngButton.focus();
-  });
-}
-
-async function handleCaptureClick(): Promise<void> {
-  const format = await showFormatDialog();
-  if (!format) {
-    return;
-  }
-
-  log.debug(`Capturing workflow as ${format.toUpperCase()}`);
-  await captureWorkflow(format);
+  document.body.appendChild(overlay);
+  pngBtn.focus();
 }
 
 export function injectCaptureMenuItem(menu: HTMLElement, downloadItem: HTMLElement): void {
@@ -285,11 +217,9 @@ export function injectCaptureMenuItem(menu: HTMLElement, downloadItem: HTMLEleme
     e.stopImmediatePropagation();
 
     const popper = menu.closest('.el-dropdown__popper') as HTMLElement;
-    if (popper) {
-      popper.style.display = 'none';
-    }
+    if (popper) popper.style.display = 'none';
 
-    handleCaptureClick();
+    showFormatDialog();
   };
 
   captureItem.addEventListener('click', handleClick, true);

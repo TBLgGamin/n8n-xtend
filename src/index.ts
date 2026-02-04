@@ -24,7 +24,7 @@ function initIfEnabled(id: string, name: string, init: () => void): void {
   }
 }
 
-function init(): void {
+function initExtensions(): void {
   interceptLocalStorage();
 
   if (!isN8nHost()) {
@@ -43,4 +43,4 @@ function init(): void {
   initIfEnabled('show-password', 'show-password', initShowPasswordExtension);
 }
 
-init();
+initExtensions();

@@ -1,5 +1,5 @@
 const THEME_STORAGE_KEY = 'N8N_THEME';
-const POLL_INTERVAL_MS = 500;
+const POLL_INTERVAL_MS = 5000;
 
 export type Theme = 'dark' | 'light';
 

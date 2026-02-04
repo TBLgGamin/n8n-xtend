@@ -18,16 +18,13 @@ export function findElementByClassPattern(
   if (patterns.length === 0) {
     return null;
   }
-  const selector = patterns.map((pattern) => `[class*="${pattern}"]`).join(',');
-  const element = parent.querySelector(selector);
 
-  if (element) {
-    const className = element.className;
-    if (typeof className === 'string') {
-      for (const pattern of patterns) {
-        if (className.includes(pattern)) {
-          return element;
-        }
+  for (const pattern of patterns) {
+    const element = parent.querySelector(`[class*="${pattern}"]`);
+    if (element) {
+      const className = element.className;
+      if (typeof className === 'string' && className.includes(pattern)) {
+        return element;
       }
     }
   }

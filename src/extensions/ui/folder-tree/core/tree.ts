@@ -1,4 +1,4 @@
-import { isFolder } from '@/shared/types';
+import { type Folder, type Workflow, isFolder } from '@/shared/types';
 import { logger } from '@/shared/utils';
 
 const log = logger.child('folder-tree');
@@ -28,11 +28,19 @@ export async function loadTree(container: HTMLElement, projectId: string): Promi
   try {
     const items = await fetchFolders(projectId, '0');
 
-    const folders = items.filter(isFolder);
-    const workflows = items.filter((i) => !isFolder(i));
+    const folders: Folder[] = [];
+    const workflows: Workflow[] = [];
+
+    for (const item of items) {
+      if (isFolder(item)) {
+        folders.push(item);
+      } else {
+        workflows.push(item);
+      }
+    }
 
     if (folders.length === 0 && workflows.length === 0) {
-      container.innerHTML = '';
+      container.textContent = '';
       return;
     }
 
@@ -46,7 +54,7 @@ export async function loadTree(container: HTMLElement, projectId: string): Promi
       fragment.appendChild(createFolderElement(folder, projectId));
     }
 
-    container.innerHTML = '';
+    container.textContent = '';
     container.appendChild(fragment);
 
     setupDropTarget(container, '0', true);
