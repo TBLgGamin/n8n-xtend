@@ -1,4 +1,4 @@
-import { logger } from '@/shared/utils';
+import { isValidId, logger } from '@/shared/utils';
 import { moveFolder, moveWorkflow } from '../api';
 
 const log = logger.child('folder-tree:dragdrop');
@@ -68,10 +68,31 @@ function highlightDropTargets(element: HTMLElement, itemId: string): void {
   }
 }
 
+function validateDragData(data: unknown): DragData | null {
+  if (!data || typeof data !== 'object') return null;
+
+  const obj = data as Record<string, unknown>;
+
+  if (obj.type !== 'folder' && obj.type !== 'workflow') return null;
+  if (typeof obj.id !== 'string' || !isValidId(obj.id)) return null;
+  if (typeof obj.name !== 'string' || obj.name.length === 0) return null;
+
+  if (obj.parentFolderId !== undefined) {
+    if (typeof obj.parentFolderId !== 'string' || !isValidId(obj.parentFolderId)) return null;
+  }
+
+  return {
+    type: obj.type,
+    id: obj.id,
+    name: obj.name,
+    ...(typeof obj.parentFolderId === 'string' && { parentFolderId: obj.parentFolderId }),
+  };
+}
+
 function parseDragData(jsonData: string | undefined): DragData | null {
   if (!jsonData) return null;
   try {
-    return JSON.parse(jsonData) as DragData;
+    return validateDragData(JSON.parse(jsonData));
   } catch {
     return null;
   }

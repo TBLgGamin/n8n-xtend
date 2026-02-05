@@ -43,6 +43,19 @@ export function isAuthPage(): boolean {
   return location.pathname.includes('/signin') || location.pathname.includes('/login');
 }
 
+export function isWorkflowPage(): boolean {
+  return location.pathname.includes('/workflow/');
+}
+
+export function isVariablesPage(): boolean {
+  return location.pathname.includes('/variables');
+}
+
+export function isSettingsPersonalPage(): boolean {
+  const path = location.pathname;
+  return path === '/settings/personal' || path.startsWith('/settings/personal');
+}
+
 function hasN8nDomIndicators(): boolean {
   if (!document.getElementById('app')) {
     return false;

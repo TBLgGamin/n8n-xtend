@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Origin validation guard in API client to prevent credentialed requests to untrusted origins
+- Field-level validation for drag-drop data parsing with type, ID, and name checks
+- Shared page detection helpers: `isWorkflowPage()`, `isVariablesPage()`, `isSettingsPersonalPage()`
+
+### Changed
+- Settings panel now escapes extension name, description, and ID in innerHTML
+- Show-password icons moved from `core/icons.ts` to dedicated `icons/` directory
+- `clearFolderCache` exported through folder-tree API barrel file
+- Page detection functions consolidated from extension monitors into `shared/utils/url.ts`
+- Boolean variables renamed to follow `is/has` prefix convention (`isLoaded`, `isOpen`)
+
 ## [1.4.2] - 2026-02-04
 
 ### Added

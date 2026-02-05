@@ -1,13 +1,8 @@
-import { type PollMonitor, createPollMonitor, logger } from '@/shared/utils';
+import { type PollMonitor, createPollMonitor, isVariablesPage, logger } from '@/shared/utils';
 import { enhanceUsageSyntax } from './enhancer';
 
 const log = logger.child('variables');
 const POLL_INTERVAL = 100;
-const VARIABLES_PATH = '/variables';
-
-function isVariablesPage(): boolean {
-  return location.pathname.includes(VARIABLES_PATH);
-}
 
 function checkAndEnhance(): void {
   if (!isVariablesPage()) return;

@@ -1,5 +1,5 @@
 import { getThemeColors, logger, onThemeColorsChange } from '@/shared/utils';
-import { EYE_ICON, EYE_OFF_ICON } from './icons';
+import { EYE_ICON, EYE_OFF_ICON } from '../icons';
 
 const log = logger.child('show-password:injector');
 const MARKER_ATTR = 'data-xtend-password-toggle';

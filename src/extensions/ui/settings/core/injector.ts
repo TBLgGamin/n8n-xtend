@@ -1,4 +1,4 @@
-import { logger } from '@/shared/utils';
+import { escapeHtml, logger } from '@/shared/utils';
 import { EXTENSIONS } from '../config';
 import { getExtensionSettings, setExtensionEnabled } from './storage';
 
@@ -10,7 +10,7 @@ const MARKER_ATTR = 'data-n8n-xtend-settings';
 function createToggle(id: string, checked: boolean): string {
   return `
     <label class="n8n-xtend-toggle">
-      <input type="checkbox" ${checked ? 'checked' : ''} data-extension-id="${id}" />
+      <input type="checkbox" ${checked ? 'checked' : ''} data-extension-id="${escapeHtml(id)}" />
       <span class="n8n-xtend-toggle-slider"></span>
     </label>
   `;
@@ -23,10 +23,10 @@ function createExtensionRow(
   enabled: boolean,
 ): string {
   return `
-    <div class="n8n-xtend-extension-row" data-extension="${id}">
+    <div class="n8n-xtend-extension-row" data-extension="${escapeHtml(id)}">
       <div class="n8n-xtend-extension-info">
-        <div class="n8n-xtend-extension-name">${name}</div>
-        <div class="n8n-xtend-extension-description">${description}</div>
+        <div class="n8n-xtend-extension-name">${escapeHtml(name)}</div>
+        <div class="n8n-xtend-extension-description">${escapeHtml(description)}</div>
       </div>
       ${createToggle(id, enabled)}
     </div>

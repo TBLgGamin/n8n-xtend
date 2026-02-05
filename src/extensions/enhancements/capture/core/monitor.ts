@@ -1,4 +1,9 @@
-import { type MutationMonitor, createMutationMonitor, logger } from '@/shared/utils';
+import {
+  type MutationMonitor,
+  createMutationMonitor,
+  isWorkflowPage,
+  logger,
+} from '@/shared/utils';
 import { injectCaptureMenuItem } from './injector';
 
 const log = logger.child('capture');
@@ -7,10 +12,6 @@ const WORKFLOW_MENU_SELECTOR = '.el-dropdown__popper ul.el-dropdown-menu';
 const DOWNLOAD_ITEM_SELECTOR = '[data-test-id="workflow-menu-item-download"]';
 
 const processedMenus = new WeakSet<Element>();
-
-function isWorkflowPage(): boolean {
-  return location.pathname.includes('/workflow/');
-}
 
 function findWorkflowMenu(node: Node): Element | null {
   if (!(node instanceof Element)) return null;

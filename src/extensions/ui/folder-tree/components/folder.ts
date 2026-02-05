@@ -63,8 +63,8 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
   const chevronEl = chevron;
   const iconEl = icon;
 
-  let loaded = false;
-  let open = false;
+  let isLoaded = false;
+  let isOpen = false;
 
   async function loadChildren(): Promise<boolean> {
     try {
@@ -91,15 +91,15 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
   }
 
   async function expand(): Promise<void> {
-    if (!loaded) {
-      loaded = true;
+    if (!isLoaded) {
+      isLoaded = true;
       const success = await loadChildren();
       if (!success) {
-        loaded = false;
+        isLoaded = false;
       }
     }
 
-    open = true;
+    isOpen = true;
     childrenEl.classList.remove('collapsed');
     chevronEl.classList.remove('collapsed');
     iconEl.innerHTML = icons.folderOpen;
@@ -108,7 +108,7 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
   }
 
   function collapse(): void {
-    open = false;
+    isOpen = false;
     childrenEl.classList.add('collapsed');
     chevronEl.classList.add('collapsed');
     iconEl.innerHTML = icons.folder;
@@ -119,7 +119,7 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
   async function toggle(event: MouseEvent): Promise<void> {
     event.preventDefault();
     event.stopPropagation();
-    if (!open) {
+    if (!isOpen) {
       await expand();
     } else {
       collapse();

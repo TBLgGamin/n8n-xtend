@@ -1,15 +1,15 @@
-import { type PollMonitor, createPollMonitor, logger } from '@/shared/utils';
+import {
+  type PollMonitor,
+  createPollMonitor,
+  isSettingsPersonalPage,
+  logger,
+} from '@/shared/utils';
 import { injectSettingsPanel, removeSettingsPanel } from './injector';
 
 const log = logger.child('settings');
 const POLL_INTERVAL = 100;
 
 let wasOnPage = false;
-
-function isSettingsPersonalPage(): boolean {
-  const path = location.pathname;
-  return path === '/settings/personal' || path.startsWith('/settings/personal');
-}
 
 function checkAndInject(): void {
   const isOnPage = isSettingsPersonalPage();

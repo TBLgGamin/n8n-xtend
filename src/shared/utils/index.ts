@@ -37,5 +37,8 @@ export {
   getWorkflowIdFromUrl,
   isAuthPage,
   isN8nHost,
+  isSettingsPersonalPage,
+  isVariablesPage,
+  isWorkflowPage,
 } from './url';
 export { isValidId, sanitizeId, sanitizeObject, validateAndEncodeId } from './validation';

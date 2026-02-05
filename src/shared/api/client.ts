@@ -1,4 +1,5 @@
 import { getBrowserId } from '@/shared/utils/storage';
+import { isN8nHost } from '@/shared/utils/url';
 
 const REQUEST_TIMEOUT_MS = 10000;
 const MAX_RETRIES = 2;
@@ -12,6 +13,12 @@ export class ApiError extends Error {
   ) {
     super(message);
     this.name = 'ApiError';
+  }
+}
+
+function assertTrustedOrigin(): void {
+  if (!isN8nHost()) {
+    throw new ApiError('Untrusted origin', 403);
   }
 }
 
@@ -84,6 +91,7 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
 }
 
 export async function request<T>(endpoint: string): Promise<T> {
+  assertTrustedOrigin();
   const response = await fetchWithRetry(location.origin + endpoint, {
     method: 'GET',
     credentials: 'include',
@@ -98,6 +106,7 @@ export async function request<T>(endpoint: string): Promise<T> {
 }
 
 export async function patch<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
+  assertTrustedOrigin();
   const response = await fetchWithRetry(location.origin + endpoint, {
     method: 'PATCH',
     credentials: 'include',
