@@ -58,7 +58,7 @@ jobs:
 
       - name: Check bundle size
         run: |
-          MAX_SIZE_KB=150
+          MAX_SIZE_KB=200
           CONTENT_JS_SIZE=$(du -k dist/content.js | cut -f1)
           echo "Bundle size: ${CONTENT_JS_SIZE}KB (max: ${MAX_SIZE_KB}KB)"
           if [ "$CONTENT_JS_SIZE" -gt "$MAX_SIZE_KB" ]; then

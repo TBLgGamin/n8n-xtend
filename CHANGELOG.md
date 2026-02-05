@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Shared page detection helpers: `isWorkflowPage()`, `isVariablesPage()`, `isSettingsPersonalPage()`
 
 ### Changed
+- CI bundle size limit increased from 150KB to 200KB
 - Settings panel now escapes extension name, description, and ID in innerHTML
 - Show-password icons moved from `core/icons.ts` to dedicated `icons/` directory
 - `clearFolderCache` exported through folder-tree API barrel file
