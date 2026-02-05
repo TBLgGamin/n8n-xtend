@@ -3,7 +3,7 @@ import { logger } from '@/shared/utils';
 
 const log = logger.child('folder-tree');
 import { getFolderIdFromUrl } from '@/shared/utils/url';
-import { fetchFolderPath, fetchFolders } from '../api';
+import { clearFolderCache, fetchFolderPath, fetchFolders } from '../api';
 import { createFolderElement, createWorkflowElement } from '../components';
 import { setDragContext, setupDropTarget } from './dragdrop';
 import { initKeyboardNavigation, resetKeyboardFocus } from './keyboard';
@@ -13,6 +13,7 @@ let cleanupKeyboard: (() => void) | null = null;
 
 export async function loadTree(container: HTMLElement, projectId: string): Promise<void> {
   container.innerHTML = '';
+  clearFolderCache();
 
   const currentFolderId = getFolderIdFromUrl();
   if (currentFolderId) {

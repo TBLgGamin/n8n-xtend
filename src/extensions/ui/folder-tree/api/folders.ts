@@ -27,7 +27,18 @@ export async function fetchFolder(folderId: string): Promise<FolderResponse['dat
   }
 }
 
-const folderCache = new Map<string, FolderResponse['data'] | null>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface CacheEntry {
+  data: FolderResponse['data'] | null;
+  timestamp: number;
+}
+
+const folderCache = new Map<string, CacheEntry>();
+
+function isCacheEntryFresh(entry: CacheEntry): boolean {
+  return Date.now() - entry.timestamp < CACHE_TTL_MS;
+}
 
 export async function fetchFolderPath(folderId: string): Promise<string[]> {
   const path: string[] = [];
@@ -36,10 +47,14 @@ export async function fetchFolderPath(folderId: string): Promise<string[]> {
   while (currentId && currentId !== '0') {
     path.unshift(currentId);
 
-    let folder = folderCache.get(currentId);
-    if (folder === undefined) {
+    const cacheEntry = folderCache.get(currentId);
+    let folder: FolderResponse['data'] | null;
+
+    if (cacheEntry && isCacheEntryFresh(cacheEntry)) {
+      folder = cacheEntry.data;
+    } else {
       folder = await fetchFolder(currentId);
-      folderCache.set(currentId, folder);
+      folderCache.set(currentId, { data: folder, timestamp: Date.now() });
     }
 
     currentId = folder?.parentFolderId;

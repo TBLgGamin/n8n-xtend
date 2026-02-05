@@ -1,3 +1,5 @@
+import { createThrottled } from './timing';
+
 export interface PollMonitorConfig {
   interval: number;
   check: () => void | Promise<void>;
@@ -96,11 +98,9 @@ export interface AdaptivePollMonitor extends PollMonitor {
 }
 
 export function createAdaptivePollMonitor(config: AdaptivePollMonitorConfig): AdaptivePollMonitor {
-  const throttle = config.activityThrottle ?? 50;
   let intervalId: ReturnType<typeof setInterval> | null = null;
   let idleTimeoutId: ReturnType<typeof setTimeout> | null = null;
   let isIdle = false;
-  let lastActivityTime = 0;
 
   function setPollingRate(interval: number): void {
     if (intervalId) clearInterval(intervalId);
@@ -115,10 +115,6 @@ export function createAdaptivePollMonitor(config: AdaptivePollMonitorConfig): Ad
   }
 
   function resetIdleTimer(): void {
-    const now = Date.now();
-    if (now - lastActivityTime < throttle) return;
-    lastActivityTime = now;
-
     onActivity();
     if (idleTimeoutId) clearTimeout(idleTimeoutId);
     idleTimeoutId = setTimeout(() => {
@@ -127,6 +123,8 @@ export function createAdaptivePollMonitor(config: AdaptivePollMonitorConfig): Ad
     }, config.idleTimeout);
   }
 
+  const throttledResetIdleTimer = createThrottled(resetIdleTimer, config.activityThrottle ?? 50);
+
   return {
     start(): void {
       if (intervalId) return;
@@ -134,9 +132,9 @@ export function createAdaptivePollMonitor(config: AdaptivePollMonitorConfig): Ad
       config.check();
       setPollingRate(config.activeInterval);
 
-      document.addEventListener('mousemove', resetIdleTimer, { passive: true });
-      document.addEventListener('keydown', resetIdleTimer, { passive: true });
-      document.addEventListener('click', resetIdleTimer, { passive: true });
+      document.addEventListener('mousemove', throttledResetIdleTimer, { passive: true });
+      document.addEventListener('keydown', throttledResetIdleTimer, { passive: true });
+      document.addEventListener('click', throttledResetIdleTimer, { passive: true });
     },
 
     stop(): void {
@@ -149,9 +147,9 @@ export function createAdaptivePollMonitor(config: AdaptivePollMonitorConfig): Ad
         idleTimeoutId = null;
       }
 
-      document.removeEventListener('mousemove', resetIdleTimer);
-      document.removeEventListener('keydown', resetIdleTimer);
-      document.removeEventListener('click', resetIdleTimer);
+      document.removeEventListener('mousemove', throttledResetIdleTimer);
+      document.removeEventListener('keydown', throttledResetIdleTimer);
+      document.removeEventListener('click', throttledResetIdleTimer);
 
       config.onStop?.();
     },
@@ -160,6 +158,6 @@ export function createAdaptivePollMonitor(config: AdaptivePollMonitorConfig): Ad
       return intervalId !== null;
     },
 
-    resetActivity: resetIdleTimer,
+    resetActivity: throttledResetIdleTimer,
   };
 }

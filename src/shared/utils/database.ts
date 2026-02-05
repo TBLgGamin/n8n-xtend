@@ -30,6 +30,7 @@ const db = new N8nXtendDatabase();
 const cache = new Map<string, unknown>();
 let initialized = false;
 let initPromise: Promise<void> | null = null;
+let isDatabaseAvailable = false;
 
 async function migrateFromLocalStorage(): Promise<void> {
   for (const key of MIGRATION_KEYS) {
@@ -43,7 +44,9 @@ async function migrateFromLocalStorage(): Promise<void> {
         }
         const value = sanitizeObject(parsed as Record<string, unknown>);
         cache.set(key, value);
-        await db.storage.put({ key, value, updatedAt: Date.now() });
+        if (isDatabaseAvailable) {
+          await db.storage.put({ key, value, updatedAt: Date.now() });
+        }
         localStorage.removeItem(key);
       } catch (error) {
         log.debug(`Failed to migrate key "${key}" from localStorage`, error);
@@ -64,8 +67,13 @@ async function initializeDatabase(): Promise<void> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    await db.open();
-    await loadCacheFromDatabase();
+    try {
+      await db.open();
+      isDatabaseAvailable = true;
+      await loadCacheFromDatabase();
+    } catch (error) {
+      log.debug('IndexedDB unavailable, using in-memory storage', error);
+    }
     await migrateFromLocalStorage();
     initialized = true;
   })();
@@ -80,14 +88,18 @@ export function getItem<T>(key: string): T | null {
 
 export function setItem<T>(key: string, value: T): void {
   cache.set(key, value);
-  db.storage
-    .put({ key, value, updatedAt: Date.now() })
-    .catch((error) => log.debug(`Failed to persist key "${key}"`, error));
+  if (isDatabaseAvailable) {
+    db.storage
+      .put({ key, value, updatedAt: Date.now() })
+      .catch((error) => log.debug(`Failed to persist key "${key}"`, error));
+  }
 }
 
 export function removeItem(key: string): void {
   cache.delete(key);
-  db.storage.delete(key).catch((error) => log.debug(`Failed to delete key "${key}"`, error));
+  if (isDatabaseAvailable) {
+    db.storage.delete(key).catch((error) => log.debug(`Failed to delete key "${key}"`, error));
+  }
 }
 
 export async function getAllKeys(): Promise<string[]> {

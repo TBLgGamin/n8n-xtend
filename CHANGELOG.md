@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Origin validation guard in API client to prevent credentialed requests to untrusted origins
 - Field-level validation for drag-drop data parsing with type, ID, and name checks
 - Shared page detection helpers: `isWorkflowPage()`, `isVariablesPage()`, `isSettingsPersonalPage()`
+- Shared `createDebounced()` and `createThrottled()` timing utilities
+- IndexedDB error boundary with graceful in-memory fallback for private browsing
+- Folder cache TTL (5 minutes) to prevent stale data in long-lived tabs
+- Security Conventions section in CLAUDE.md
 
 ### Changed
 - CI bundle size limit increased from 150KB to 200KB
@@ -19,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `clearFolderCache` exported through folder-tree API barrel file
 - Page detection functions consolidated from extension monitors into `shared/utils/url.ts`
 - Boolean variables renamed to follow `is/has` prefix convention (`isLoaded`, `isOpen`)
+- Folder tree state debounce refactored to use shared `createDebounced`
+- Adaptive poll monitor throttle refactored to use shared `createThrottled`
+- Folder cache cleared on every tree refresh
 
 ## [1.4.2] - 2026-02-04
 

@@ -29,6 +29,11 @@ export {
   isDarkModeActive,
 } from './theme-manager';
 export {
+  createDebounced,
+  createThrottled,
+  type DebouncedFunction,
+} from './timing';
+export {
   buildFolderUrl,
   buildWorkflowUrl,
   getFolderIdFromUrl,

@@ -47,9 +47,10 @@ src/
 │   │   ├── theme.ts            # Theme detection (dark/light)
 │   │   ├── theme-colors.ts     # Extract colors from n8n computed styles
 │   │   ├── theme-manager.ts    # Manages n8n-xtend-dark class on html element
-│   │   ├── url.ts              # URL parsing (getProjectIdFromUrl, etc.)
+│   │   ├── url.ts              # URL parsing and page detection helpers
 │   │   ├── dom.ts              # DOM query helpers
 │   │   ├── html.ts             # HTML escaping (XSS prevention)
+│   │   ├── validation.ts       # ID validation and object sanitization
 │   │   └── logger.ts           # Hierarchical logging with levels
 │   └── styles/
 │       └── variables.css       # CSS variables (colors, spacing)
@@ -66,7 +67,8 @@ src/
 │   │   │   ├── core/           # injector, monitor, storage
 │   │   │   └── config.ts       # EXTENSIONS array with metadata
 │   │   ├── show-password/      # Toggle password field visibility
-│   │   │   └── core/           # icons, injector, monitor
+│   │   │   ├── core/           # injector, monitor
+│   │   │   └── icons/          # eye icons
 │   │   └── variables/          # Auto-wrap {{ }} with click-to-copy
 │   │       └── core/           # enhancer, monitor
 │   └── enhancements/
@@ -125,6 +127,14 @@ interface Folder { id, name, resource: 'folder', parentFolderId?, workflowCount?
 interface Workflow { id, name, resource?, versionId?, parentFolderId?, homeProject: { id } }
 type TreeItem = Folder | Workflow
 ```
+
+## Security Conventions
+
+- **HTML escaping**: Always use `escapeHtml()` when interpolating dynamic text into innerHTML templates
+- **ID validation**: Always call `isValidId()` before using IDs in URLs or API endpoints
+- **URL encoding**: Always use `encodeURIComponent()` for IDs in constructed URLs (see `buildFolderUrl`, `buildWorkflowUrl`)
+- **Object sanitization**: Always use `sanitizeObject()` when parsing JSON from untrusted sources (localStorage, drag events)
+- **Origin validation**: API client validates `isN8nHost()` before sending credentialed requests
 
 ## Adding a New Extension
 
