@@ -1,6 +1,8 @@
 import {
   type AdaptivePollMonitor,
+  type PollMonitor,
   createAdaptivePollMonitor,
+  createPollMonitor,
   getNormalizedContextPath,
   getProjectIdFromUrl,
   getWorkflowIdFromUrl,
@@ -11,11 +13,13 @@ import {
 const log = logger.child('folder-tree:monitor');
 import { fetchWorkflowProjectId } from '../api';
 import { removeFolderTree, tryInject } from './injector';
+import { clearTreeState, getTreeState, syncFolderContents } from './tree';
 
 const ACTIVE_POLL_INTERVAL = 100;
 const IDLE_POLL_INTERVAL = 250;
 const IDLE_TIMEOUT = 3000;
 const ACTIVITY_THROTTLE = 50;
+const SYNC_POLL_INTERVAL = 5000;
 
 let currentProjectId: string | null = null;
 let currentPath: string | null = null;
@@ -54,10 +58,22 @@ async function checkAndInject(): Promise<void> {
     });
 
     removeFolderTree();
+    clearTreeState();
     currentProjectId = projectId;
     currentPath = normalizedPath;
 
     tryInject(projectId);
+  }
+}
+
+async function syncExpandedFolders(): Promise<void> {
+  const state = getTreeState();
+  if (!state) return;
+
+  const foldersToSync = Array.from(state.currentItems.keys());
+
+  for (const folderId of foldersToSync) {
+    await syncFolderContents(state.projectId, folderId);
   }
 }
 
@@ -67,8 +83,22 @@ const monitor: AdaptivePollMonitor = createAdaptivePollMonitor({
   idleTimeout: IDLE_TIMEOUT,
   activityThrottle: ACTIVITY_THROTTLE,
   check: checkAndInject,
-  onStart: () => log.debug('Monitor started'),
+  onStart: () => log.debug('Context monitor started'),
 });
 
-export const startMonitor = monitor.start;
-export const stopMonitor = monitor.stop;
+const syncMonitor: PollMonitor = createPollMonitor({
+  interval: SYNC_POLL_INTERVAL,
+  check: syncExpandedFolders,
+  onStart: () => log.debug('Sync monitor started'),
+});
+
+export function startMonitor(): void {
+  monitor.start();
+  syncMonitor.start();
+}
+
+export function stopMonitor(): void {
+  monitor.stop();
+  syncMonitor.stop();
+  clearTreeState();
+}

@@ -1,10 +1,19 @@
-import { patch, request } from '@/shared/api';
+import { patch, post, request } from '@/shared/api';
 import type { FolderFilter, FolderResponse, FoldersResponse, TreeItem } from '@/shared/types';
+import { isFolder } from '@/shared/types/api';
 import { logger } from '@/shared/utils';
+import { copyWorkflow } from './workflows';
 
 const log = logger.child('api');
 
 export async function fetchFolders(projectId: string, parentFolderId = '0'): Promise<TreeItem[]> {
+  const cacheKey = `${projectId}:${parentFolderId}`;
+  const cached = contentCache.get(cacheKey);
+
+  if (cached && isContentCacheFresh(cached)) {
+    return cached.items;
+  }
+
   const filter: FolderFilter = {
     isArchived: false,
     parentFolderId,
@@ -15,7 +24,10 @@ export async function fetchFolders(projectId: string, parentFolderId = '0'): Pro
   const endpoint = `/rest/workflows?includeScopes=true&includeFolders=true&filter=${filterParam}&sortBy=name:asc`;
 
   const data = await request<FoldersResponse>(endpoint);
-  return data.data ?? [];
+  const items = data.data ?? [];
+
+  contentCache.set(cacheKey, { items, timestamp: Date.now() });
+  return items;
 }
 
 export async function fetchFolder(folderId: string): Promise<FolderResponse['data'] | null> {
@@ -28,16 +40,27 @@ export async function fetchFolder(folderId: string): Promise<FolderResponse['dat
 }
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const CONTENT_CACHE_TTL_MS = 30 * 1000;
 
 interface CacheEntry {
   data: FolderResponse['data'] | null;
   timestamp: number;
 }
 
+interface ContentCacheEntry {
+  items: TreeItem[];
+  timestamp: number;
+}
+
 const folderCache = new Map<string, CacheEntry>();
+const contentCache = new Map<string, ContentCacheEntry>();
 
 function isCacheEntryFresh(entry: CacheEntry): boolean {
   return Date.now() - entry.timestamp < CACHE_TTL_MS;
+}
+
+function isContentCacheFresh(entry: ContentCacheEntry): boolean {
+  return Date.now() - entry.timestamp < CONTENT_CACHE_TTL_MS;
 }
 
 export async function fetchFolderPath(folderId: string): Promise<string[]> {
@@ -65,6 +88,20 @@ export async function fetchFolderPath(folderId: string): Promise<string[]> {
 
 export function clearFolderCache(): void {
   folderCache.clear();
+  contentCache.clear();
+}
+
+export function clearContentCacheEntry(projectId: string, parentFolderId: string): void {
+  const cacheKey = `${projectId}:${parentFolderId}`;
+  contentCache.delete(cacheKey);
+}
+
+export async function fetchFoldersFresh(
+  projectId: string,
+  parentFolderId = '0',
+): Promise<TreeItem[]> {
+  clearContentCacheEntry(projectId, parentFolderId);
+  return fetchFolders(projectId, parentFolderId);
 }
 
 export async function moveFolder(
@@ -78,6 +115,55 @@ export async function moveFolder(
     return true;
   } catch (error) {
     log.debug('Failed to move folder', error);
+    return false;
+  }
+}
+
+async function createFolder(
+  projectId: string,
+  name: string,
+  parentFolderId: string,
+): Promise<string | null> {
+  const body: Record<string, unknown> = { name };
+  if (parentFolderId !== '0') {
+    body.parentFolderId = parentFolderId;
+  }
+
+  const response = await post<FolderResponse>(`/rest/projects/${projectId}/folders`, body);
+  return response.data?.id ?? null;
+}
+
+async function copyFolderContents(
+  projectId: string,
+  sourceFolderId: string,
+  targetFolderId: string,
+): Promise<void> {
+  const items = await fetchFolders(projectId, sourceFolderId);
+
+  for (const item of items) {
+    if (isFolder(item)) {
+      await copyFolder(projectId, item.id, item.name, targetFolderId);
+    } else {
+      await copyWorkflow(item.id, targetFolderId, projectId);
+    }
+  }
+}
+
+export async function copyFolder(
+  projectId: string,
+  sourceFolderId: string,
+  folderName: string,
+  targetFolderId: string,
+): Promise<boolean> {
+  try {
+    const newFolderId = await createFolder(projectId, folderName, targetFolderId);
+    if (!newFolderId) return false;
+
+    await copyFolderContents(projectId, sourceFolderId, newFolderId);
+    clearFolderCache();
+    return true;
+  } catch (error) {
+    log.debug('Failed to copy folder', error);
     return false;
   }
 }

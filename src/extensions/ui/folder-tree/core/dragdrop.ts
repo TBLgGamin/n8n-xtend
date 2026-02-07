@@ -1,5 +1,5 @@
 import { isValidId, logger } from '@/shared/utils';
-import { moveFolder, moveWorkflow } from '../api';
+import { copyFolder, copyWorkflow, moveFolder, moveWorkflow } from '../api';
 
 const log = logger.child('folder-tree:dragdrop');
 
@@ -46,25 +46,9 @@ export function setDragContext(projectId: string, refreshCallback: () => void): 
 }
 
 function clearDropTargetClasses(): void {
-  const elements = document.querySelectorAll(
-    '.n8n-xtend-folder-tree-can-drop, .n8n-xtend-folder-tree-drag-over',
-  );
+  const elements = document.querySelectorAll('.n8n-xtend-folder-tree-drag-over');
   for (const el of elements) {
-    scheduleDomUpdate(
-      el,
-      [],
-      ['n8n-xtend-folder-tree-can-drop', 'n8n-xtend-folder-tree-drag-over'],
-    );
-  }
-}
-
-function highlightDropTargets(element: HTMLElement, itemId: string): void {
-  const elements = document.querySelectorAll<HTMLElement>('.n8n-xtend-folder-tree-drop-target');
-
-  for (const el of elements) {
-    if (el !== element && el.dataset.itemId !== itemId) {
-      scheduleDomUpdate(el, ['n8n-xtend-folder-tree-can-drop'], []);
-    }
+    scheduleDomUpdate(el, [], ['n8n-xtend-folder-tree-drag-over']);
   }
 }
 
@@ -98,12 +82,24 @@ function parseDragData(jsonData: string | undefined): DragData | null {
   }
 }
 
-async function handleDrop(data: DragData, targetFolderId: string): Promise<boolean> {
+async function handleMove(data: DragData, targetFolderId: string): Promise<boolean> {
   if (data.type === 'workflow') {
     return moveWorkflow(data.id, targetFolderId);
   }
   if (data.type === 'folder' && currentProjectId) {
     return moveFolder(currentProjectId, data.id, targetFolderId);
+  }
+  return false;
+}
+
+async function handleCopy(data: DragData, targetFolderId: string): Promise<boolean> {
+  if (!currentProjectId) return false;
+
+  if (data.type === 'workflow') {
+    return copyWorkflow(data.id, targetFolderId, currentProjectId);
+  }
+  if (data.type === 'folder') {
+    return copyFolder(currentProjectId, data.id, data.name, targetFolderId);
   }
   return false;
 }
@@ -135,16 +131,71 @@ export function setupDraggable(
     };
 
     event.dataTransfer.setData('application/json', JSON.stringify(data));
-    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.effectAllowed = 'copyMove';
     element.classList.add('n8n-xtend-folder-tree-dragging');
-
-    highlightDropTargets(element, itemId);
   });
 
   element.addEventListener('dragend', () => {
     element.classList.remove('n8n-xtend-folder-tree-dragging');
     clearDropTargetClasses();
   });
+}
+
+function shouldSkipDrop(
+  data: DragData,
+  folderId: string,
+  normalizedParent: string,
+  normalizedTarget: string,
+  isCopy: boolean,
+): boolean {
+  if (isCopy) return false;
+  return data.id === folderId || normalizedParent === normalizedTarget;
+}
+
+function logDropOperation(data: DragData, normalizedTarget: string, isCopy: boolean): void {
+  log.debug(`${isCopy ? 'Copying' : 'Moving'} ${data.type}`, {
+    itemId: data.id,
+    itemName: data.name,
+    fromFolder: data.parentFolderId || 'root',
+    toFolder: normalizedTarget === '0' ? 'root' : normalizedTarget,
+  });
+}
+
+async function executeDrop(
+  data: DragData,
+  normalizedTarget: string,
+  isCopy: boolean,
+): Promise<void> {
+  const success = isCopy
+    ? await handleCopy(data, normalizedTarget)
+    : await handleMove(data, normalizedTarget);
+
+  if (success) {
+    log.debug(`${isCopy ? 'Copy' : 'Move'} completed successfully`);
+    onMoveComplete?.();
+  } else {
+    log.debug(`${isCopy ? 'Copy' : 'Move'} failed`);
+  }
+}
+
+async function processDrop(event: DragEvent, folderId: string, isRoot: boolean): Promise<void> {
+  const data = parseDragData(event.dataTransfer?.getData('application/json'));
+  if (!data) {
+    log.debug('No valid drag data found');
+    return;
+  }
+
+  const normalizedParent = data.parentFolderId || '0';
+  const normalizedTarget = isRoot ? '0' : folderId;
+  const isCopy = event.ctrlKey || event.metaKey;
+
+  if (shouldSkipDrop(data, folderId, normalizedParent, normalizedTarget, isCopy)) {
+    log.debug('Skipping no-op move', { itemId: data.id, targetFolderId: normalizedTarget });
+    return;
+  }
+
+  logDropOperation(data, normalizedTarget, isCopy);
+  await executeDrop(data, normalizedTarget, isCopy);
 }
 
 export function setupDropTarget(element: HTMLElement, folderId: string, isRoot = false): void {
@@ -158,13 +209,16 @@ export function setupDropTarget(element: HTMLElement, folderId: string, isRoot =
 
   element.addEventListener('dragover', (event) => {
     event.preventDefault();
+    event.stopPropagation();
+    const isCopy = event.ctrlKey || event.metaKey;
     if (event.dataTransfer) {
-      event.dataTransfer.dropEffect = 'move';
+      event.dataTransfer.dropEffect = isCopy ? 'copy' : 'move';
     }
     element.classList.add('n8n-xtend-folder-tree-drag-over');
   });
 
   element.addEventListener('dragleave', (event) => {
+    event.stopPropagation();
     const relatedTarget = event.relatedTarget as HTMLElement | null;
     if (!relatedTarget || !element.contains(relatedTarget)) {
       element.classList.remove('n8n-xtend-folder-tree-drag-over');
@@ -173,22 +227,8 @@ export function setupDropTarget(element: HTMLElement, folderId: string, isRoot =
 
   element.addEventListener('drop', async (event) => {
     event.preventDefault();
+    event.stopPropagation();
     element.classList.remove('n8n-xtend-folder-tree-drag-over');
-
-    const data = parseDragData(event.dataTransfer?.getData('application/json'));
-    if (!data) return;
-
-    const normalizedParent = data.parentFolderId || '0';
-    const normalizedTarget = isRoot ? '0' : folderId;
-    if (data.id === folderId || normalizedParent === normalizedTarget) return;
-
-    log.debug('Dropping item', { data, targetFolderId: normalizedTarget });
-
-    const success = await handleDrop(data, normalizedTarget);
-
-    if (success) {
-      log.debug(`Moved ${data.type} "${data.name}" to folder`);
-      onMoveComplete?.();
-    }
+    await processDrop(event, folderId, isRoot);
   });
 }

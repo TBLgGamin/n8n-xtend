@@ -1,8 +1,11 @@
 export {
+  clearContentCacheEntry,
   clearFolderCache,
+  copyFolder,
   fetchFolder,
   fetchFolderPath,
   fetchFolders,
+  fetchFoldersFresh,
   moveFolder,
 } from './folders';
-export { fetchWorkflowProjectId, moveWorkflow } from './workflows';
+export { copyWorkflow, fetchWorkflowProjectId, moveWorkflow } from './workflows';

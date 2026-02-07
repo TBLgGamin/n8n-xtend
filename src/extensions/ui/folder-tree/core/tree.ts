@@ -1,19 +1,153 @@
-import { type Folder, type Workflow, isFolder } from '@/shared/types';
+import { type Folder, type TreeItem, type Workflow, isFolder } from '@/shared/types';
 import { logger } from '@/shared/utils';
 
 const log = logger.child('folder-tree');
 import { getFolderIdFromUrl } from '@/shared/utils/url';
-import { clearFolderCache, fetchFolderPath, fetchFolders } from '../api';
+import { clearFolderCache, fetchFolderPath, fetchFolders, fetchFoldersFresh } from '../api';
 import { createFolderElement, createWorkflowElement } from '../components';
 import { setDragContext, setupDropTarget } from './dragdrop';
-import { initKeyboardNavigation, resetKeyboardFocus } from './keyboard';
 import { setFolderExpanded } from './state';
+import { type TreeDiff, computeDiff, hasDifferences, logDiff } from './sync';
 
-let cleanupKeyboard: (() => void) | null = null;
+interface TreeState {
+  projectId: string;
+  rootContainer: HTMLElement;
+  currentItems: Map<string, TreeItem[]>;
+}
+
+let treeState: TreeState | null = null;
+
+function partitionItems(items: TreeItem[]): { folders: Folder[]; workflows: Workflow[] } {
+  const folders: Folder[] = [];
+  const workflows: Workflow[] = [];
+
+  for (const item of items) {
+    if (isFolder(item)) {
+      folders.push(item);
+    } else {
+      workflows.push(item);
+    }
+  }
+
+  return { folders, workflows };
+}
+
+function findChildrenContainer(parentFolderId: string): HTMLElement | null {
+  if (parentFolderId === '0' && treeState) {
+    return treeState.rootContainer;
+  }
+
+  const folderNode = document.querySelector<HTMLElement>(
+    `.n8n-xtend-folder-tree-node[data-folder-id="${parentFolderId}"]`,
+  );
+  if (!folderNode) return null;
+
+  return folderNode.querySelector<HTMLElement>('.n8n-xtend-folder-tree-children');
+}
+
+function removeItemById(container: HTMLElement, itemId: string): void {
+  const workflowItem = container.querySelector(
+    `.n8n-xtend-folder-tree-workflow-item[data-workflow-id="${itemId}"]`,
+  );
+  const folderNode = container.querySelector(
+    `.n8n-xtend-folder-tree-node[data-folder-id="${itemId}"]`,
+  );
+
+  if (workflowItem) {
+    workflowItem.remove();
+  } else if (folderNode) {
+    folderNode.remove();
+  }
+}
+
+function updateItem(container: HTMLElement, item: TreeItem, projectId: string): void {
+  const itemId = item.id;
+  const workflowItem = container.querySelector(
+    `.n8n-xtend-folder-tree-workflow-item[data-workflow-id="${itemId}"]`,
+  );
+  const folderNode = container.querySelector(
+    `.n8n-xtend-folder-tree-node[data-folder-id="${itemId}"]`,
+  );
+
+  if (isFolder(item) && folderNode) {
+    const newElement = createFolderElement(item, projectId);
+    folderNode.replaceWith(newElement);
+  } else if (!isFolder(item) && workflowItem) {
+    const newElement = createWorkflowElement(item);
+    workflowItem.replaceWith(newElement);
+  }
+}
+
+function addNewItems(
+  container: HTMLElement,
+  newWorkflows: Workflow[],
+  newFolders: Folder[],
+  projectId: string,
+): void {
+  const fragment = document.createDocumentFragment();
+
+  for (const workflow of newWorkflows) {
+    fragment.appendChild(createWorkflowElement(workflow));
+  }
+
+  const firstFolder = container.querySelector('.n8n-xtend-folder-tree-node');
+  if (firstFolder) {
+    firstFolder.before(fragment);
+  } else {
+    container.appendChild(fragment);
+  }
+
+  const folderFragment = document.createDocumentFragment();
+  for (const folder of newFolders) {
+    folderFragment.appendChild(createFolderElement(folder, projectId));
+  }
+  container.appendChild(folderFragment);
+}
+
+function applyDiffToContainer(container: HTMLElement, diff: TreeDiff, projectId: string): void {
+  for (const itemId of diff.removed) {
+    removeItemById(container, itemId);
+  }
+
+  for (const item of diff.modified) {
+    updateItem(container, item, projectId);
+  }
+
+  const { folders: newFolders, workflows: newWorkflows } = partitionItems(diff.added);
+  addNewItems(container, newWorkflows, newFolders, projectId);
+}
+
+export async function syncFolderContents(projectId: string, parentFolderId: string): Promise<void> {
+  if (!treeState || treeState.projectId !== projectId) return;
+
+  const container = findChildrenContainer(parentFolderId);
+  if (!container) return;
+
+  try {
+    const oldItems = treeState.currentItems.get(parentFolderId) || [];
+    const newItems = await fetchFoldersFresh(projectId, parentFolderId);
+
+    const diff = computeDiff(oldItems, newItems);
+
+    if (hasDifferences(diff)) {
+      logDiff(diff, parentFolderId);
+      applyDiffToContainer(container, diff, projectId);
+      treeState.currentItems.set(parentFolderId, newItems);
+    }
+  } catch (error) {
+    log.debug('Failed to sync folder contents', { parentFolderId, error });
+  }
+}
 
 export async function loadTree(container: HTMLElement, projectId: string): Promise<void> {
   container.innerHTML = '';
   clearFolderCache();
+
+  treeState = {
+    projectId,
+    rootContainer: container,
+    currentItems: new Map(),
+  };
 
   const currentFolderId = getFolderIdFromUrl();
   if (currentFolderId) {
@@ -28,17 +162,9 @@ export async function loadTree(container: HTMLElement, projectId: string): Promi
 
   try {
     const items = await fetchFolders(projectId, '0');
+    treeState.currentItems.set('0', items);
 
-    const folders: Folder[] = [];
-    const workflows: Workflow[] = [];
-
-    for (const item of items) {
-      if (isFolder(item)) {
-        folders.push(item);
-      } else {
-        workflows.push(item);
-      }
-    }
+    const { folders, workflows } = partitionItems(items);
 
     if (folders.length === 0 && workflows.length === 0) {
       container.textContent = '';
@@ -59,16 +185,17 @@ export async function loadTree(container: HTMLElement, projectId: string): Promi
     container.appendChild(fragment);
 
     setupDropTarget(container, '0', true);
-
-    const folderTree = container.closest('#n8n-xtend-folder-tree');
-    if (folderTree) {
-      cleanupKeyboard?.();
-      resetKeyboardFocus();
-      cleanupKeyboard = initKeyboardNavigation(folderTree as HTMLElement);
-    }
   } catch (error) {
     log.debug('Failed to load folder tree', error);
     container.innerHTML =
       '<div class="n8n-xtend-folder-tree-empty n8n-xtend-folder-tree-error">Failed to load</div>';
   }
+}
+
+export function getTreeState(): TreeState | null {
+  return treeState;
+}
+
+export function clearTreeState(): void {
+  treeState = null;
 }

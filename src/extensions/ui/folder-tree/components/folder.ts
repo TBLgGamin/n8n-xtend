@@ -1,8 +1,9 @@
 import { type Folder, type TreeItem, type Workflow, isFolder } from '@/shared/types';
 import { buildFolderUrl, escapeHtml, getFolderIdFromUrl, isValidId } from '@/shared/utils';
 import { fetchFolders } from '../api';
-import { invalidateItemsCache, setupDraggable, setupDropTarget } from '../core';
+import { setupDraggable, setupDropTarget } from '../core';
 import { isFolderExpanded, setFolderExpanded } from '../core/state';
+import { getTreeState } from '../core/tree';
 import { icons } from '../icons';
 import { createWorkflowElement } from './workflow';
 
@@ -82,6 +83,12 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
 
       childrenEl.textContent = '';
       childrenEl.appendChild(fragment);
+
+      const state = getTreeState();
+      if (state) {
+        state.currentItems.set(folder.id, items);
+      }
+
       return true;
     } catch {
       childrenEl.innerHTML =
@@ -104,7 +111,6 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
     chevronEl.classList.remove('collapsed');
     iconEl.innerHTML = icons.folderOpen;
     setFolderExpanded(folder.id, true);
-    invalidateItemsCache();
   }
 
   function collapse(): void {
@@ -113,7 +119,6 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
     chevronEl.classList.add('collapsed');
     iconEl.innerHTML = icons.folder;
     setFolderExpanded(folder.id, false);
-    invalidateItemsCache();
   }
 
   async function toggle(event: MouseEvent): Promise<void> {

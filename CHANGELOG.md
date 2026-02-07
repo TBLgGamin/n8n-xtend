@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - IndexedDB error boundary with graceful in-memory fallback for private browsing
 - Folder cache TTL (5 minutes) to prevent stale data in long-lived tabs
 - Security Conventions section in CLAUDE.md
+- Incremental tree updates with diff-based DOM patching to avoid full re-renders
+- 30-second content cache for folder contents to reduce API calls
+- 5-second polling monitor for automatic change detection in expanded folders
+- Tree state tracking for efficient incremental updates
 
 ### Changed
 - CI bundle size limit increased from 150KB to 200KB
@@ -26,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Folder tree state debounce refactored to use shared `createDebounced`
 - Adaptive poll monitor throttle refactored to use shared `createThrottled`
 - Folder cache cleared on every tree refresh
+- Folder tree now preserves scroll position and expansion state during updates
+
+### Fixed
+- Drag-drop event bubbling causing incorrect parentFolderId in move/copy operations
 
 ## [1.4.2] - 2026-02-04
 
