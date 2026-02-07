@@ -1,5 +1,6 @@
-import { logger } from '@/shared/utils';
+import { escapeHtml, logger } from '@/shared/utils';
 import { icons } from '../icons';
+import { loadProjectWorkflows } from './data';
 
 const log = logger.child('graph:injector');
 
@@ -12,6 +13,11 @@ let graphViewActive = false;
 let activeUrl = '';
 let previouslyActiveLink: HTMLElement | null = null;
 let previousActiveClass = '';
+let currentProjectId: string | null = null;
+
+export function setProjectId(projectId: string): void {
+  currentProjectId = projectId;
+}
 
 function getContentWrapper(): HTMLElement | null {
   const content = document.getElementById('content');
@@ -57,6 +63,27 @@ function clearGraphActive(): void {
   previousActiveClass = '';
 }
 
+function renderLoadingState(container: HTMLElement, loaded: number, total: number): void {
+  const percent = total > 0 ? Math.round((loaded / total) * 100) : 0;
+  container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:8px;color:var(--color-text-base, #666);">
+    <div style="font-size:14px;">Loading workflows\u2026</div>
+    <div style="font-size:12px;opacity:0.7;">${escapeHtml(`${loaded} / ${total}`)} (${escapeHtml(String(percent))}%)</div>
+  </div>`;
+}
+
+function renderErrorState(container: HTMLElement): void {
+  container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:8px;color:var(--color-text-base, #666);">
+    <div style="font-size:14px;">Failed to load workflows</div>
+  </div>`;
+}
+
+function renderReadyState(container: HTMLElement, workflowCount: number): void {
+  container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:8px;color:var(--color-text-base, #666);">
+    <div style="font-size:14px;">${escapeHtml(String(workflowCount))} workflows loaded</div>
+    <div style="font-size:12px;opacity:0.7;">Graph visualization coming soon</div>
+  </div>`;
+}
+
 function activateGraphView(): void {
   if (graphViewActive) return;
 
@@ -73,12 +100,29 @@ function activateGraphView(): void {
 
   const graphView = document.createElement('div');
   graphView.id = GRAPH_VIEW_ID;
+  graphView.style.height = '100%';
   content.appendChild(graphView);
 
   graphViewActive = true;
   activeUrl = window.location.href;
   setGraphActive();
   log.debug('Graph view activated');
+
+  if (currentProjectId) {
+    renderLoadingState(graphView, 0, 0);
+    loadProjectWorkflows(currentProjectId, (loaded, total) => {
+      const view = document.getElementById(GRAPH_VIEW_ID);
+      if (view) renderLoadingState(view, loaded, total);
+    }).then((result) => {
+      const view = document.getElementById(GRAPH_VIEW_ID);
+      if (!view) return;
+      if (result) {
+        renderReadyState(view, result.workflows.size);
+      } else {
+        renderErrorState(view);
+      }
+    });
+  }
 }
 
 function deactivateGraphView(): void {

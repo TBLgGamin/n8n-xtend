@@ -1,29 +1,9 @@
 import { patch, post, request } from '@/shared/api';
-import type { WorkflowResponse } from '@/shared/types';
+export { fetchWorkflowProjectId } from '@/shared/api';
+import type { WorkflowDetailResponse } from '@/shared/types';
 import { logger } from '@/shared/utils';
 
 const log = logger.child('api');
-
-const workflowProjectCache = new Map<string, string>();
-
-export async function fetchWorkflowProjectId(workflowId: string): Promise<string | null> {
-  const cached = workflowProjectCache.get(workflowId);
-  if (cached) {
-    return cached;
-  }
-
-  try {
-    const data = await request<WorkflowResponse>(`/rest/workflows/${workflowId}`);
-    const projectId = data.data?.homeProject?.id;
-    if (projectId) {
-      workflowProjectCache.set(workflowId, projectId);
-    }
-    return projectId ?? null;
-  } catch (error) {
-    log.debug('Failed to fetch workflow project', { workflowId, error });
-    return null;
-  }
-}
 
 export async function fetchWorkflowVersionId(workflowId: string): Promise<string | null> {
   try {
@@ -49,17 +29,6 @@ export async function moveWorkflow(workflowId: string, parentFolderId: string): 
     log.debug('Failed to move workflow', { workflowId, error });
     return false;
   }
-}
-
-interface WorkflowDetailResponse {
-  data: {
-    name: string;
-    nodes: unknown[];
-    connections: Record<string, unknown>;
-    settings: Record<string, unknown>;
-    pinData: Record<string, unknown>;
-    tags: unknown[];
-  };
 }
 
 export async function copyWorkflow(

@@ -4,6 +4,12 @@
 
 ### Added
 - Graph extension: sidebar menu item with blank page view and active state management
+- Graph extension: workflow data fetching with project detection and loading states
+- Shared workflow API: bulk fetch, detail fetch, and project workflow listing
+- Shared types: WorkflowNode, WorkflowDetail, WorkflowDetailResponse, WorkflowListResponse
+
+### Changed
+- Moved fetchWorkflowProjectId to shared API for reuse across extensions
 
 ## [1.6.0] - 2026-02-07
 
