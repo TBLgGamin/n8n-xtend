@@ -89,8 +89,8 @@ async function build() {
 
   const cssPaths = [
     join(srcDir, 'shared', 'styles', 'variables.css'),
-    join(srcDir, 'extensions', 'ui', 'folder-tree', 'styles', 'folder-tree.css'),
-    join(srcDir, 'extensions', 'ui', 'settings', 'styles', 'settings.css'),
+    join(srcDir, 'extensions', 'sidebar', 'folder-tree', 'styles', 'folder-tree.css'),
+    join(srcDir, 'settings', 'styles', 'settings.css'),
   ];
 
   let css = cssPaths

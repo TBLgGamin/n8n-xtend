@@ -27,7 +27,7 @@ function extractCurrentTitle(sticky: HTMLElement): string {
   const textarea = sticky.querySelector(TEXTAREA_SELECTOR) as HTMLTextAreaElement | null;
   if (textarea) {
     const match = textarea.value.match(/^##\s+(.+)$/m);
-    if (match) return match[1].trim();
+    if (match?.[1]) return match[1].trim();
   }
 
   return '';

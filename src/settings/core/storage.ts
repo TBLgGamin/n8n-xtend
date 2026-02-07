@@ -1,12 +1,13 @@
+import { extensionRegistry } from '@/extensions/registry';
+import type { ExtensionEntry } from '@/extensions/types';
 import { getStorageItem, setStorageItem } from '@/shared/utils';
-import { EXTENSIONS, type ExtensionConfig } from '../config';
 
 const SETTINGS_KEY = 'n8n-xtend-settings';
 
 type ExtensionSettings = Record<string, boolean>;
 
 function getDefaultSettings(): ExtensionSettings {
-  return EXTENSIONS.reduce((acc, ext) => {
+  return extensionRegistry.reduce((acc, ext) => {
     acc[ext.id] = ext.enabledByDefault;
     return acc;
   }, {} as ExtensionSettings);
@@ -31,11 +32,11 @@ export function setExtensionEnabled(extensionId: string, enabled: boolean): void
 
 export function isExtensionEnabled(extensionId: string): boolean {
   const settings = getExtensionSettings();
-  const extension = EXTENSIONS.find((ext) => ext.id === extensionId);
+  const extension = extensionRegistry.find((ext) => ext.id === extensionId);
   return settings[extensionId] ?? extension?.enabledByDefault ?? true;
 }
 
-export function getEnabledExtensions(): ExtensionConfig[] {
+export function getEnabledExtensions(): ExtensionEntry[] {
   const settings = getExtensionSettings();
-  return EXTENSIONS.filter((ext) => settings[ext.id] ?? ext.enabledByDefault);
+  return extensionRegistry.filter((ext) => settings[ext.id] ?? ext.enabledByDefault);
 }

@@ -26,15 +26,23 @@ This is automated via Claude Code hooks but verify manually if needed.
 ### Naming Conventions
 - Functions: verb + noun (e.g., `fetchFolders`, `createWorkflowElement`)
 - Booleans: is/has/should prefix (e.g., `isExpanded`, `hasChildren`)
-- Constants: UPPER_SNAKE_CASE
+- Constants: UPPER_SNAKE_CASE for primitives/enums only; use camelCase for arrays/objects (e.g., `extensionRegistry`)
 - Types/Interfaces: PascalCase
 
 ## Project Structure
 
 ```
 src/
-├── index.ts                    # Main entry - detects n8n host, loads extensions
+├── index.ts                    # Main entry - detects n8n host, loops over registry
 ├── manifest.json               # Chrome manifest v3
+├── settings/                   # Extension manager (settings panel at /settings/personal)
+│   ├── index.ts                # initSettingsExtension(), isExtensionEnabled()
+│   ├── core/
+│   │   ├── injector.ts         # Settings panel DOM injection
+│   │   ├── monitor.ts          # PollMonitor for settings page detection
+│   │   └── storage.ts          # Extension enable/disable persistence
+│   └── styles/
+│       └── settings.css
 ├── shared/
 │   ├── api/
 │   │   └── client.ts           # REST API client with retry logic (3 attempts, exponential backoff)
@@ -45,7 +53,7 @@ src/
 │   │   ├── storage.ts          # Storage abstraction (sync read, async write)
 │   │   ├── monitor.ts          # PollMonitor, MutationMonitor, AdaptivePollMonitor
 │   │   ├── theme.ts            # Theme detection (dark/light)
-│   │   ├── theme-colors.ts     # Extract colors from n8n computed styles
+│   │   ├── theme-colors.ts     # Light/dark color palettes
 │   │   ├── theme-manager.ts    # Manages n8n-xtend-dark class on html element
 │   │   ├── url.ts              # URL parsing and page detection helpers
 │   │   ├── dom.ts              # DOM query helpers
@@ -55,26 +63,28 @@ src/
 │   └── styles/
 │       └── variables.css       # CSS variables (colors, spacing)
 ├── extensions/
-│   ├── index.ts                # Exports all extension init functions
-│   ├── ui/
-│   │   ├── folder-tree/        # Collapsible tree navigation with drag-drop
-│   │   │   ├── api/            # fetchFolders, fetchWorkflowProjectId, move operations
-│   │   │   ├── components/     # folder.ts, workflow.ts element creation
-│   │   │   ├── core/           # injector, monitor, tree, state, dragdrop, keyboard
-│   │   │   ├── icons/          # SVG icons (chevron, folder, workflow)
-│   │   │   └── styles/
-│   │   ├── settings/           # Extension enable/disable panel at /settings/personal
-│   │   │   ├── core/           # injector, monitor, storage
-│   │   │   └── config.ts       # EXTENSIONS array with metadata
-│   │   ├── show-password/      # Toggle password field visibility
+│   ├── index.ts                # Re-exports registry and types
+│   ├── registry.ts             # Assembles extensions from co-located metadata
+│   ├── types.ts                # ExtensionMetadata, ExtensionEntry interfaces
+│   ├── sidebar/                # Sidebar/navigation extensions
+│   │   └── folder-tree/        # Collapsible tree navigation with drag-drop
+│   │       ├── api/            # fetchFolders, fetchWorkflowProjectId, move operations
+│   │       ├── components/     # folder.ts, workflow.ts element creation
+│   │       ├── core/           # injector, monitor, tree, state, dragdrop
+│   │       ├── icons/          # SVG icons (chevron, folder, workflow)
+│   │       └── styles/
+│   ├── editor/                 # Workflow canvas extensions
+│   │   ├── capture/            # Export workflows as PNG/SVG
 │   │   │   ├── core/           # injector, monitor
-│   │   │   └── icons/          # eye icons
-│   │   └── variables/          # Auto-wrap {{ }} with click-to-copy
-│   │       └── core/           # enhancer, monitor
-│   └── enhancements/
-│       └── capture/            # Export workflows as PNG/SVG
-│           ├── core/           # injector, monitor
-│           └── utils/          # capture.ts (modern-screenshot)
+│   │   │   └── utils/          # capture.ts (modern-screenshot)
+│   │   └── note-title/         # Rename sticky note titles with Space shortcut
+│   │       └── core/           # injector (keyboard listener + rename modal), monitor
+│   └── ui/                  # UI enhancement extensions
+│       ├── show-password/      # Toggle password field visibility
+│       │   ├── core/           # injector, monitor
+│       │   └── icons/          # eye icons
+│       └── variables/          # Auto-wrap {{ }} with click-to-copy
+│           └── core/           # enhancer, monitor
 └── icons/                      # Extension icons (16, 48, 128)
 ```
 
@@ -82,13 +92,25 @@ src/
 
 ### Extension System
 
-Each extension follows this pattern:
-1. Export `init*()` function from `extensions/index.ts`
-2. Start a monitor that watches for activation conditions
-3. Inject UI when conditions are met
-4. Clean up on context change
+Each extension is self-contained with co-located metadata:
 
-Extensions are toggled via settings panel. Check `extensions/ui/settings/config.ts` for the EXTENSIONS array.
+```typescript
+// extensions/ui/your-extension/index.ts
+export const metadata: ExtensionMetadata = {
+  id: 'your-extension',
+  name: 'Your Extension',
+  description: 'What it does',
+  enabledByDefault: true,
+};
+
+export function initYourExtension(): void {
+  startMonitor();
+}
+```
+
+The registry (`extensions/registry.ts`) assembles all extensions with their group (derived from folder path) and init function. `src/index.ts` loops over the registry — no per-extension wiring needed there.
+
+Settings panel (`src/settings/`) manages enable/disable toggles. It reads from the registry, not a separate config.
 
 ### Monitor Factories (`shared/utils/monitor.ts`)
 
@@ -107,9 +129,9 @@ Three reusable monitor types:
 
 ### Theme System
 
-- `getTheme()` returns `'dark' | 'light'`
+- `getCurrentTheme()` returns `'dark' | 'light'`
 - `ThemeManager` adds `n8n-xtend-dark` class to document
-- `extractThemeColors()` gets colors from n8n computed styles
+- `getThemeColors()` returns light/dark color palette
 - CSS uses `.n8n-xtend-dark` selector for dark mode
 
 ### API Client (`shared/api/client.ts`)
@@ -138,13 +160,13 @@ type TreeItem = Folder | Workflow
 
 ## Adding a New Extension
 
-1. Create folder: `src/extensions/ui/your-extension/` or `src/extensions/enhancements/your-extension/`
+1. Create folder: `src/extensions/sidebar/`, `src/extensions/editor/`, or `src/extensions/ui/`
 2. Create `core/monitor.ts` - watch for activation conditions
 3. Create `core/injector.ts` - inject UI into DOM
-4. Create `index.ts` - export `initYourExtension()`
-5. Add to `extensions/index.ts` exports
-6. Add to `extensions/ui/settings/config.ts` EXTENSIONS array
-7. Call from `src/index.ts` with `isExtensionEnabled()` check
+4. Create `index.ts` - export `metadata` (ExtensionMetadata) and `initYourExtension()`
+5. Add entry to `extensions/registry.ts` with group and init function
+
+That's it. No need to touch `src/index.ts` or any config file.
 
 ## Commands
 

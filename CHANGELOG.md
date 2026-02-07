@@ -9,13 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Note Title Rename extension: press Space on a selected sticky note to rename the visible `## Title` header
-- Settings groups now derived from folder structure (UI, Enhancements) instead of hardcoded list
+- Co-located extension metadata: each extension exports its own `metadata` object
+- Extension registry (`extensions/registry.ts`) assembles all extensions from co-located metadata
+- `ExtensionMetadata` and `ExtensionEntry` types in `extensions/types.ts`
 
 ### Changed
-- Extension group names match directory layout (`ui`, `enhancements`) replacing arbitrary categories
+- Extension categories now reflect n8n UI areas: `sidebar`, `editor`, `ui`
+- Settings panel moved from `extensions/ui/settings/` to top-level `src/settings/`
+- `src/index.ts` loops over extension registry instead of individual init calls
+- Settings groups derived from folder structure instead of hardcoded list
+- `EXTENSIONS` array renamed to `extensionRegistry` (camelCase for non-primitive constants)
 
 ### Removed
-- Hardcoded `EXTENSION_GROUPS` array and `ExtensionGroup` interface from settings config
+- `extensions/ui/settings/config.ts` — replaced by co-located metadata in each extension
+- `EXTENSION_GROUPS` array and `ExtensionGroup` interface
+- Old `ui/` and `enhancements/` extension categories
 
 ## [1.5.0] - 2026-02-07
 

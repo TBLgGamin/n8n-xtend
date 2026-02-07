@@ -1,11 +1,26 @@
+import { extensionRegistry } from '@/extensions/registry';
+import type { ExtensionEntry } from '@/extensions/types';
 import { escapeHtml, logger } from '@/shared/utils';
-import { EXTENSIONS, getGroupDisplayName, getUniqueGroups } from '../config';
 import { getExtensionSettings, setExtensionEnabled } from './storage';
 
 const log = logger.child('settings');
 
 const CONTAINER_ID = 'n8n-xtend-settings';
 const MARKER_ATTR = 'data-n8n-xtend-settings';
+
+const GROUP_DISPLAY_NAMES: Record<string, string> = {
+  sidebar: 'Sidebar',
+  editor: 'Editor',
+  ui: 'UI',
+};
+
+function getGroupDisplayName(group: string): string {
+  return GROUP_DISPLAY_NAMES[group] ?? group;
+}
+
+function getUniqueGroups(extensions: ExtensionEntry[]): string[] {
+  return [...new Set(extensions.map((ext) => ext.group))];
+}
 
 function createToggle(id: string, checked: boolean): string {
   return `
@@ -43,12 +58,17 @@ function createExtensionGroup(groupName: string, extensionRows: string): string 
 }
 
 function createGroupedExtensionRows(settings: Record<string, boolean>): string {
-  const groups = getUniqueGroups(EXTENSIONS);
-  log.debug('Creating grouped rows, groups:', groups.length, 'extensions:', EXTENSIONS.length);
+  const groups = getUniqueGroups(extensionRegistry);
+  log.debug(
+    'Creating grouped rows, groups:',
+    groups.length,
+    'extensions:',
+    extensionRegistry.length,
+  );
 
   return groups
     .map((group) => {
-      const groupExtensions = EXTENSIONS.filter((ext) => ext.group === group);
+      const groupExtensions = extensionRegistry.filter((ext) => ext.group === group);
       const displayName = getGroupDisplayName(group);
       log.debug(`Group "${displayName}" (${group}): ${groupExtensions.length} extensions`);
 

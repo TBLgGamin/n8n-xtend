@@ -1,12 +1,5 @@
-import {
-  initCaptureExtension,
-  initFolderTreeExtension,
-  initNoteTitleExtension,
-  initSettingsExtension,
-  initShowPasswordExtension,
-  initVariablesExtension,
-  isExtensionEnabled,
-} from '@/extensions';
+import { extensionRegistry } from '@/extensions';
+import { initSettingsExtension, isExtensionEnabled } from '@/settings';
 import { initStorage, initThemeManager, isN8nHost, logger } from '@/shared/utils';
 
 function initExtensionSafely(name: string, init: () => void): void {
@@ -14,14 +7,6 @@ function initExtensionSafely(name: string, init: () => void): void {
     init();
   } catch (error) {
     logger.debug(`Extension "${name}" failed to initialize:`, error);
-  }
-}
-
-function initIfEnabled(id: string, name: string, init: () => void): void {
-  if (isExtensionEnabled(id)) {
-    initExtensionSafely(name, init);
-  } else {
-    logger.debug(`Extension "${name}" is disabled`);
   }
 }
 
@@ -38,11 +23,13 @@ async function initExtensions(): Promise<void> {
 
   initExtensionSafely('settings', initSettingsExtension);
 
-  initIfEnabled('folder-tree', 'folder-tree', initFolderTreeExtension);
-  initIfEnabled('variables', 'variables', initVariablesExtension);
-  initIfEnabled('capture', 'capture', initCaptureExtension);
-  initIfEnabled('show-password', 'show-password', initShowPasswordExtension);
-  initIfEnabled('note-title', 'note-title', initNoteTitleExtension);
+  for (const ext of extensionRegistry) {
+    if (isExtensionEnabled(ext.id)) {
+      initExtensionSafely(ext.id, ext.init);
+    } else {
+      logger.debug(`Extension "${ext.id}" is disabled`);
+    }
+  }
 }
 
 initExtensions();

@@ -2,12 +2,12 @@ import type { ExtensionMetadata } from '@/extensions/types';
 import { startMonitor } from './core';
 
 export const metadata: ExtensionMetadata = {
-  id: 'show-password',
-  name: 'Show Password',
-  description: 'Adds toggle buttons to reveal password fields',
+  id: 'note-title',
+  name: 'Note Title Rename',
+  description: 'Rename sticky note visible titles with Space shortcut',
   enabledByDefault: true,
 };
 
-export function initShowPasswordExtension(): void {
+export function initNoteTitleExtension(): void {
   startMonitor();
 }
