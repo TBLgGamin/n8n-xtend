@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 30-second content cache for folder contents to reduce API calls
 - 5-second polling monitor for automatic change detection in expanded folders
 - Tree state tracking for efficient incremental updates
+- Workflow copy functionality with full workflow data cloning
+- POST endpoint support in API client for creating resources
 
 ### Changed
 - CI bundle size limit increased from 150KB to 200KB
@@ -34,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Drag-drop event bubbling causing incorrect parentFolderId in move/copy operations
+
+### Removed
+- Keyboard navigation feature (arrow keys, Enter to navigate tree)
 
 ## [1.4.2] - 2026-02-04
 

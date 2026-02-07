@@ -1,4 +1,4 @@
-import { patch, request } from '@/shared/api';
+import { patch, post, request } from '@/shared/api';
 import type { WorkflowResponse } from '@/shared/types';
 import { logger } from '@/shared/utils';
 
@@ -47,6 +47,47 @@ export async function moveWorkflow(workflowId: string, parentFolderId: string): 
     return true;
   } catch (error) {
     log.debug('Failed to move workflow', error);
+    return false;
+  }
+}
+
+interface WorkflowDetailResponse {
+  data: {
+    name: string;
+    nodes: unknown[];
+    connections: Record<string, unknown>;
+    settings: Record<string, unknown>;
+    pinData: Record<string, unknown>;
+    tags: unknown[];
+  };
+}
+
+export async function copyWorkflow(
+  workflowId: string,
+  targetFolderId: string,
+  projectId: string,
+): Promise<boolean> {
+  try {
+    const response = await request<WorkflowDetailResponse>(`/rest/workflows/${workflowId}`);
+    const workflow = response.data;
+
+    const parentFolder = targetFolderId === '0' ? null : targetFolderId;
+
+    await post('/rest/workflows', {
+      name: workflow.name,
+      nodes: workflow.nodes,
+      connections: workflow.connections,
+      settings: workflow.settings,
+      pinData: workflow.pinData ?? {},
+      tags: workflow.tags ?? [],
+      active: false,
+      parentFolderId: parentFolder,
+      projectId,
+    });
+
+    return true;
+  } catch (error) {
+    log.debug('Failed to copy workflow', error);
     return false;
   }
 }

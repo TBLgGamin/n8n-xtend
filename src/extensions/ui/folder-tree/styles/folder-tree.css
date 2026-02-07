@@ -152,15 +152,6 @@ a.n8n-xtend-folder-tree-item {
   transition: opacity 0.15s ease-out;
 }
 
-#n8n-xtend-folder-tree-content:focus {
-  outline: none;
-}
-
-.n8n-xtend-folder-tree-item.n8n-xtend-folder-tree-focused {
-  outline: 2px solid var(--n8n-xtend-color-brand-primary);
-  outline-offset: -2px;
-}
-
 .n8n-xtend-folder-tree-item.n8n-xtend-folder-tree-dragging {
   opacity: 0.5;
 }

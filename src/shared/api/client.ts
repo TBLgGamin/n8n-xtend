@@ -105,6 +105,22 @@ export async function request<T>(endpoint: string): Promise<T> {
   return response.json();
 }
 
+export async function post<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
+  assertTrustedOrigin();
+  const response = await fetchWithRetry(location.origin + endpoint, {
+    method: 'POST',
+    credentials: 'include',
+    headers: getHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new ApiError(`HTTP ${response.status}`, response.status);
+  }
+
+  return response.json();
+}
+
 export async function patch<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
   assertTrustedOrigin();
   const response = await fetchWithRetry(location.origin + endpoint, {
