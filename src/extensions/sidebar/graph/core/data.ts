@@ -27,7 +27,7 @@ export async function loadProjectWorkflows(
   setGraphState(projectId, new Map(), 'loading');
 
   try {
-    const workflows = await fetchAllWorkflowDetails(projectId, { onProgress });
+    const workflows = await fetchAllWorkflowDetails(projectId, onProgress ? { onProgress } : {});
     setGraphState(projectId, workflows, 'loaded');
     log.debug(`Loaded ${workflows.size} workflows`, { projectId });
     return { workflows, fromCache: false };

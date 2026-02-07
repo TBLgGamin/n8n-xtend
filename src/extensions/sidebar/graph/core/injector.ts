@@ -1,6 +1,9 @@
+import type { WorkflowDetail } from '@/shared/types';
 import { escapeHtml, logger } from '@/shared/utils';
 import { icons } from '../icons';
+import { type CanvasController, createCanvas } from './canvas';
 import { loadProjectWorkflows } from './data';
+import { renderWorkflowCards } from './renderer';
 
 const log = logger.child('graph:injector');
 
@@ -14,6 +17,8 @@ let activeUrl = '';
 let previouslyActiveLink: HTMLElement | null = null;
 let previousActiveClass = '';
 let currentProjectId: string | null = null;
+let activeCanvasController: CanvasController | null = null;
+let contentPositionModified = false;
 
 export function setProjectId(projectId: string): void {
   currentProjectId = projectId;
@@ -77,11 +82,11 @@ function renderErrorState(container: HTMLElement): void {
   </div>`;
 }
 
-function renderReadyState(container: HTMLElement, workflowCount: number): void {
-  container.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:8px;color:var(--color-text-base, #666);">
-    <div style="font-size:14px;">${escapeHtml(String(workflowCount))} workflows loaded</div>
-    <div style="font-size:12px;opacity:0.7;">Graph visualization coming soon</div>
-  </div>`;
+function renderReadyState(container: HTMLElement, workflows: Map<string, WorkflowDetail>): void {
+  container.innerHTML = '';
+  const canvas = createCanvas(container);
+  renderWorkflowCards(canvas.transformLayer, workflows);
+  activeCanvasController = canvas;
 }
 
 function activateGraphView(): void {
@@ -98,9 +103,15 @@ function activateGraphView(): void {
 
   contentWrapper.style.display = 'none';
 
+  if (getComputedStyle(content).position === 'static') {
+    content.style.position = 'relative';
+    contentPositionModified = true;
+  }
+
   const graphView = document.createElement('div');
   graphView.id = GRAPH_VIEW_ID;
-  graphView.style.height = '100%';
+  graphView.style.position = 'absolute';
+  graphView.style.inset = '0';
   content.appendChild(graphView);
 
   graphViewActive = true;
@@ -117,7 +128,7 @@ function activateGraphView(): void {
       const view = document.getElementById(GRAPH_VIEW_ID);
       if (!view) return;
       if (result) {
-        renderReadyState(view, result.workflows.size);
+        renderReadyState(view, result.workflows);
       } else {
         renderErrorState(view);
       }
@@ -128,8 +139,17 @@ function activateGraphView(): void {
 function deactivateGraphView(): void {
   if (!graphViewActive) return;
 
+  activeCanvasController?.destroy();
+  activeCanvasController = null;
+
   const graphView = document.getElementById(GRAPH_VIEW_ID);
   if (graphView) graphView.remove();
+
+  if (contentPositionModified) {
+    const content = document.getElementById('content');
+    if (content) content.style.position = '';
+    contentPositionModified = false;
+  }
 
   const contentWrapper = getContentWrapper();
   if (contentWrapper) contentWrapper.style.display = '';

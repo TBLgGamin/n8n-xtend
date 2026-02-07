@@ -1,0 +1,99 @@
+.n8n-xtend-graph-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: grab;
+  background-color: var(--n8n-xtend-color-bg-primary);
+  background-image: radial-gradient(
+    circle,
+    var(--n8n-xtend-color-border-primary) 1px,
+    transparent 1px
+  );
+  background-size: 20px 20px;
+}
+
+.n8n-xtend-graph-viewport.panning {
+  cursor: grabbing;
+}
+
+.n8n-xtend-graph-transform {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.n8n-xtend-graph-card {
+  position: absolute;
+  width: 220px;
+  border-radius: 8px;
+  border: 1px solid var(--n8n-xtend-color-border-primary);
+  background: var(--n8n-xtend-color-bg-primary);
+  box-shadow: 0 1px 3px var(--n8n-xtend-color-shadow);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.n8n-xtend-graph-card:hover {
+  border-color: var(--n8n-xtend-color-border-secondary);
+  box-shadow: 0 4px 12px var(--n8n-xtend-color-shadow);
+}
+
+.n8n-xtend-graph-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding: 12px;
+}
+
+.n8n-xtend-graph-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.n8n-xtend-graph-card-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.n8n-xtend-graph-card-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.n8n-xtend-graph-card-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--n8n-xtend-color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.n8n-xtend-graph-card-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--n8n-xtend-color-border-primary);
+}
+
+.n8n-xtend-graph-card-input {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--n8n-xtend-color-bg-hover);
+  color: var(--n8n-xtend-color-text-secondary);
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

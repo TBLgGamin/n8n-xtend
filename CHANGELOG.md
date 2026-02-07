@@ -5,6 +5,8 @@
 ### Added
 - Graph extension: sidebar menu item with blank page view and active state management
 - Graph extension: workflow data fetching with project detection and loading states
+- Graph extension: infinite canvas with pan (drag), zoom (scroll), and reset (Ctrl+0)
+- Graph extension: workflow cards with icons, names, and trigger input pills
 - Shared workflow API: bulk fetch, detail fetch, and project workflow listing
 - Shared types: WorkflowNode, WorkflowDetail, WorkflowDetailResponse, WorkflowListResponse
 
