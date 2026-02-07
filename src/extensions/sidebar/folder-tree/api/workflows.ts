@@ -20,7 +20,7 @@ export async function fetchWorkflowProjectId(workflowId: string): Promise<string
     }
     return projectId ?? null;
   } catch (error) {
-    log.debug('Failed to fetch workflow project', error);
+    log.debug('Failed to fetch workflow project', { workflowId, error });
     return null;
   }
 }
@@ -30,7 +30,7 @@ export async function fetchWorkflowVersionId(workflowId: string): Promise<string
     const data = await request<{ data: { versionId: string } }>(`/rest/workflows/${workflowId}`);
     return data.data?.versionId ?? null;
   } catch (error) {
-    log.debug('Failed to fetch workflow version', error);
+    log.debug('Failed to fetch workflow version', { workflowId, error });
     return null;
   }
 }
@@ -46,7 +46,7 @@ export async function moveWorkflow(workflowId: string, parentFolderId: string): 
     await patch(`/rest/workflows/${workflowId}`, { parentFolderId: targetFolderId, versionId });
     return true;
   } catch (error) {
-    log.debug('Failed to move workflow', error);
+    log.debug('Failed to move workflow', { workflowId, error });
     return false;
   }
 }
@@ -87,7 +87,7 @@ export async function copyWorkflow(
 
     return true;
   } catch (error) {
-    log.debug('Failed to copy workflow', error);
+    log.debug('Failed to copy workflow', { workflowId, error });
     return false;
   }
 }

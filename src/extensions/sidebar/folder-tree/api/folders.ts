@@ -114,7 +114,7 @@ export async function moveFolder(
     clearFolderCache();
     return true;
   } catch (error) {
-    log.debug('Failed to move folder', error);
+    log.debug('Failed to move folder', { folderId, parentFolderId, error });
     return false;
   }
 }
@@ -140,13 +140,13 @@ async function copyFolderContents(
 ): Promise<void> {
   const items = await fetchFolders(projectId, sourceFolderId);
 
-  for (const item of items) {
-    if (isFolder(item)) {
-      await copyFolder(projectId, item.id, item.name, targetFolderId);
-    } else {
-      await copyWorkflow(item.id, targetFolderId, projectId);
-    }
-  }
+  await Promise.all(
+    items.map((item) =>
+      isFolder(item)
+        ? copyFolder(projectId, item.id, item.name, targetFolderId)
+        : copyWorkflow(item.id, targetFolderId, projectId),
+    ),
+  );
 }
 
 export async function copyFolder(
@@ -163,7 +163,7 @@ export async function copyFolder(
     clearFolderCache();
     return true;
   } catch (error) {
-    log.debug('Failed to copy folder', error);
+    log.debug('Failed to copy folder', { sourceFolderId, targetFolderId, error });
     return false;
   }
 }

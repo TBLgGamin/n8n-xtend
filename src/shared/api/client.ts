@@ -1,5 +1,8 @@
+import { logger } from '@/shared/utils/logger';
 import { getBrowserId } from '@/shared/utils/storage';
 import { isN8nHost } from '@/shared/utils/url';
+
+const log = logger.child('api:client');
 
 const REQUEST_TIMEOUT_MS = 10000;
 const MAX_RETRIES = 2;
@@ -18,6 +21,7 @@ export class ApiError extends Error {
 
 function assertTrustedOrigin(): void {
   if (!isN8nHost()) {
+    log.error('Blocked request to untrusted origin');
     throw new ApiError('Untrusted origin', 403);
   }
 }
@@ -77,6 +81,10 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
   let lastStatus = 408;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      log.debug(`Retrying request (attempt ${attempt + 1}/${MAX_RETRIES + 1})`, { url });
+    }
+
     const result = await attemptFetch(url, options);
     if (result.response) {
       return result.response;
@@ -87,11 +95,20 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
     }
   }
 
+  log.warn(`Request failed after ${MAX_RETRIES + 1} attempts`, { url, status: lastStatus });
   throw new ApiError(`Request failed with status ${lastStatus}`, lastStatus);
+}
+
+function validateResponse<T>(data: unknown): T {
+  if (data === null || data === undefined || typeof data !== 'object') {
+    throw new ApiError('Invalid API response', 500);
+  }
+  return data as T;
 }
 
 export async function request<T>(endpoint: string): Promise<T> {
   assertTrustedOrigin();
+  log.debug(`GET ${endpoint}`);
   const response = await fetchWithRetry(location.origin + endpoint, {
     method: 'GET',
     credentials: 'include',
@@ -99,14 +116,16 @@ export async function request<T>(endpoint: string): Promise<T> {
   });
 
   if (!response.ok) {
+    log.debug(`GET ${endpoint} failed`, { status: response.status });
     throw new ApiError(`HTTP ${response.status}`, response.status);
   }
 
-  return response.json();
+  return validateResponse<T>(await response.json());
 }
 
 export async function post<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
   assertTrustedOrigin();
+  log.debug(`POST ${endpoint}`);
   const response = await fetchWithRetry(location.origin + endpoint, {
     method: 'POST',
     credentials: 'include',
@@ -115,14 +134,16 @@ export async function post<T>(endpoint: string, body: Record<string, unknown>): 
   });
 
   if (!response.ok) {
+    log.debug(`POST ${endpoint} failed`, { status: response.status });
     throw new ApiError(`HTTP ${response.status}`, response.status);
   }
 
-  return response.json();
+  return validateResponse<T>(await response.json());
 }
 
 export async function patch<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
   assertTrustedOrigin();
+  log.debug(`PATCH ${endpoint}`);
   const response = await fetchWithRetry(location.origin + endpoint, {
     method: 'PATCH',
     credentials: 'include',
@@ -131,8 +152,9 @@ export async function patch<T>(endpoint: string, body: Record<string, unknown>):
   });
 
   if (!response.ok) {
+    log.debug(`PATCH ${endpoint} failed`, { status: response.status });
     throw new ApiError(`HTTP ${response.status}`, response.status);
   }
 
-  return response.json();
+  return validateResponse<T>(await response.json());
 }

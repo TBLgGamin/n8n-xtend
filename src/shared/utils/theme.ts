@@ -1,3 +1,7 @@
+import { logger } from './logger';
+
+const log = logger.child('theme');
+
 const THEME_STORAGE_KEY = 'N8N_THEME';
 const POLL_INTERVAL_MS = 500;
 
@@ -17,9 +21,14 @@ function getStoredTheme(): string | null {
   if (stored === '"light"') return 'light';
 
   try {
-    return JSON.parse(stored) as string;
-  } catch {
-    return stored;
+    const parsed = JSON.parse(stored);
+    if (parsed === 'dark' || parsed === 'light') {
+      return parsed;
+    }
+    return null;
+  } catch (error) {
+    log.debug('Failed to parse theme from localStorage', { error });
+    return null;
   }
 }
 

@@ -17,7 +17,7 @@ interface TreeState {
 
 let treeState: TreeState | null = null;
 
-function partitionItems(items: TreeItem[]): { folders: Folder[]; workflows: Workflow[] } {
+export function partitionItems(items: TreeItem[]): { folders: Folder[]; workflows: Workflow[] } {
   const folders: Folder[] = [];
   const workflows: Workflow[] = [];
 
@@ -49,32 +49,38 @@ function removeItemById(container: HTMLElement, itemId: string): void {
   const workflowItem = container.querySelector(
     `.n8n-xtend-folder-tree-workflow-item[data-workflow-id="${itemId}"]`,
   );
+
+  if (workflowItem) {
+    workflowItem.remove();
+    return;
+  }
+
   const folderNode = container.querySelector(
     `.n8n-xtend-folder-tree-node[data-folder-id="${itemId}"]`,
   );
 
-  if (workflowItem) {
-    workflowItem.remove();
-  } else if (folderNode) {
+  if (folderNode) {
     folderNode.remove();
   }
 }
 
 function updateItem(container: HTMLElement, item: TreeItem, projectId: string): void {
   const itemId = item.id;
-  const workflowItem = container.querySelector(
-    `.n8n-xtend-folder-tree-workflow-item[data-workflow-id="${itemId}"]`,
-  );
-  const folderNode = container.querySelector(
-    `.n8n-xtend-folder-tree-node[data-folder-id="${itemId}"]`,
-  );
 
-  if (isFolder(item) && folderNode) {
-    const newElement = createFolderElement(item, projectId);
-    folderNode.replaceWith(newElement);
-  } else if (!isFolder(item) && workflowItem) {
-    const newElement = createWorkflowElement(item);
-    workflowItem.replaceWith(newElement);
+  if (isFolder(item)) {
+    const folderNode = container.querySelector(
+      `.n8n-xtend-folder-tree-node[data-folder-id="${itemId}"]`,
+    );
+    if (folderNode) {
+      folderNode.replaceWith(createFolderElement(item, projectId));
+    }
+  } else {
+    const workflowItem = container.querySelector(
+      `.n8n-xtend-folder-tree-workflow-item[data-workflow-id="${itemId}"]`,
+    );
+    if (workflowItem) {
+      workflowItem.replaceWith(createWorkflowElement(item));
+    }
   }
 }
 

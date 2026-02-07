@@ -1,5 +1,5 @@
 import { getThemeColors, logger, onThemeColorsChange } from '@/shared/utils';
-import { EYE_ICON, EYE_OFF_ICON } from '../icons';
+import { icons } from '../icons';
 
 const log = logger.child('show-password:injector');
 const MARKER_ATTR = 'data-xtend-password-toggle';
@@ -42,7 +42,7 @@ function createToggleButton(input: HTMLInputElement): HTMLSpanElement {
     color: ${colors.textMuted};
     transition: color 0.2s;
   `;
-  button.innerHTML = EYE_ICON;
+  button.innerHTML = icons.eye;
 
   let isVisible = false;
   let isHovered = false;
@@ -55,7 +55,7 @@ function createToggleButton(input: HTMLInputElement): HTMLSpanElement {
   const toggle = () => {
     isVisible = !isVisible;
     input.type = isVisible ? 'text' : 'password';
-    button.innerHTML = isVisible ? EYE_OFF_ICON : EYE_ICON;
+    button.innerHTML = isVisible ? icons.eyeOff : icons.eye;
     button.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
   };
 

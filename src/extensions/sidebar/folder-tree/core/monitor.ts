@@ -71,10 +71,10 @@ async function syncExpandedFolders(): Promise<void> {
   if (!state) return;
 
   const foldersToSync = Array.from(state.currentItems.keys());
+  if (foldersToSync.length === 0) return;
 
-  for (const folderId of foldersToSync) {
-    await syncFolderContents(state.projectId, folderId);
-  }
+  log.debug(`Syncing ${foldersToSync.length} expanded folders`);
+  await Promise.all(foldersToSync.map((folderId) => syncFolderContents(state.projectId, folderId)));
 }
 
 const monitor: AdaptivePollMonitor = createAdaptivePollMonitor({

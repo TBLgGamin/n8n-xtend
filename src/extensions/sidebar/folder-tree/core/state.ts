@@ -1,5 +1,8 @@
+import { logger } from '@/shared/utils/logger';
 import { getStorageItem, setStorageItem } from '@/shared/utils/storage';
 import { createDebounced } from '@/shared/utils/timing';
+
+const log = logger.child('folder-tree:state');
 
 const EXPANDED_FOLDERS_KEY = 'n8ntree-expanded';
 const SAVE_DEBOUNCE_MS = 150;
@@ -26,6 +29,7 @@ export function isFolderExpanded(folderId: string): boolean {
 }
 
 export function setFolderExpanded(folderId: string, isExpanded: boolean): void {
+  log.debug(`Folder ${isExpanded ? 'expanded' : 'collapsed'}`, { folderId });
   const expanded = getExpandedFolders();
   if (isExpanded) {
     expanded[folderId] = true;

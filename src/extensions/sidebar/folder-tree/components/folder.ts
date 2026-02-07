@@ -1,26 +1,13 @@
-import { type Folder, type TreeItem, type Workflow, isFolder } from '@/shared/types';
-import { buildFolderUrl, escapeHtml, getFolderIdFromUrl, isValidId } from '@/shared/utils';
+import type { Folder } from '@/shared/types';
+import { buildFolderUrl, escapeHtml, getFolderIdFromUrl, isValidId, logger } from '@/shared/utils';
 import { fetchFolders } from '../api';
 import { setupDraggable, setupDropTarget } from '../core';
 import { isFolderExpanded, setFolderExpanded } from '../core/state';
-import { getTreeState } from '../core/tree';
+import { getTreeState, partitionItems } from '../core/tree';
 import { icons } from '../icons';
 import { createWorkflowElement } from './workflow';
 
-function partitionItems(items: TreeItem[]): { folders: Folder[]; workflows: Workflow[] } {
-  const folders: Folder[] = [];
-  const workflows: Workflow[] = [];
-
-  for (const item of items) {
-    if (isFolder(item)) {
-      folders.push(item);
-    } else {
-      workflows.push(item);
-    }
-  }
-
-  return { folders, workflows };
-}
+const log = logger.child('folder-tree:components:folder');
 
 export function createFolderElement(folder: Folder, projectId: string): HTMLDivElement {
   const node = document.createElement('div');
@@ -32,7 +19,8 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
     return node;
   }
 
-  const count = (folder.workflowCount ?? 0) + (folder.subFolderCount ?? 0);
+  const rawCount = (folder.workflowCount ?? 0) + (folder.subFolderCount ?? 0);
+  const count = typeof rawCount === 'number' && Number.isFinite(rawCount) ? rawCount : 0;
   const isActive = getFolderIdFromUrl() === folder.id;
   const folderUrl = buildFolderUrl(projectId, folder.id);
 
@@ -90,7 +78,8 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
       }
 
       return true;
-    } catch {
+    } catch (error) {
+      log.debug('Failed to load folder children', { folderId: folder.id, error });
       childrenEl.innerHTML =
         '<div class="n8n-xtend-folder-tree-empty n8n-xtend-folder-tree-error">Error</div>';
       return false;

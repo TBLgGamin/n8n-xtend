@@ -1,6 +1,8 @@
 import { extensionRegistry } from '@/extensions/registry';
 import type { ExtensionEntry } from '@/extensions/types';
-import { getStorageItem, setStorageItem } from '@/shared/utils';
+import { getStorageItem, logger, setStorageItem } from '@/shared/utils';
+
+const log = logger.child('settings:storage');
 
 const SETTINGS_KEY = 'n8n-xtend-settings';
 
@@ -25,6 +27,7 @@ export function getExtensionSettings(): ExtensionSettings {
 }
 
 export function setExtensionEnabled(extensionId: string, enabled: boolean): void {
+  log.debug('Extension setting changed', { extensionId, enabled });
   const settings = getExtensionSettings();
   settings[extensionId] = enabled;
   setStorageItem(SETTINGS_KEY, settings);

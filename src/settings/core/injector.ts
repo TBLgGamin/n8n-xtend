@@ -57,20 +57,27 @@ function createExtensionGroup(groupName: string, extensionRows: string): string 
   `;
 }
 
+function buildExtensionsByGroup(): Map<string, ExtensionEntry[]> {
+  const grouped = new Map<string, ExtensionEntry[]>();
+  for (const ext of extensionRegistry) {
+    const existing = grouped.get(ext.group);
+    if (existing) {
+      existing.push(ext);
+    } else {
+      grouped.set(ext.group, [ext]);
+    }
+  }
+  return grouped;
+}
+
 function createGroupedExtensionRows(settings: Record<string, boolean>): string {
   const groups = getUniqueGroups(extensionRegistry);
-  log.debug(
-    'Creating grouped rows, groups:',
-    groups.length,
-    'extensions:',
-    extensionRegistry.length,
-  );
+  const extensionsByGroup = buildExtensionsByGroup();
 
   return groups
     .map((group) => {
-      const groupExtensions = extensionRegistry.filter((ext) => ext.group === group);
+      const groupExtensions = extensionsByGroup.get(group) ?? [];
       const displayName = getGroupDisplayName(group);
-      log.debug(`Group "${displayName}" (${group}): ${groupExtensions.length} extensions`);
 
       const rows = groupExtensions
         .map((ext) =>
@@ -93,7 +100,7 @@ function createSettingsPanel(): HTMLElement {
   const container = document.createElement('div');
   container.id = CONTAINER_ID;
 
-  const logoUrl = chrome.runtime.getURL('icons/icon-48.png');
+  const logoUrl = escapeHtml(chrome.runtime.getURL('icons/icon-48.png'));
 
   container.innerHTML = `
     <div class="n8n-xtend-settings-header">
@@ -133,27 +140,21 @@ function showReloadHint(container: HTMLElement): void {
 }
 
 function findInjectionPoint(): Element | null {
-  log.debug('Searching for injection point');
-
   const themeSelect = document.querySelector('[data-test-id="theme-select"]');
-  log.debug('Theme select found:', !!themeSelect);
   if (themeSelect) {
     const inputLabel = themeSelect.closest('[data-test-id="input-label"]');
-    log.debug('Input label found:', !!inputLabel, 'parent:', !!inputLabel?.parentElement);
     if (inputLabel?.parentElement) {
-      log.debug('Found injection point: after theme select container');
+      log.debug('Found injection point after theme select');
       return inputLabel.parentElement;
     }
   }
 
   const headings = document.querySelectorAll('.n8n-heading');
-  log.debug('Headings found:', headings.length);
   for (const heading of headings) {
-    log.debug('Heading text:', heading.textContent?.trim());
     if (heading.textContent?.trim() === 'Personalisation') {
       const container = heading.closest('div.mb-s')?.parentElement;
       if (container) {
-        log.debug('Found injection point: Personalisation section');
+        log.debug('Found injection point in Personalisation section');
         return container;
       }
     }
@@ -164,34 +165,27 @@ function findInjectionPoint(): Element | null {
 }
 
 export function injectSettingsPanel(): boolean {
-  log.debug('injectSettingsPanel called');
-
   if (document.getElementById(CONTAINER_ID)) {
-    log.debug('Container already exists, skipping');
     return true;
   }
 
   const injectionPoint = findInjectionPoint();
-  log.debug('Injection point found:', !!injectionPoint);
   if (!injectionPoint) {
     return false;
   }
 
   if (injectionPoint.hasAttribute(MARKER_ATTR)) {
-    log.debug('Marker attribute already set, skipping');
     return true;
   }
 
-  log.debug('Creating settings panel');
   const container = createSettingsPanel();
-  log.debug('Panel created, innerHTML length:', container.innerHTML.length);
 
   injectionPoint.setAttribute(MARKER_ATTR, 'true');
   injectionPoint.appendChild(container);
 
   attachEventListeners(container);
 
-  log.debug('Settings panel injected successfully');
+  log.debug('Settings panel injected');
   return true;
 }
 

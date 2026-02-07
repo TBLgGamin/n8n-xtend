@@ -6,6 +6,9 @@ import {
   setItem,
   waitForReady,
 } from './database';
+import { logger } from './logger';
+
+const log = logger.child('storage');
 
 const BROWSER_ID_KEY = 'n8n-browserId';
 
@@ -30,7 +33,9 @@ export function isStorageReady(): boolean {
 }
 
 export async function initStorage(): Promise<void> {
-  return initializeDatabase();
+  log.debug('Initializing storage');
+  await initializeDatabase();
+  log.debug('Storage initialized');
 }
 
 export async function waitForStorage(): Promise<void> {

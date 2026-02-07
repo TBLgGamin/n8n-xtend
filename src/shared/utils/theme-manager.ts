@@ -1,4 +1,7 @@
+import { logger } from './logger';
 import { getCurrentTheme, onThemeChange } from './theme';
+
+const log = logger.child('theme-manager');
 
 const DARK_MODE_CLASS = 'n8n-xtend-dark';
 
@@ -13,9 +16,13 @@ function updateDocumentTheme(): void {
 export function initThemeManager(): void {
   if (isInitialized) return;
 
+  const theme = getCurrentTheme();
+  log.debug('Theme manager initialized', { theme });
+
   updateDocumentTheme();
 
-  themeCleanup = onThemeChange(() => {
+  themeCleanup = onThemeChange((newTheme) => {
+    log.debug('Theme changed', { theme: newTheme });
     updateDocumentTheme();
   });
 
@@ -27,6 +34,7 @@ export function isDarkModeActive(): boolean {
 }
 
 export function cleanupThemeManager(): void {
+  log.debug('Cleaning up theme manager');
   if (themeCleanup) {
     themeCleanup();
     themeCleanup = null;

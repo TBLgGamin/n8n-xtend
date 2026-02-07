@@ -1,5 +1,8 @@
 import type { ExtensionMetadata } from '@/extensions/types';
-import { startMonitor } from './core/monitor';
+import { logger } from '@/shared/utils';
+import { startMonitor } from './core';
+
+const log = logger.child('capture');
 
 export const metadata: ExtensionMetadata = {
   id: 'capture',
@@ -9,5 +12,6 @@ export const metadata: ExtensionMetadata = {
 };
 
 export function initCaptureExtension(): void {
+  log.info('Initializing capture extension');
   startMonitor();
 }

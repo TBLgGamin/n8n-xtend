@@ -11,13 +11,13 @@ const log = logger.child('note-title');
 const CANVAS_SELECTOR = '.vue-flow';
 const MARKER_ATTR = 'data-n8n-note-title';
 
-let attached = false;
+let isAttached = false;
 
 function handleMutation(): void {
   if (!isWorkflowPage()) {
-    if (attached) {
+    if (isAttached) {
       detachKeyboardListener();
-      attached = false;
+      isAttached = false;
     }
     return;
   }
@@ -27,7 +27,7 @@ function handleMutation(): void {
 
   canvas.setAttribute(MARKER_ATTR, 'true');
   attachKeyboardListener();
-  attached = true;
+  isAttached = true;
   log.debug('Keyboard listener attached');
 }
 

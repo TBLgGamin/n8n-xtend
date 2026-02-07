@@ -1,7 +1,15 @@
 import type { Workflow } from '@/shared/types';
-import { buildWorkflowUrl, escapeHtml, getWorkflowIdFromUrl, isValidId } from '@/shared/utils';
+import {
+  buildWorkflowUrl,
+  escapeHtml,
+  getWorkflowIdFromUrl,
+  isValidId,
+  logger,
+} from '@/shared/utils';
 import { setupDraggable } from '../core/dragdrop';
 import { icons } from '../icons';
+
+const log = logger.child('folder-tree:components:workflow');
 
 export function createWorkflowElement(workflow: Workflow): HTMLDivElement {
   const node = document.createElement('div');
@@ -9,6 +17,7 @@ export function createWorkflowElement(workflow: Workflow): HTMLDivElement {
   node.dataset.workflowId = workflow.id;
 
   if (!isValidId(workflow.id)) {
+    log.debug('Invalid workflow ID encountered', { workflowId: workflow.id });
     node.innerHTML = '<div class="n8n-xtend-folder-tree-error">Invalid workflow</div>';
     return node;
   }

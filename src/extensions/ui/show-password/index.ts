@@ -1,5 +1,8 @@
 import type { ExtensionMetadata } from '@/extensions/types';
+import { logger } from '@/shared/utils';
 import { startMonitor } from './core';
+
+const log = logger.child('show-password');
 
 export const metadata: ExtensionMetadata = {
   id: 'show-password',
@@ -9,5 +12,6 @@ export const metadata: ExtensionMetadata = {
 };
 
 export function initShowPasswordExtension(): void {
+  log.info('Initializing show-password extension');
   startMonitor();
 }

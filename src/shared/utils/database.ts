@@ -28,29 +28,43 @@ class N8nXtendDatabase extends Dexie {
 
 const db = new N8nXtendDatabase();
 const cache = new Map<string, unknown>();
-let initialized = false;
+let isInitialized = false;
 let initPromise: Promise<void> | null = null;
 let isDatabaseAvailable = false;
+
+function parseStoredValue(key: string, stored: string): Record<string, unknown> | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stored);
+  } catch (error) {
+    log.debug(`Failed to parse JSON for key "${key}"`, error);
+    return null;
+  }
+
+  if (parsed === null || typeof parsed !== 'object') {
+    log.debug(`Invalid data type for key "${key}"`);
+    return null;
+  }
+
+  return sanitizeObject(parsed as Record<string, unknown>);
+}
 
 async function migrateFromLocalStorage(): Promise<void> {
   for (const key of MIGRATION_KEYS) {
     const stored = localStorage.getItem(key);
-    if (stored && !cache.has(key)) {
-      try {
-        const parsed = JSON.parse(stored);
-        if (parsed === null || typeof parsed !== 'object') {
-          log.debug(`Invalid data type for key "${key}"`);
-          continue;
-        }
-        const value = sanitizeObject(parsed as Record<string, unknown>);
-        cache.set(key, value);
-        if (isDatabaseAvailable) {
-          await db.storage.put({ key, value, updatedAt: Date.now() });
-        }
-        localStorage.removeItem(key);
-      } catch (error) {
-        log.debug(`Failed to migrate key "${key}" from localStorage`, error);
+    if (!stored || cache.has(key)) continue;
+
+    try {
+      const value = parseStoredValue(key, stored);
+      if (!value) continue;
+
+      cache.set(key, value);
+      if (isDatabaseAvailable) {
+        await db.storage.put({ key, value, updatedAt: Date.now() });
       }
+      localStorage.removeItem(key);
+    } catch (error) {
+      log.debug(`Failed to migrate key "${key}" from localStorage`, error);
     }
   }
 }
@@ -63,7 +77,7 @@ async function loadCacheFromDatabase(): Promise<void> {
 }
 
 async function initializeDatabase(): Promise<void> {
-  if (initialized) return;
+  if (isInitialized) return;
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
@@ -75,7 +89,7 @@ async function initializeDatabase(): Promise<void> {
       log.debug('IndexedDB unavailable, using in-memory storage', error);
     }
     await migrateFromLocalStorage();
-    initialized = true;
+    isInitialized = true;
   })();
 
   return initPromise;
@@ -107,7 +121,7 @@ export async function getAllKeys(): Promise<string[]> {
 }
 
 export function isReady(): boolean {
-  return initialized;
+  return isInitialized;
 }
 
 export async function waitForReady(): Promise<void> {

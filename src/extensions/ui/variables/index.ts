@@ -1,5 +1,8 @@
 import type { ExtensionMetadata } from '@/extensions/types';
+import { logger } from '@/shared/utils';
 import { startMonitor } from './core';
+
+const log = logger.child('variables');
 
 export const metadata: ExtensionMetadata = {
   id: 'variables',
@@ -9,5 +12,6 @@ export const metadata: ExtensionMetadata = {
 };
 
 export function initVariablesExtension(): void {
+  log.info('Initializing variables extension');
   startMonitor();
 }

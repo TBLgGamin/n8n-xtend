@@ -77,7 +77,8 @@ function parseDragData(jsonData: string | undefined): DragData | null {
   if (!jsonData) return null;
   try {
     return validateDragData(JSON.parse(jsonData));
-  } catch {
+  } catch (error) {
+    log.debug('Failed to parse drag data', { error });
     return null;
   }
 }

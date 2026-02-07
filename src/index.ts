@@ -6,7 +6,7 @@ function initExtensionSafely(name: string, init: () => void): void {
   try {
     init();
   } catch (error) {
-    logger.debug(`Extension "${name}" failed to initialize:`, error);
+    logger.error(`Extension "${name}" failed to initialize`, error);
   }
 }
 

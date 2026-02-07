@@ -1,5 +1,8 @@
 import type { ExtensionMetadata } from '@/extensions/types';
-import { startMonitor } from './core/monitor';
+import { logger } from '@/shared/utils';
+import { startMonitor } from './core';
+
+const log = logger.child('folder-tree');
 
 export const metadata: ExtensionMetadata = {
   id: 'folder-tree',
@@ -9,5 +12,6 @@ export const metadata: ExtensionMetadata = {
 };
 
 export function initFolderTreeExtension(): void {
+  log.info('Initializing folder-tree extension');
   startMonitor();
 }
