@@ -3,7 +3,7 @@ import { escapeHtml, logger } from '@/shared/utils';
 import { icons } from '../icons';
 import { type CanvasController, createCanvas } from './canvas';
 import { loadProjectWorkflows } from './data';
-import { renderWorkflowCards } from './renderer';
+import { renderCallGraph } from './renderer';
 
 const log = logger.child('graph:injector');
 
@@ -85,7 +85,7 @@ function renderErrorState(container: HTMLElement): void {
 function renderReadyState(container: HTMLElement, workflows: Map<string, WorkflowDetail>): void {
   container.innerHTML = '';
   const canvas = createCanvas(container);
-  renderWorkflowCards(canvas.transformLayer, workflows);
+  renderCallGraph(canvas.transformLayer, workflows);
   activeCanvasController = canvas;
 }
 

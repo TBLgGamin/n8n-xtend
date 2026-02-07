@@ -97,3 +97,15 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.n8n-xtend-graph-edges {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.n8n-xtend-graph-edge {
+  fill: none;
+  stroke: var(--n8n-xtend-color-border-secondary);
+  stroke-width: 1.5;
+}

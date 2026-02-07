@@ -1,11 +1,9 @@
 import type { WorkflowDetail } from '@/shared/types';
 import { buildWorkflowUrl, isValidId } from '@/shared/utils';
 import { icons } from '../icons';
+import { type LayoutEdge, type LayoutNode, buildCallGraph } from './graph-builder';
 
-const CARD_WIDTH = 220;
-const ROW_HEIGHT = 140;
-const GAP = 24;
-const MAX_COLUMNS = 6;
+const SVG_NS = 'http://www.w3.org/2000/svg';
 
 export function extractTriggerInputNames(workflow: WorkflowDetail): string[] {
   const triggerNode = workflow.nodes.find(
@@ -72,26 +70,58 @@ function createCardElement(
   return card;
 }
 
-export function renderWorkflowCards(
+function createEdgePath(edge: LayoutEdge): SVGPathElement {
+  const path = document.createElementNS(SVG_NS, 'path');
+  const midX = (edge.fromX + edge.toX) / 2;
+  path.setAttribute(
+    'd',
+    `M ${edge.fromX} ${edge.fromY} C ${midX} ${edge.fromY}, ${midX} ${edge.toY}, ${edge.toX} ${edge.toY}`,
+  );
+  path.setAttribute('class', 'n8n-xtend-graph-edge');
+  return path;
+}
+
+function createEdgesSvg(edges: LayoutEdge[]): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'n8n-xtend-graph-edges');
+
+  for (const edge of edges) {
+    svg.appendChild(createEdgePath(edge));
+  }
+
+  return svg;
+}
+
+function collectAllNodes(roots: LayoutNode[]): LayoutNode[] {
+  const result: LayoutNode[] = [];
+
+  function walk(node: LayoutNode): void {
+    result.push(node);
+    for (const child of node.children) {
+      walk(child);
+    }
+  }
+
+  for (const root of roots) {
+    walk(root);
+  }
+
+  return result;
+}
+
+export function renderCallGraph(
   transformLayer: HTMLElement,
   workflows: Map<string, WorkflowDetail>,
 ): void {
-  const sorted = [...workflows.values()].sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
-  );
+  const layout = buildCallGraph(workflows);
 
-  const columns = Math.min(MAX_COLUMNS, Math.max(1, sorted.length));
+  transformLayer.appendChild(createEdgesSvg(layout.edges));
+
+  const allNodes = collectAllNodes(layout.roots);
   const fragment = document.createDocumentFragment();
 
-  for (let i = 0; i < sorted.length; i++) {
-    const workflow = sorted[i];
-    if (!workflow) continue;
-    const col = i % columns;
-    const row = Math.floor(i / columns);
-    const left = col * (CARD_WIDTH + GAP);
-    const top = row * ROW_HEIGHT;
-
-    const card = createCardElement(workflow, left, top);
+  for (const node of allNodes) {
+    const card = createCardElement(node.workflow, node.x, node.y);
     if (card) fragment.appendChild(card);
   }
 
