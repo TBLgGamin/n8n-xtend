@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Graph extension: sidebar menu item with blank page view and active state management
+
 ## [1.6.0] - 2026-02-07
 
 ### Added
