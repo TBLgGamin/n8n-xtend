@@ -36,7 +36,23 @@
 .n8n-xtend-extensions-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
+}
+
+.n8n-xtend-extension-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.n8n-xtend-extension-group-name {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--n8n-xtend-color-text-muted);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--n8n-xtend-color-border-secondary);
+  margin-bottom: 4px;
 }
 
 .n8n-xtend-extension-row {

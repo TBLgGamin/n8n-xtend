@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Note Title Rename extension: press Space on a selected sticky note to rename the visible `## Title` header
+- Settings groups now derived from folder structure (UI, Enhancements) instead of hardcoded list
+
+### Changed
+- Extension group names match directory layout (`ui`, `enhancements`) replacing arbitrary categories
+
+### Removed
+- Hardcoded `EXTENSION_GROUPS` array and `ExtensionGroup` interface from settings config
+
 ## [1.5.0] - 2026-02-07
 
 ### Added

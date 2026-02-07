@@ -1,6 +1,7 @@
 import {
   initCaptureExtension,
   initFolderTreeExtension,
+  initNoteTitleExtension,
   initSettingsExtension,
   initShowPasswordExtension,
   initVariablesExtension,
@@ -41,6 +42,7 @@ async function initExtensions(): Promise<void> {
   initIfEnabled('variables', 'variables', initVariablesExtension);
   initIfEnabled('capture', 'capture', initCaptureExtension);
   initIfEnabled('show-password', 'show-password', initShowPasswordExtension);
+  initIfEnabled('note-title', 'note-title', initNoteTitleExtension);
 }
 
 initExtensions();

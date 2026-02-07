@@ -1,5 +1,5 @@
 import { escapeHtml, logger } from '@/shared/utils';
-import { EXTENSIONS } from '../config';
+import { EXTENSIONS, getGroupDisplayName, getUniqueGroups } from '../config';
 import { getExtensionSettings, setExtensionEnabled } from './storage';
 
 const log = logger.child('settings');
@@ -33,14 +33,45 @@ function createExtensionRow(
   `;
 }
 
+function createExtensionGroup(groupName: string, extensionRows: string): string {
+  return `
+    <div class="n8n-xtend-extension-group">
+      <div class="n8n-xtend-extension-group-name">${escapeHtml(groupName)}</div>
+      ${extensionRows}
+    </div>
+  `;
+}
+
+function createGroupedExtensionRows(settings: Record<string, boolean>): string {
+  const groups = getUniqueGroups(EXTENSIONS);
+  log.debug('Creating grouped rows, groups:', groups.length, 'extensions:', EXTENSIONS.length);
+
+  return groups
+    .map((group) => {
+      const groupExtensions = EXTENSIONS.filter((ext) => ext.group === group);
+      const displayName = getGroupDisplayName(group);
+      log.debug(`Group "${displayName}" (${group}): ${groupExtensions.length} extensions`);
+
+      const rows = groupExtensions
+        .map((ext) =>
+          createExtensionRow(
+            ext.id,
+            ext.name,
+            ext.description,
+            settings[ext.id] ?? ext.enabledByDefault,
+          ),
+        )
+        .join('');
+
+      return createExtensionGroup(displayName, rows);
+    })
+    .join('');
+}
+
 function createSettingsPanel(): HTMLElement {
   const settings = getExtensionSettings();
   const container = document.createElement('div');
   container.id = CONTAINER_ID;
-
-  const extensionRows = EXTENSIONS.map((ext) =>
-    createExtensionRow(ext.id, ext.name, ext.description, settings[ext.id] ?? ext.enabledByDefault),
-  ).join('');
 
   const logoUrl = chrome.runtime.getURL('icons/icon-48.png');
 
@@ -53,7 +84,7 @@ function createSettingsPanel(): HTMLElement {
       <span class="n8n-xtend-reload-hint">Reload to apply</span>
     </div>
     <div class="n8n-xtend-extensions-list">
-      ${extensionRows}
+      ${createGroupedExtensionRows(settings)}
     </div>
   `;
 
@@ -82,9 +113,13 @@ function showReloadHint(container: HTMLElement): void {
 }
 
 function findInjectionPoint(): Element | null {
+  log.debug('Searching for injection point');
+
   const themeSelect = document.querySelector('[data-test-id="theme-select"]');
+  log.debug('Theme select found:', !!themeSelect);
   if (themeSelect) {
     const inputLabel = themeSelect.closest('[data-test-id="input-label"]');
+    log.debug('Input label found:', !!inputLabel, 'parent:', !!inputLabel?.parentElement);
     if (inputLabel?.parentElement) {
       log.debug('Found injection point: after theme select container');
       return inputLabel.parentElement;
@@ -92,7 +127,9 @@ function findInjectionPoint(): Element | null {
   }
 
   const headings = document.querySelectorAll('.n8n-heading');
+  log.debug('Headings found:', headings.length);
   for (const heading of headings) {
+    log.debug('Heading text:', heading.textContent?.trim());
     if (heading.textContent?.trim() === 'Personalisation') {
       const container = heading.closest('div.mb-s')?.parentElement;
       if (container) {
@@ -102,31 +139,39 @@ function findInjectionPoint(): Element | null {
     }
   }
 
+  log.debug('No injection point found');
   return null;
 }
 
 export function injectSettingsPanel(): boolean {
+  log.debug('injectSettingsPanel called');
+
   if (document.getElementById(CONTAINER_ID)) {
+    log.debug('Container already exists, skipping');
     return true;
   }
 
   const injectionPoint = findInjectionPoint();
+  log.debug('Injection point found:', !!injectionPoint);
   if (!injectionPoint) {
     return false;
   }
 
   if (injectionPoint.hasAttribute(MARKER_ATTR)) {
+    log.debug('Marker attribute already set, skipping');
     return true;
   }
 
+  log.debug('Creating settings panel');
   const container = createSettingsPanel();
-  injectionPoint.setAttribute(MARKER_ATTR, 'true');
+  log.debug('Panel created, innerHTML length:', container.innerHTML.length);
 
+  injectionPoint.setAttribute(MARKER_ATTR, 'true');
   injectionPoint.appendChild(container);
 
   attachEventListeners(container);
 
-  log.debug('Settings panel injected');
+  log.debug('Settings panel injected successfully');
   return true;
 }
 
