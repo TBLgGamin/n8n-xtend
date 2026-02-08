@@ -1,1 +1,2 @@
-a page in the settings to show all tweaks toggleable...
+for the graph make the ehm root nodes be grouped aways form the chains
+make sure mcp tools are considered sub workflows yknow
