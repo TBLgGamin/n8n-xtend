@@ -109,18 +109,41 @@ function collectAllNodes(roots: LayoutNode[]): LayoutNode[] {
   return result;
 }
 
+function createGroupLabel(text: string, x: number, y: number): HTMLDivElement {
+  const label = document.createElement('div');
+  label.className = 'n8n-xtend-graph-group-label';
+  label.style.left = `${x}px`;
+  label.style.top = `${y}px`;
+  label.textContent = text;
+  return label;
+}
+
 export function renderCallGraph(
   transformLayer: HTMLElement,
   workflows: Map<string, WorkflowDetail>,
 ): void {
   const layout = buildCallGraph(workflows);
-
-  transformLayer.appendChild(createEdgesSvg(layout.edges));
-
-  const allNodes = collectAllNodes(layout.roots);
   const fragment = document.createDocumentFragment();
+  const showLabels = layout.roots.length > 0 && layout.standalone.length > 0;
 
-  for (const node of allNodes) {
+  fragment.appendChild(createEdgesSvg(layout.edges));
+
+  if (showLabels && layout.roots.length > 0) {
+    fragment.appendChild(createGroupLabel('Flows', 0, 0));
+  }
+
+  const connectedNodes = collectAllNodes(layout.roots);
+  for (const node of connectedNodes) {
+    const card = createCardElement(node.workflow, node.x, node.y);
+    if (card) fragment.appendChild(card);
+  }
+
+  if (showLabels && layout.standalone.length > 0) {
+    const standaloneY = layout.standalone[0].y;
+    fragment.appendChild(createGroupLabel('Standalone', 0, standaloneY - 28));
+  }
+
+  for (const node of layout.standalone) {
     const card = createCardElement(node.workflow, node.x, node.y);
     if (card) fragment.appendChild(card);
   }

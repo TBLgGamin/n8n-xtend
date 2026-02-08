@@ -8,6 +8,8 @@
 - Graph extension: infinite canvas with pan (drag), zoom (scroll), and reset (Ctrl+0)
 - Graph extension: workflow call-tree visualization with sequential chaining and left-to-right layout
 - Graph extension: SVG bezier edge connections between parent and child workflows
+- Graph extension: MCP tool resolution — mcpClientTool nodes matched to workflows via fuzzy name comparison
+- Graph extension: visual grouping — connected flows and standalone workflows separated with section labels and grid layout
 - Shared workflow API: bulk fetch, detail fetch, and project workflow listing
 - Shared types: WorkflowNode, WorkflowDetail, WorkflowDetailResponse, WorkflowListResponse
 
