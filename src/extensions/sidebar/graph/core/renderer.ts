@@ -166,9 +166,9 @@ export function renderCallGraph(
     if (card) fragment.appendChild(card);
   }
 
-  if (showLabels && layout.standalone.length > 0) {
-    const standaloneY = layout.standalone[0].y;
-    fragment.appendChild(createGroupLabel('Standalone', 0, standaloneY - 28));
+  const firstStandalone = layout.standalone[0];
+  if (showLabels && firstStandalone) {
+    fragment.appendChild(createGroupLabel('Standalone', 0, firstStandalone.y - 28));
   }
 
   for (const node of layout.standalone) {
