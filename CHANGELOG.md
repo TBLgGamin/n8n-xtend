@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-02-08
+
 ### Added
 - Graph extension: sidebar menu item with blank page view and active state management
 - Graph extension: workflow data fetching with project detection and loading states
