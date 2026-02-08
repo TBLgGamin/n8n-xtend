@@ -82,10 +82,137 @@ function renderErrorState(container: HTMLElement): void {
   </div>`;
 }
 
+function createToolbar(canvas: CanvasController): HTMLDivElement {
+  const toolbar = document.createElement('div');
+  toolbar.className = 'n8n-xtend-graph-toolbar';
+
+  const fitBtn = document.createElement('button');
+  fitBtn.className = 'n8n-xtend-graph-toolbar-btn';
+  fitBtn.title = 'Fit to view';
+  fitBtn.innerHTML = icons.fitView;
+  fitBtn.addEventListener('click', () => canvas.fitToView());
+
+  toolbar.appendChild(fitBtn);
+  return toolbar;
+}
+
+const MINIMAP_WIDTH = 160;
+const MINIMAP_HEIGHT = 120;
+const MINIMAP_CARD_COLOR = 'var(--n8n-xtend-color-border-secondary)';
+const MINIMAP_VIEWPORT_COLOR = 'rgba(100, 150, 255, 0.25)';
+const MINIMAP_VIEWPORT_STROKE = 'rgba(100, 150, 255, 0.6)';
+
+function createMinimap(canvas: CanvasController): HTMLDivElement {
+  const container = document.createElement('div');
+  container.className = 'n8n-xtend-graph-minimap';
+
+  const minimapCanvas = document.createElement('canvas');
+  minimapCanvas.width = MINIMAP_WIDTH;
+  minimapCanvas.height = MINIMAP_HEIGHT;
+  container.appendChild(minimapCanvas);
+
+  const ctx = minimapCanvas.getContext('2d');
+  if (!ctx) return container;
+
+  function getContentBounds(): {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  } | null {
+    const cards = canvas.transformLayer.querySelectorAll('.n8n-xtend-graph-card');
+    if (cards.length === 0) return null;
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+
+    for (const card of cards) {
+      const el = card as HTMLElement;
+      const x = Number.parseFloat(el.style.left);
+      const y = Number.parseFloat(el.style.top);
+      const w = el.offsetWidth || 220;
+      const h = el.offsetHeight || 80;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w);
+      maxY = Math.max(maxY, y + h);
+    }
+
+    return { minX, minY, maxX, maxY };
+  }
+
+  function render(): void {
+    if (!ctx) return;
+    ctx.clearRect(0, 0, MINIMAP_WIDTH, MINIMAP_HEIGHT);
+
+    const bounds = getContentBounds();
+    if (!bounds) return;
+
+    const { panX, panY, scale } = canvas.getTransform();
+    const vw = canvas.viewport.clientWidth;
+    const vh = canvas.viewport.clientHeight;
+
+    const viewLeft = -panX / scale;
+    const viewTop = -panY / scale;
+    const viewRight = viewLeft + vw / scale;
+    const viewBottom = viewTop + vh / scale;
+
+    const allMinX = Math.min(bounds.minX, viewLeft);
+    const allMinY = Math.min(bounds.minY, viewTop);
+    const allMaxX = Math.max(bounds.maxX, viewRight);
+    const allMaxY = Math.max(bounds.maxY, viewBottom);
+
+    const contentW = allMaxX - allMinX;
+    const contentH = allMaxY - allMinY;
+    if (contentW <= 0 || contentH <= 0) return;
+
+    const pad = 8;
+    const drawW = MINIMAP_WIDTH - pad * 2;
+    const drawH = MINIMAP_HEIGHT - pad * 2;
+    const mapScale = Math.min(drawW / contentW, drawH / contentH);
+    const offsetX = pad + (drawW - contentW * mapScale) / 2;
+    const offsetY = pad + (drawH - contentH * mapScale) / 2;
+
+    const toMX = (x: number) => offsetX + (x - allMinX) * mapScale;
+    const toMY = (y: number) => offsetY + (y - allMinY) * mapScale;
+
+    const cards = canvas.transformLayer.querySelectorAll('.n8n-xtend-graph-card');
+    ctx.fillStyle = MINIMAP_CARD_COLOR;
+    for (const card of cards) {
+      const el = card as HTMLElement;
+      const x = Number.parseFloat(el.style.left);
+      const y = Number.parseFloat(el.style.top);
+      const w = (el.offsetWidth || 220) * mapScale;
+      const h = (el.offsetHeight || 80) * mapScale;
+      ctx.fillRect(toMX(x), toMY(y), Math.max(w, 2), Math.max(h, 2));
+    }
+
+    const vrX = toMX(viewLeft);
+    const vrY = toMY(viewTop);
+    const vrW = (vw / scale) * mapScale;
+    const vrH = (vh / scale) * mapScale;
+
+    ctx.fillStyle = MINIMAP_VIEWPORT_COLOR;
+    ctx.fillRect(vrX, vrY, vrW, vrH);
+    ctx.strokeStyle = MINIMAP_VIEWPORT_STROKE;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(vrX, vrY, vrW, vrH);
+  }
+
+  canvas.onTransformChange(render);
+  requestAnimationFrame(render);
+
+  return container;
+}
+
 function renderReadyState(container: HTMLElement, workflows: Map<string, WorkflowDetail>): void {
   container.innerHTML = '';
   const canvas = createCanvas(container);
   renderCallGraph(canvas.transformLayer, workflows);
+  canvas.viewport.appendChild(createToolbar(canvas));
+  canvas.viewport.appendChild(createMinimap(canvas));
   activeCanvasController = canvas;
 }
 

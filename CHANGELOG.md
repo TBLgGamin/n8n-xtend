@@ -10,6 +10,10 @@
 - Graph extension: SVG bezier edge connections between parent and child workflows
 - Graph extension: MCP tool resolution — mcpClientTool nodes matched to workflows via fuzzy name comparison
 - Graph extension: visual grouping — connected flows and standalone workflows separated with section labels and grid layout
+- Graph extension: published/unpublished indicator on workflow cards (circle-check / circle-minus icons)
+- Graph extension: edge labels showing connection type (sub-workflow or mcp) with dashed MCP edges
+- Graph extension: fit-to-view toolbar button to auto-zoom the entire graph into the viewport
+- Graph extension: minimap in bottom-right corner showing card positions and live viewport rectangle
 - Shared workflow API: bulk fetch, detail fetch, and project workflow listing
 - Shared types: WorkflowNode, WorkflowDetail, WorkflowDetailResponse, WorkflowListResponse
 

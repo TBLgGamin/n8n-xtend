@@ -9,20 +9,25 @@ interface ConnectionTarget {
 
 type ConnectionMap = Record<string, { main?: (ConnectionTarget[] | null)[] }>;
 
+export type ConnectionType = 'sub-workflow' | 'mcp';
+
 interface CallChainNode {
   targetId: string;
+  connectionType: ConnectionType;
   next: CallChainNode[];
 }
 
 export interface CallTreeNode {
   workflowId: string;
   workflow: WorkflowDetail;
+  connectionType: ConnectionType;
   children: CallTreeNode[];
 }
 
 export interface LayoutNode {
   workflowId: string;
   workflow: WorkflowDetail;
+  connectionType: ConnectionType;
   children: LayoutNode[];
   x: number;
   y: number;
@@ -33,6 +38,7 @@ export interface LayoutEdge {
   fromY: number;
   toX: number;
   toY: number;
+  type: ConnectionType;
 }
 
 export interface GraphLayout {
@@ -206,7 +212,7 @@ function buildChainTree(
     if (chain) next.push(chain);
   }
 
-  return { targetId, next };
+  return { targetId, connectionType: 'sub-workflow', next };
 }
 
 function extractCallChains(workflow: WorkflowDetail): CallChainNode[] {
@@ -293,7 +299,12 @@ function buildTreeFromChain(
     if (nextChild) children.push(nextChild);
   }
 
-  return { workflowId: chain.targetId, workflow, children };
+  return {
+    workflowId: chain.targetId,
+    workflow,
+    connectionType: chain.connectionType,
+    children,
+  };
 }
 
 function buildTree(
@@ -318,7 +329,7 @@ function buildTree(
 
   pathVisited.delete(workflowId);
 
-  return { workflowId, workflow, children };
+  return { workflowId, workflow, connectionType: 'sub-workflow', children };
 }
 
 function measureSubtreeHeight(node: CallTreeNode): number {
@@ -342,7 +353,14 @@ function positionNode(
 
   if (node.children.length === 0) {
     const y = topOffset + (subtreeHeight - CARD_HEIGHT) / 2;
-    return { workflowId: node.workflowId, workflow: node.workflow, children: [], x, y };
+    return {
+      workflowId: node.workflowId,
+      workflow: node.workflow,
+      connectionType: node.connectionType,
+      children: [],
+      x,
+      y,
+    };
   }
 
   const layoutChildren: LayoutNode[] = [];
@@ -365,6 +383,7 @@ function positionNode(
   return {
     workflowId: node.workflowId,
     workflow: node.workflow,
+    connectionType: node.connectionType,
     children: layoutChildren,
     x,
     y,
@@ -378,6 +397,7 @@ function collectEdges(node: LayoutNode, edges: LayoutEdge[]): void {
       fromY: node.y + CARD_HEIGHT / 2,
       toX: child.x,
       toY: child.y + CARD_HEIGHT / 2,
+      type: child.connectionType,
     });
     collectEdges(child, edges);
   }
@@ -398,7 +418,11 @@ export function buildCallGraph(workflows: Map<string, WorkflowDetail>): GraphLay
   for (const [id, workflow] of workflows) {
     const ewChains = extractCallChains(workflow);
     const mcpTargetIds = extractMcpTargetIds(workflow, toolIndex);
-    const mcpChains: CallChainNode[] = mcpTargetIds.map((targetId) => ({ targetId, next: [] }));
+    const mcpChains: CallChainNode[] = mcpTargetIds.map((targetId) => ({
+      targetId,
+      connectionType: 'mcp' as const,
+      next: [],
+    }));
     const allChains = [...ewChains, ...mcpChains];
     chainMap.set(id, allChains);
     collectChainTargetIds(allChains, calledSet);
@@ -448,6 +472,7 @@ export function buildCallGraph(workflows: Map<string, WorkflowDetail>): GraphLay
     standalone.push({
       workflowId: tree.workflowId,
       workflow: tree.workflow,
+      connectionType: 'sub-workflow',
       children: [],
       x,
       y,

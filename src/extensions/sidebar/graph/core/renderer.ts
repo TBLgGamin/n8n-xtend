@@ -1,7 +1,12 @@
 import type { WorkflowDetail } from '@/shared/types';
 import { buildWorkflowUrl, isValidId } from '@/shared/utils';
 import { icons } from '../icons';
-import { type LayoutEdge, type LayoutNode, buildCallGraph } from './graph-builder';
+import {
+  type ConnectionType,
+  type LayoutEdge,
+  type LayoutNode,
+  buildCallGraph,
+} from './graph-builder';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -49,8 +54,13 @@ function createCardElement(
   nameDiv.className = 'n8n-xtend-graph-card-name';
   nameDiv.textContent = workflow.name;
 
+  const statusDiv = document.createElement('div');
+  statusDiv.className = `n8n-xtend-graph-card-status ${workflow.active ? 'published' : 'unpublished'}`;
+  statusDiv.innerHTML = workflow.active ? icons.published : icons.unpublished;
+
   header.appendChild(iconDiv);
   header.appendChild(nameDiv);
+  header.appendChild(statusDiv);
   link.appendChild(header);
 
   const inputNames = extractTriggerInputNames(workflow);
@@ -70,15 +80,33 @@ function createCardElement(
   return card;
 }
 
-function createEdgePath(edge: LayoutEdge): SVGPathElement {
-  const path = document.createElementNS(SVG_NS, 'path');
+const EDGE_LABELS: Record<ConnectionType, string> = {
+  'sub-workflow': 'sub-workflow',
+  mcp: 'mcp',
+};
+
+function createEdgeGroup(edge: LayoutEdge): SVGGElement {
+  const g = document.createElementNS(SVG_NS, 'g');
+
   const midX = (edge.fromX + edge.toX) / 2;
+  const path = document.createElementNS(SVG_NS, 'path');
   path.setAttribute(
     'd',
     `M ${edge.fromX} ${edge.fromY} C ${midX} ${edge.fromY}, ${midX} ${edge.toY}, ${edge.toX} ${edge.toY}`,
   );
-  path.setAttribute('class', 'n8n-xtend-graph-edge');
-  return path;
+  path.setAttribute('class', `n8n-xtend-graph-edge ${edge.type === 'mcp' ? 'mcp' : ''}`);
+  g.appendChild(path);
+
+  const labelX = midX;
+  const labelY = (edge.fromY + edge.toY) / 2 - 8;
+  const text = document.createElementNS(SVG_NS, 'text');
+  text.setAttribute('x', String(labelX));
+  text.setAttribute('y', String(labelY));
+  text.setAttribute('class', 'n8n-xtend-graph-edge-label');
+  text.textContent = EDGE_LABELS[edge.type];
+  g.appendChild(text);
+
+  return g;
 }
 
 function createEdgesSvg(edges: LayoutEdge[]): SVGSVGElement {
@@ -86,7 +114,7 @@ function createEdgesSvg(edges: LayoutEdge[]): SVGSVGElement {
   svg.setAttribute('class', 'n8n-xtend-graph-edges');
 
   for (const edge of edges) {
-    svg.appendChild(createEdgePath(edge));
+    svg.appendChild(createEdgeGroup(edge));
   }
 
   return svg;

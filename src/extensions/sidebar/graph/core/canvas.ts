@@ -1,6 +1,9 @@
 export interface CanvasController {
   viewport: HTMLDivElement;
   transformLayer: HTMLDivElement;
+  fitToView: () => void;
+  getTransform: () => { panX: number; panY: number; scale: number };
+  onTransformChange: (cb: () => void) => void;
   destroy: () => void;
 }
 
@@ -8,6 +11,7 @@ const MIN_SCALE = 0.1;
 const MAX_SCALE = 3.0;
 const ZOOM_IN_FACTOR = 1.1;
 const ZOOM_OUT_FACTOR = 1 / ZOOM_IN_FACTOR;
+const FIT_PADDING = 40;
 
 export function createCanvas(container: HTMLElement): CanvasController {
   const viewport = document.createElement('div');
@@ -25,16 +29,67 @@ export function createCanvas(container: HTMLElement): CanvasController {
   let startX = 0;
   let startY = 0;
 
+  let transformChangeCallback: (() => void) | null = null;
+
+  function onTransformChange(cb: () => void): void {
+    transformChangeCallback = cb;
+  }
+
   function applyTransform(): void {
     transformLayer.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+    transformChangeCallback?.();
   }
 
   applyTransform();
+
+  function fitToView(): void {
+    const cards = transformLayer.querySelectorAll('.n8n-xtend-graph-card');
+    if (cards.length === 0) return;
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+
+    for (const card of cards) {
+      const el = card as HTMLElement;
+      const x = Number.parseFloat(el.style.left);
+      const y = Number.parseFloat(el.style.top);
+      const w = el.offsetWidth || 220;
+      const h = el.offsetHeight || 80;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + w);
+      maxY = Math.max(maxY, y + h);
+    }
+
+    const contentWidth = maxX - minX;
+    const contentHeight = maxY - minY;
+    if (contentWidth <= 0 || contentHeight <= 0) return;
+
+    const viewWidth = viewport.clientWidth - FIT_PADDING * 2;
+    const viewHeight = viewport.clientHeight - FIT_PADDING * 2;
+    if (viewWidth <= 0 || viewHeight <= 0) return;
+
+    const newScale = Math.min(
+      Math.min(viewWidth / contentWidth, viewHeight / contentHeight),
+      MAX_SCALE,
+    );
+    scale = Math.max(MIN_SCALE, newScale);
+    panX = FIT_PADDING - minX * scale + (viewWidth - contentWidth * scale) / 2;
+    panY = FIT_PADDING - minY * scale + (viewHeight - contentHeight * scale) / 2;
+    applyTransform();
+  }
+
+  function getTransform(): { panX: number; panY: number; scale: number } {
+    return { panX, panY, scale };
+  }
 
   function onMouseDown(e: MouseEvent): void {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (target.closest('.n8n-xtend-graph-card-link')) return;
+    if (target.closest('.n8n-xtend-graph-toolbar')) return;
 
     isPanning = true;
     startX = e.clientX - panX;
@@ -99,5 +154,5 @@ export function createCanvas(container: HTMLElement): CanvasController {
     document.removeEventListener('keydown', onKeyDown);
   }
 
-  return { viewport, transformLayer, destroy };
+  return { viewport, transformLayer, fitToView, getTransform, onTransformChange, destroy };
 }

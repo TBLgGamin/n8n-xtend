@@ -75,6 +75,22 @@
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  flex: 1;
+}
+
+.n8n-xtend-graph-card-status {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.n8n-xtend-graph-card-status.published {
+  color: #2ecc71;
+}
+
+.n8n-xtend-graph-card-status.unpublished {
+  color: var(--n8n-xtend-color-text-secondary);
 }
 
 .n8n-xtend-graph-card-inputs {
@@ -98,6 +114,49 @@
   text-overflow: ellipsis;
 }
 
+.n8n-xtend-graph-toolbar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 4px;
+  z-index: 10;
+}
+
+.n8n-xtend-graph-toolbar-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--n8n-xtend-color-border-primary);
+  border-radius: 6px;
+  background: var(--n8n-xtend-color-bg-primary);
+  color: var(--n8n-xtend-color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.n8n-xtend-graph-toolbar-btn:hover {
+  background: var(--n8n-xtend-color-bg-hover);
+  color: var(--n8n-xtend-color-text-primary);
+}
+
+.n8n-xtend-graph-minimap {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  width: 160px;
+  height: 120px;
+  border: 1px solid var(--n8n-xtend-color-border-primary);
+  border-radius: 6px;
+  background: var(--n8n-xtend-color-bg-primary);
+  opacity: 0.85;
+  z-index: 10;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 .n8n-xtend-graph-group-label {
   position: absolute;
   font-size: 11px;
@@ -119,4 +178,16 @@
   fill: none;
   stroke: var(--n8n-xtend-color-border-secondary);
   stroke-width: 1.5;
+}
+
+.n8n-xtend-graph-edge.mcp {
+  stroke-dasharray: 6 3;
+}
+
+.n8n-xtend-graph-edge-label {
+  font-size: 10px;
+  fill: var(--n8n-xtend-color-text-secondary);
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
 }
