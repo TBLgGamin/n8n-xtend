@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="n8n-xtend-popup">
+      <div class="n8n-xtend-popup-header">
+        <img src="icons/icon-48.png" alt="" class="n8n-xtend-popup-logo" />
+        <div class="n8n-xtend-popup-header-text">
+          <span class="n8n-xtend-popup-title">n8n-xtend</span>
+          <span class="n8n-xtend-popup-subtitle">Manage which n8n instances this extension can access.</span>
+        </div>
+      </div>
+
+      <div class="n8n-xtend-popup-divider"></div>
+
+      <div class="n8n-xtend-popup-section">
+        <span class="n8n-xtend-popup-label">n8n Cloud</span>
+        <p class="n8n-xtend-popup-hint">All *.n8n.cloud instances are enabled automatically.</p>
+      </div>
+
+      <div class="n8n-xtend-popup-divider"></div>
+
+      <div class="n8n-xtend-popup-section">
+        <span class="n8n-xtend-popup-label">Self-Hosted Instances</span>
+        <p class="n8n-xtend-popup-hint">
+          Add your self-hosted n8n URL below. The browser will ask you to grant permission so the extension can run on that site.
+        </p>
+        <div id="origins-list" class="n8n-xtend-popup-origins"></div>
+        <div class="n8n-xtend-popup-add-row">
+          <input
+            id="origin-input"
+            type="url"
+            class="n8n-xtend-popup-input"
+            placeholder="https://n8n.example.com"
+          />
+          <button id="add-btn" class="n8n-xtend-popup-btn">Add</button>
+        </div>
+        <p id="error-msg" class="n8n-xtend-popup-error" hidden></p>
+      </div>
+    </div>
+    <script src="popup.js"></script>
+  </body>
+</html>

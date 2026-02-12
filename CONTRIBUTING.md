@@ -26,6 +26,8 @@ Thank you for your interest in contributing to n8n-xtend!
 
 4. Load the `dist/` folder as an unpacked extension in Chrome.
 
+5. **n8n Cloud** instances work immediately. For **self-hosted** instances, click the extension icon in the toolbar and add your instance URL through the popup.
+
 ## Code Style
 
 This project uses [Biome](https://biomejs.dev/) for linting and formatting. The pre-commit hook will automatically format staged files.
@@ -37,6 +39,27 @@ bun run lint        # Check for issues
 bun run lint:fix    # Fix issues automatically
 bun run format      # Format all files
 ```
+
+## Architecture Overview
+
+The extension has three entry points, each built separately:
+
+| Entry Point | Output | Purpose |
+|-------------|--------|---------|
+| `src/index.ts` | `dist/content.js` | Content script injected into n8n pages |
+| `src/background/index.ts` | `dist/background.js` | Service worker managing dynamic content script registration |
+| `src/popup/index.ts` | `dist/popup.js` | Popup UI for managing self-hosted instance permissions |
+
+**Permission model:** n8n Cloud (`*.n8n.cloud`) is covered by a static content script. Self-hosted instances are registered dynamically by the background service worker after the user grants permission through the popup.
+
+### Testing Both Flows
+
+When working on changes, verify that the extension works on:
+
+1. **n8n Cloud** — Should work out of the box with no setup
+2. **Self-hosted** — Add the instance URL via the popup, confirm the browser permission prompt, then verify the extension activates
+
+After reloading the extension (e.g. during development), dynamic scripts are automatically re-registered from saved storage.
 
 ## Commit Messages
 

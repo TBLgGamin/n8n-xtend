@@ -20,17 +20,19 @@
 
 ### What We DO Store Locally
 
-The extension stores minimal UI preferences in your browser's local storage:
+The extension stores minimal data in your browser:
 
 | Data | Purpose | Storage Location |
 |------|---------|------------------|
-| Expanded folder IDs | Remember which folders you had open | Browser localStorage |
+| Expanded folder IDs | Remember which folders you had open | Browser IndexedDB |
 | Theme preference | Match n8n's dark/light mode | Read from n8n's localStorage |
+| Extension toggle states | Remember which extensions are enabled/disabled | Browser IndexedDB |
+| Self-hosted instance URLs | Register content scripts for your n8n instances | Chrome sync storage |
 
 This data:
-- Never leaves your device
-- Is not transmitted to any server
-- Can be cleared by clearing your browser data
+- Never leaves your device (Chrome sync storage syncs only to your own signed-in browsers)
+- Is not transmitted to any external server
+- Can be cleared by clearing your browser data or removing the extension
 
 ## How the Extension Works
 
@@ -51,16 +53,26 @@ The extension makes API requests **only to your own n8n instance** (the same dom
 
 ## Permissions
 
-### Host Permission (`<all_urls>`)
+### Required Permissions
 
-The extension requests broad host access because n8n can be self-hosted on any domain. The extension:
-- Detects n8n instances at runtime using URL patterns and DOM indicators
-- Only activates on confirmed n8n instances
-- Immediately exits on non-n8n websites without performing any actions
+| Permission | Purpose |
+|------------|---------|
+| `scripting` | Register content scripts for self-hosted n8n instances you add |
+| `storage` | Save your list of self-hosted instance URLs and extension preferences |
 
-### Why This Permission Is Necessary
+### Host Permissions
 
-Unlike extensions that only work on specific domains (like `*.n8n.cloud`), n8n-xtend supports self-hosted n8n installations on custom domains. Runtime detection is the only way to support all n8n users.
+**n8n Cloud (`*.n8n.cloud`)** — The extension has static access to all n8n Cloud instances. No action is required from you; it works automatically.
+
+**Self-hosted instances** — The extension does **not** have access to any other websites by default. If you run n8n on your own domain, you explicitly grant permission to that specific URL through the extension popup. The browser will show a permission prompt confirming your choice.
+
+These per-instance permissions are listed under `optional_host_permissions` in the manifest, meaning the extension can only access sites you have individually approved.
+
+### Why This Model
+
+n8n can be self-hosted on any domain, so the extension cannot know your URL in advance. Rather than requesting broad access to all websites, n8n-xtend asks you to add your specific instance URL. This gives you full control over which sites the extension can run on.
+
+As an additional safety layer, the content script also verifies it is running on an n8n instance before activating.
 
 ## Data Security
 

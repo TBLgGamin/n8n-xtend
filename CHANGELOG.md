@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Added
+- Narrow permission model: static content script for *.n8n.cloud, dynamic registration for self-hosted instances
+- Background service worker for dynamic content script registration and origin storage
+- Popup UI to manage self-hosted n8n instance permissions
+- Separate popup CSS build (variables + popup-specific styles)
+
+### Changed
+- Manifest narrowed from broad host access to per-origin optional permissions
+- Build system now produces three bundles: content script, background worker, popup script
+- Updated PRIVACY.md, CONTRIBUTING.md, and CLAUDE.md for new permission model
+
+### Removed
+- Broad `<all_urls>` host permission
+- `web_accessible_resources` (icons are inline SVGs)
+
 ## [1.7.1] - 2026-02-12
 
 ### Changed

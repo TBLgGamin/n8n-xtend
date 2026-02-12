@@ -33,8 +33,16 @@ This is automated via Claude Code hooks but verify manually if needed.
 
 ```
 src/
-├── index.ts                    # Main entry - detects n8n host, loops over registry
+├── index.ts                    # Content script entry - detects n8n host, loops over registry
 ├── manifest.json               # Chrome manifest v3
+├── background/                 # Service worker (manages dynamic content script registration)
+│   ├── index.ts                # onInstalled, onStartup, message handling
+│   └── types.ts                # MessageRequest/Response types, storage key, script ID
+├── popup/                      # Extension popup (manage self-hosted instance permissions)
+│   ├── index.ts                # Origin add/remove UI logic, permission requests
+│   ├── popup.html              # Popup page markup
+│   └── styles/
+│       └── popup.css           # Popup-specific styles (built separately from content CSS)
 ├── settings/                   # Extension manager (settings panel at /settings/personal)
 │   ├── index.ts                # initSettingsExtension(), isExtensionEnabled()
 │   ├── core/
@@ -79,7 +87,7 @@ src/
 │   │   │   └── utils/          # capture.ts (modern-screenshot)
 │   │   └── note-title/         # Rename sticky note titles with Space shortcut
 │   │       └── core/           # injector (keyboard listener + rename modal), monitor
-│   └── ui/                  # UI enhancement extensions
+│   └── ui/                     # UI enhancement extensions
 │       ├── show-password/      # Toggle password field visibility
 │       │   ├── core/           # injector, monitor
 │       │   └── icons/          # eye icons
@@ -89,6 +97,23 @@ src/
 ```
 
 ## Architecture
+
+### Permission Model
+
+The extension uses narrow permissions instead of broad host access:
+
+- **n8n Cloud** (`*.n8n.cloud`) — Static content script, works automatically
+- **Self-hosted** — Users add their instance URL via the popup, which triggers `chrome.permissions.request()`. The background service worker then registers a dynamic content script for that origin via `chrome.scripting.registerContentScripts()`
+- Origins are persisted in `chrome.storage.sync` and re-registered on install/update/startup
+- `isN8nHost()` in the content script remains as defense-in-depth
+
+Three entry points are built separately:
+
+| Entry Point | Output | Role |
+|-------------|--------|------|
+| `src/index.ts` | `content.js` | Content script (injected into n8n pages) |
+| `src/background/index.ts` | `background.js` | Service worker (dynamic script registration) |
+| `src/popup/index.ts` | `popup.js` | Popup UI (manage self-hosted permissions) |
 
 ### Extension System
 
@@ -122,10 +147,11 @@ Three reusable monitor types:
 
 ### Storage System
 
-- **IndexedDB** via Dexie.js with in-memory cache
+- **IndexedDB** via Dexie.js with in-memory cache (content script data)
 - Sync reads (`getStorageItem`), async writes (`setStorageItem`)
 - Initialize with `initStorage()`, wait with `waitForStorage()`
 - Keys: `n8n-xtend-settings`, `n8ntree-expanded`
+- **chrome.storage.sync** for self-hosted origins (background/popup), key: `n8n-xtend-origins`
 
 ### Theme System
 
@@ -222,11 +248,26 @@ After releases, review and update `README.md` and `CONTRIBUTING.md` if needed.
 ## Build System (`scripts/build.ts`)
 
 1. Cleans `dist/` directory
-2. Bundles `src/index.ts` with Bun (target: browser)
-3. Combines CSS files, embeds fonts as base64
-4. Generates manifest.json with version from package.json
-5. Copies icons
-6. Watch mode: debounced rebuild on changes
+2. Auto-generates `extensions/registry.ts` from discovered extensions
+3. Bundles three entry points: content script, background service worker, popup script
+4. Combines content CSS files (excludes `popup/**/*.css`), embeds fonts as base64
+5. Builds popup CSS separately (`variables.css` + `popup/styles/popup.css`)
+6. Copies `popup.html` and icons to `dist/`
+7. Generates `manifest.json` with version from `package.json`
+8. Watch mode: debounced rebuild on changes
+
+### Build Output
+```
+dist/
+  content.js       # Content script
+  content.css      # Content styles
+  background.js    # Service worker
+  popup.html       # Popup page
+  popup.js         # Popup script
+  popup.css        # Popup styles (variables + popup-specific)
+  manifest.json    # Narrow permissions manifest
+  icons/           # Extension icons
+```
 
 ## Dependencies
 
