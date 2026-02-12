@@ -11,7 +11,7 @@ export const metadata: ExtensionMetadata = {
   enabledByDefault: true,
 };
 
-export function initFolderTreeExtension(): void {
+export function init(): void {
   log.info('Initializing folder-tree extension');
   startMonitor();
 }

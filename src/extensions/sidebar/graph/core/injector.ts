@@ -18,7 +18,6 @@ let previouslyActiveLink: HTMLElement | null = null;
 let previousActiveClass = '';
 let currentProjectId: string | null = null;
 let activeCanvasController: CanvasController | null = null;
-let contentPositionModified = false;
 
 export function setProjectId(projectId: string): void {
   currentProjectId = projectId;
@@ -30,6 +29,12 @@ function getContentWrapper(): HTMLElement | null {
   return content.querySelector(
     `[class*="_contentWrapper_"]:not(#${GRAPH_VIEW_ID})`,
   ) as HTMLElement | null;
+}
+
+function getProjectMainContent(): HTMLElement | null {
+  const contentWrapper = getContentWrapper();
+  if (!contentWrapper) return null;
+  return contentWrapper.querySelector('main') as HTMLElement | null;
 }
 
 function findActiveClass(): string {
@@ -219,27 +224,20 @@ function renderReadyState(container: HTMLElement, workflows: Map<string, Workflo
 function activateGraphView(): void {
   if (graphViewActive) return;
 
-  const contentWrapper = getContentWrapper();
-  if (!contentWrapper) {
-    log.debug('Content wrapper not found');
+  const mainContent = getProjectMainContent();
+  if (!mainContent?.parentElement) {
+    log.debug('Main content area not found');
     return;
   }
 
-  const content = document.getElementById('content');
-  if (!content) return;
-
-  contentWrapper.style.display = 'none';
-
-  if (getComputedStyle(content).position === 'static') {
-    content.style.position = 'relative';
-    contentPositionModified = true;
-  }
+  mainContent.style.display = 'none';
 
   const graphView = document.createElement('div');
   graphView.id = GRAPH_VIEW_ID;
-  graphView.style.position = 'absolute';
-  graphView.style.inset = '0';
-  content.appendChild(graphView);
+  graphView.className = mainContent.className;
+  graphView.style.position = 'relative';
+  graphView.style.overflow = 'hidden';
+  mainContent.parentElement.appendChild(graphView);
 
   graphViewActive = true;
   activeUrl = window.location.href;
@@ -272,14 +270,8 @@ function deactivateGraphView(): void {
   const graphView = document.getElementById(GRAPH_VIEW_ID);
   if (graphView) graphView.remove();
 
-  if (contentPositionModified) {
-    const content = document.getElementById('content');
-    if (content) content.style.position = '';
-    contentPositionModified = false;
-  }
-
-  const contentWrapper = getContentWrapper();
-  if (contentWrapper) contentWrapper.style.display = '';
+  const mainContent = getProjectMainContent();
+  if (mainContent) mainContent.style.display = '';
 
   clearGraphActive();
   graphViewActive = false;

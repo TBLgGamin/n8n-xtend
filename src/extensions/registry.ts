@@ -1,17 +1,17 @@
 import type { ExtensionEntry } from './types';
 
-import { metadata as captureMetadata, initCaptureExtension } from './editor/capture';
-import { initNoteTitleExtension, metadata as noteTitleMetadata } from './editor/note-title';
-import { metadata as folderTreeMetadata, initFolderTreeExtension } from './sidebar/folder-tree';
-import { metadata as graphMetadata, initGraphExtension } from './sidebar/graph';
-import { initShowPasswordExtension, metadata as showPasswordMetadata } from './ui/show-password';
-import { initVariablesExtension, metadata as variablesMetadata } from './ui/variables';
+import { init as captureInit, metadata as captureMetadata } from './editor/capture';
+import { init as noteTitleInit, metadata as noteTitleMetadata } from './editor/note-title';
+import { init as folderTreeInit, metadata as folderTreeMetadata } from './sidebar/folder-tree';
+import { init as graphInit, metadata as graphMetadata } from './sidebar/graph';
+import { init as showPasswordInit, metadata as showPasswordMetadata } from './ui/show-password';
+import { init as variablesInit, metadata as variablesMetadata } from './ui/variables';
 
 export const extensionRegistry: ExtensionEntry[] = [
-  { ...folderTreeMetadata, group: 'sidebar', init: initFolderTreeExtension },
-  { ...graphMetadata, group: 'sidebar', init: initGraphExtension },
-  { ...captureMetadata, group: 'editor', init: initCaptureExtension },
-  { ...showPasswordMetadata, group: 'ui', init: initShowPasswordExtension },
-  { ...variablesMetadata, group: 'ui', init: initVariablesExtension },
-  { ...noteTitleMetadata, group: 'editor', init: initNoteTitleExtension },
+  { ...captureMetadata, group: 'editor', init: captureInit },
+  { ...noteTitleMetadata, group: 'editor', init: noteTitleInit },
+  { ...folderTreeMetadata, group: 'sidebar', init: folderTreeInit },
+  { ...graphMetadata, group: 'sidebar', init: graphInit },
+  { ...showPasswordMetadata, group: 'ui', init: showPasswordInit },
+  { ...variablesMetadata, group: 'ui', init: variablesInit },
 ];

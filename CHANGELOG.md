@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Changed
+- Settings panel: replace logo with "Extensions" heading matching n8n native style
+- Settings panel: switch from toggle sliders to checkboxes
+- Settings monitor: retry injection on every poll while on settings page
+- Variables extension: switch from PollMonitor to MutationMonitor for instant enhancement
+- Theme system: replace polling with MutationObserver, storage events, and media query listeners
+- Build system: auto-generate extension registry from filesystem scan
+- Build system: auto-discover CSS files instead of hardcoded paths
+- Extension init functions standardized to `init()` with auto-generated registry
+
+### Fixed
+- Variables extension: handle Vue re-renders that reset text content while keeping the enhanced attribute
+- Graph extension: use project main content area instead of content wrapper for view injection
+
 ## [1.7.0] - 2026-02-08
 
 ### Added

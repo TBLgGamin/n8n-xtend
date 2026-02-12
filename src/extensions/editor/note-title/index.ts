@@ -11,7 +11,7 @@ export const metadata: ExtensionMetadata = {
   enabledByDefault: true,
 };
 
-export function initNoteTitleExtension(): void {
+export function init(): void {
   log.info('Initializing note-title extension');
   startMonitor();
 }

@@ -11,7 +11,7 @@ export const metadata: ExtensionMetadata = {
   enabledByDefault: true,
 };
 
-export function initShowPasswordExtension(): void {
+export function init(): void {
   log.info('Initializing show-password extension');
   startMonitor();
 }

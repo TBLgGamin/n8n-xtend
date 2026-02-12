@@ -14,11 +14,9 @@ let wasOnPage = false;
 function checkAndInject(): void {
   const isOnPage = isSettingsPersonalPage();
 
-  if (isOnPage && !wasOnPage) {
-    log.debug('Entered settings page, attempting injection');
-    const result = injectSettingsPanel();
-    log.debug('Injection result:', result);
-  } else if (!isOnPage && wasOnPage) {
+  if (isOnPage) {
+    injectSettingsPanel();
+  } else if (wasOnPage) {
     removeSettingsPanel();
   }
 
@@ -30,7 +28,6 @@ const monitor: PollMonitor = createPollMonitor({
   check: checkAndInject,
   onStart: () => {
     log.debug('Settings monitor started, current path:', location.pathname);
-    wasOnPage = isSettingsPersonalPage();
   },
   onStop: () => {
     wasOnPage = false;

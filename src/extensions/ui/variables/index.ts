@@ -11,7 +11,7 @@ export const metadata: ExtensionMetadata = {
   enabledByDefault: true,
 };
 
-export function initVariablesExtension(): void {
+export function init(): void {
   log.info('Initializing variables extension');
   startMonitor();
 }

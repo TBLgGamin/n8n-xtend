@@ -11,7 +11,7 @@ export const metadata: ExtensionMetadata = {
   enabledByDefault: true,
 };
 
-export function initGraphExtension(): void {
+export function init(): void {
   log.info('Initializing graph extension');
   startMonitor();
 }

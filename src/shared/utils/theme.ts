@@ -3,14 +3,17 @@ import { logger } from './logger';
 const log = logger.child('theme');
 
 const THEME_STORAGE_KEY = 'N8N_THEME';
-const POLL_INTERVAL_MS = 500;
 
 export type Theme = 'dark' | 'light';
 
 type ThemeChangeCallback = (theme: Theme) => void;
 const themeChangeCallbacks = new Set<ThemeChangeCallback>();
 let lastKnownTheme: Theme | null = null;
-let pollIntervalId: ReturnType<typeof setInterval> | null = null;
+
+let observer: MutationObserver | null = null;
+let storageHandler: ((e: StorageEvent) => void) | null = null;
+let mediaQuery: MediaQueryList | null = null;
+let mediaHandler: ((e: MediaQueryListEvent) => void) | null = null;
 
 function getStoredTheme(): string | null {
   const stored = localStorage.getItem(THEME_STORAGE_KEY);
@@ -49,7 +52,7 @@ export function isDarkMode(): boolean {
   return getCurrentTheme() === 'dark';
 }
 
-function checkThemeChange(): void {
+function notifyIfChanged(): void {
   const currentTheme = getCurrentTheme();
   if (lastKnownTheme !== null && lastKnownTheme !== currentTheme) {
     for (const callback of themeChangeCallbacks) {
@@ -59,16 +62,48 @@ function checkThemeChange(): void {
   lastKnownTheme = currentTheme;
 }
 
-function startPolling(): void {
-  if (pollIntervalId !== null) return;
+function startListening(): void {
+  if (observer) return;
+
   lastKnownTheme = getCurrentTheme();
-  pollIntervalId = setInterval(checkThemeChange, POLL_INTERVAL_MS);
+
+  observer = new MutationObserver(notifyIfChanged);
+  observer.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class', 'data-theme', 'style'],
+  });
+  if (document.body) {
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class', 'data-theme', 'style'],
+    });
+  }
+
+  storageHandler = (e: StorageEvent) => {
+    if (e.key === THEME_STORAGE_KEY || e.key === null) {
+      notifyIfChanged();
+    }
+  };
+  window.addEventListener('storage', storageHandler);
+
+  mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  mediaHandler = () => notifyIfChanged();
+  mediaQuery.addEventListener('change', mediaHandler);
 }
 
-function stopPolling(): void {
-  if (pollIntervalId !== null) {
-    clearInterval(pollIntervalId);
-    pollIntervalId = null;
+function stopListening(): void {
+  if (observer) {
+    observer.disconnect();
+    observer = null;
+  }
+  if (storageHandler) {
+    window.removeEventListener('storage', storageHandler);
+    storageHandler = null;
+  }
+  if (mediaQuery && mediaHandler) {
+    mediaQuery.removeEventListener('change', mediaHandler);
+    mediaQuery = null;
+    mediaHandler = null;
   }
 }
 
@@ -77,13 +112,13 @@ export function onThemeChange(callback: ThemeChangeCallback): () => void {
   themeChangeCallbacks.add(callback);
 
   if (isFirst) {
-    startPolling();
+    startListening();
   }
 
   return () => {
     themeChangeCallbacks.delete(callback);
     if (themeChangeCallbacks.size === 0) {
-      stopPolling();
+      stopListening();
     }
   };
 }

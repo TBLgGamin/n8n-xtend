@@ -6,12 +6,14 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 
 const isWatch = process.argv.includes('--watch');
+const isGenerateOnly = process.argv.includes('--generate-registry');
 const rootDir = join(import.meta.dir, '..');
 const srcDir = join(rootDir, 'src');
 const distDir = join(rootDir, 'dist');
+const extensionsDir = join(srcDir, 'extensions');
 
 function getVersionFromPackageJson(): string {
   const packageJson = JSON.parse(
@@ -50,8 +52,75 @@ function generateManifest(): Manifest {
   };
 }
 
+function toCamelCase(kebab: string): string {
+  return kebab.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+}
+
+function generateRegistry(): void {
+  const glob = new Bun.Glob('*/*/index.ts');
+  const extensionPaths = Array.from(glob.scanSync(extensionsDir)).sort();
+
+  const typeImport = "import type { ExtensionEntry } from './types';";
+  const imports: string[] = [];
+  const entries: string[] = [];
+
+  for (const extensionPath of extensionPaths) {
+    const [group, name] = extensionPath.split('/') as [string, string];
+    const alias = toCamelCase(name);
+    const importPath = `./${group}/${name}`;
+
+    imports.push(
+      `import { init as ${alias}Init, metadata as ${alias}Metadata } from '${importPath}';`
+    );
+    entries.push(
+      `  { ...${alias}Metadata, group: '${group}', init: ${alias}Init },`
+    );
+  }
+
+  const content = [
+    typeImport,
+    '',
+    ...imports,
+    '',
+    'export const extensionRegistry: ExtensionEntry[] = [',
+    ...entries,
+    '];',
+    '',
+  ].join('\n');
+
+  const registryPath = join(extensionsDir, 'registry.ts');
+  const existing = existsSync(registryPath)
+    ? readFileSync(registryPath, 'utf-8')
+    : '';
+
+  if (existing !== content) {
+    writeFileSync(registryPath, content);
+    console.log('Registry updated.');
+  }
+}
+
+function discoverCssFiles(): string[] {
+  const glob = new Bun.Glob('**/*.css');
+  const relativePaths = Array.from(glob.scanSync(srcDir)).sort();
+
+  const variablesPath = ['shared', 'styles', 'variables.css'].join(sep);
+  const rest = relativePaths.filter((p) => p !== variablesPath);
+
+  return [
+    join(srcDir, variablesPath),
+    ...rest.map((p) => join(srcDir, p)),
+  ];
+}
+
+if (isGenerateOnly) {
+  generateRegistry();
+  process.exit(0);
+}
+
 async function build() {
   console.log('Building n8n-xtend...');
+
+  generateRegistry();
 
   if (existsSync(distDir)) {
     rmSync(distDir, { recursive: true });
@@ -87,12 +156,7 @@ async function build() {
     process.exit(1);
   }
 
-  const cssPaths = [
-    join(srcDir, 'shared', 'styles', 'variables.css'),
-    join(srcDir, 'extensions', 'sidebar', 'folder-tree', 'styles', 'folder-tree.css'),
-    join(srcDir, 'settings', 'styles', 'settings.css'),
-    join(srcDir, 'extensions', 'sidebar', 'graph', 'styles', 'graph.css'),
-  ];
+  const cssPaths = discoverCssFiles();
 
   let css = cssPaths
     .filter((cssPath) => existsSync(cssPath))

@@ -5,28 +5,15 @@ const log = logger.child('variables');
 const USAGE_SYNTAX_SELECTOR = '.usageSyntax';
 const ENHANCED_ATTR = 'data-n8n-xtend-enhanced';
 
-function wrapWithBraces(text: string): string {
-  const trimmed = text.trim();
-  if (trimmed.startsWith('{{') && trimmed.endsWith('}}')) {
-    return trimmed;
-  }
-  return `{{ ${trimmed} }}`;
+function isWrapped(text: string): boolean {
+  return text.startsWith('{{') && text.endsWith('}}');
 }
 
-function enhanceElement(element: HTMLElement): boolean {
-  if (element.hasAttribute(ENHANCED_ATTR)) {
-    return false;
+function wrapWithBraces(text: string): string {
+  if (isWrapped(text)) {
+    return text;
   }
-
-  const originalText = element.textContent?.trim() ?? '';
-  if (!originalText) return false;
-
-  const enhancedText = wrapWithBraces(originalText);
-  element.textContent = enhancedText;
-  element.setAttribute(ENHANCED_ATTR, originalText);
-
-  element.addEventListener('click', handleCopy);
-  return true;
+  return `{{ ${text} }}`;
 }
 
 function handleCopy(event: Event): void {
@@ -39,6 +26,28 @@ function handleCopy(event: Event): void {
     .writeText(text)
     .then(() => log.debug('Copied to clipboard', text))
     .catch((error) => log.debug('Failed to copy to clipboard', error));
+}
+
+function enhanceElement(element: HTMLElement): boolean {
+  const currentText = element.textContent?.trim() ?? '';
+  if (!currentText) return false;
+
+  const hasAttr = element.hasAttribute(ENHANCED_ATTR);
+
+  if (hasAttr && isWrapped(currentText)) {
+    return false;
+  }
+
+  const rawText = hasAttr ? (element.getAttribute(ENHANCED_ATTR) ?? currentText) : currentText;
+
+  element.textContent = wrapWithBraces(rawText);
+
+  if (!hasAttr) {
+    element.setAttribute(ENHANCED_ATTR, rawText);
+    element.addEventListener('click', handleCopy);
+  }
+
+  return true;
 }
 
 export function enhanceUsageSyntax(): number {
