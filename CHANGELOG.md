@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-02-12
+
 ### Changed
 - Settings panel: replace logo with "Extensions" heading matching n8n native style
 - Settings panel: switch from toggle sliders to checkboxes
