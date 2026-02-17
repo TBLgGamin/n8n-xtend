@@ -7,11 +7,17 @@
 - Background service worker for dynamic content script registration and origin storage
 - Popup UI to manage self-hosted n8n instance permissions
 - Separate popup CSS build (variables + popup-specific styles)
+- Popup: clickable origin rows that open the instance in a new tab
+- Popup: version footer with link to GitHub release changelog
+- Popup: GitHub release check — shows "Update available" badge when a newer version exists
+- Popup: instances persisted in IndexedDB via shared storage utilities for instant rendering
+- Popup: flexible URL input accepting bare domains, full URLs, or URLs with paths
 
 ### Changed
 - Manifest narrowed from broad host access to per-origin optional permissions
 - Build system now produces three bundles: content script, background worker, popup script
 - Updated PRIVACY.md, CONTRIBUTING.md, and CLAUDE.md for new permission model
+- Popup: removed verbose hint text and n8n Cloud section for a cleaner UI
 
 ### Removed
 - Broad `<all_urls>` host permission
