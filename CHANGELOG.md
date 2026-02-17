@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-02-17
+
+### Added
+
+- redesign popup navigation and settings page
+- redesign popup as tabbed command center with chrome.storage
+
+### Changed
+
+- restore full changelog history to initial release
+- replace conventional-changelog with native bash script
+
+
 ## [1.8.0] - 2026-02-17
 
 ### Added
