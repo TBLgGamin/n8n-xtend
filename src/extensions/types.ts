@@ -2,6 +2,7 @@ export interface ExtensionMetadata {
   id: string;
   name: string;
   description: string;
+  howToUse: string;
   enabledByDefault: boolean;
 }
 

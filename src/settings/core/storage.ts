@@ -1,12 +1,15 @@
 import { extensionRegistry } from '@/extensions/registry';
 import type { ExtensionEntry } from '@/extensions/types';
-import { getStorageItem, logger, setStorageItem } from '@/shared/utils';
+import { getSyncItem, setSyncItem } from '@/shared/utils/chrome-storage';
+import { logger } from '@/shared/utils/logger';
 
 const log = logger.child('settings:storage');
 
-const SETTINGS_KEY = 'n8n-xtend-settings';
+export const SETTINGS_KEY = 'n8n-xtend-settings';
 
 type ExtensionSettings = Record<string, boolean>;
+
+let cachedSettings: ExtensionSettings | null = null;
 
 function getDefaultSettings(): ExtensionSettings {
   return extensionRegistry.reduce((acc, ext) => {
@@ -15,31 +18,32 @@ function getDefaultSettings(): ExtensionSettings {
   }, {} as ExtensionSettings);
 }
 
-export function getExtensionSettings(): ExtensionSettings {
-  const stored = getStorageItem<ExtensionSettings>(SETTINGS_KEY);
-  const defaults = getDefaultSettings();
-
-  if (!stored) {
-    return defaults;
-  }
-
-  return { ...defaults, ...stored };
+export function loadSettings(): void {
+  cachedSettings = getSyncItem<ExtensionSettings>(SETTINGS_KEY);
+  log.debug('Settings loaded', cachedSettings);
 }
 
-export function setExtensionEnabled(extensionId: string, enabled: boolean): void {
-  log.debug('Extension setting changed', { extensionId, enabled });
-  const settings = getExtensionSettings();
-  settings[extensionId] = enabled;
-  setStorageItem(SETTINGS_KEY, settings);
+function resolveSettings(): ExtensionSettings {
+  const defaults = getDefaultSettings();
+  if (!cachedSettings) return defaults;
+  return { ...defaults, ...cachedSettings };
 }
 
 export function isExtensionEnabled(extensionId: string): boolean {
-  const settings = getExtensionSettings();
+  const settings = resolveSettings();
   const extension = extensionRegistry.find((ext) => ext.id === extensionId);
   return settings[extensionId] ?? extension?.enabledByDefault ?? true;
 }
 
+export function setExtensionEnabled(extensionId: string, enabled: boolean): void {
+  log.debug('Extension setting changed', { extensionId, enabled });
+  const settings = resolveSettings();
+  settings[extensionId] = enabled;
+  cachedSettings = settings;
+  setSyncItem(SETTINGS_KEY, settings);
+}
+
 export function getEnabledExtensions(): ExtensionEntry[] {
-  const settings = getExtensionSettings();
+  const settings = resolveSettings();
   return extensionRegistry.filter((ext) => settings[ext.id] ?? ext.enabledByDefault);
 }

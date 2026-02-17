@@ -1,3 +1,14 @@
+export {
+  getLocalItem,
+  getSyncItem,
+  initChromeStorage,
+  isChromeStorageReady,
+  removeLocalItem,
+  removeSyncItem,
+  setLocalItem,
+  setSyncItem,
+  waitForChromeStorage,
+} from './chrome-storage';
 export { findElementByClassPattern, findElementBySelectors } from './dom';
 export { escapeHtml } from './html';
 export { logger } from './logger';
@@ -12,15 +23,6 @@ export {
   type PollMonitor,
   type PollMonitorConfig,
 } from './monitor';
-export {
-  getBrowserId,
-  getStorageItem,
-  initStorage,
-  isStorageReady,
-  removeStorageItem,
-  setStorageItem,
-  waitForStorage,
-} from './storage';
 export { getCurrentTheme, isDarkMode, onThemeChange, type Theme } from './theme';
 export { getThemeColors, onThemeColorsChange, type ThemeColors } from './theme-colors';
 export {

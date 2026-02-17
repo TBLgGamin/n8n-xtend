@@ -6,10 +6,7 @@ Push commits to the remote repository.
 
 1. Run `git status` to check current branch and commits ahead
 2. Run `git log --oneline -3` to show what will be pushed
-3. Check if `CHANGELOG.md` has an `[Unreleased]` section with entries:
-   - If pushing a release, update version number and date in CHANGELOG.md
-   - Stage and commit CHANGELOG.md changes before pushing
-4. Push to remote:
+3. Push to remote:
    - If branch has upstream: `git push`
    - If no upstream: `git push -u origin <branch-name>`
 

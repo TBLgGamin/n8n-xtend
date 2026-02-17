@@ -228,22 +228,15 @@ Use `/release` to create a new version. This will:
 
 After releases, review and update `README.md` and `CONTRIBUTING.md` if needed.
 
-#### CHANGELOG.md Format
-```markdown
-## [X.Y.Z] - YYYY-MM-DD
+#### CHANGELOG.md
 
-### Added
-- New features
+`CHANGELOG.md` is auto-generated at release time by `scripts/changelog.sh`. It reads conventional commit subjects since the last tag and maps them to sections:
 
-### Changed
-- Changes to existing features
+- `feat:` → **Added**
+- `fix:` → **Fixed**
+- `refactor:`, `perf:`, `docs:`, `chore:` → **Changed**
 
-### Fixed
-- Bug fixes
-
-### Removed
-- Removed features
-```
+Do not manually edit `CHANGELOG.md` during commits — write good conventional commit messages instead.
 
 ## Build System (`scripts/build.ts`)
 

@@ -12,7 +12,6 @@
     "@commitlint/config-conventional": "20.4.0",
     "@types/bun": "^1.1.14",
     "@types/chrome": "^0.0.287",
-    "conventional-changelog-cli": "5.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.3.0",
     "typescript": "^5.7.2"
@@ -46,10 +45,6 @@
   },
   "type": "module",
   "dependencies": {
-    "dexie": "4.3.0",
     "modern-screenshot": "4.6.8"
-  },
-  "overrides": {
-    "@conventional-changelog/git-client": "^2.0.0"
   }
 }

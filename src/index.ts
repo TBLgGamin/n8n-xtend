@@ -1,6 +1,6 @@
 import { extensionRegistry } from '@/extensions';
-import { initSettingsExtension, isExtensionEnabled } from '@/settings';
-import { initStorage, initThemeManager, isN8nHost, logger } from '@/shared/utils';
+import { isExtensionEnabled, loadSettings } from '@/settings';
+import { initChromeStorage, initThemeManager, isN8nHost, logger } from '@/shared/utils';
 
 function initExtensionSafely(name: string, init: () => void): void {
   try {
@@ -15,13 +15,12 @@ async function initExtensions(): Promise<void> {
     return;
   }
 
-  await initStorage();
+  await initChromeStorage();
+  loadSettings();
 
   logger.debug('n8n-xtend loaded');
 
   initThemeManager();
-
-  initExtensionSafely('settings', initSettingsExtension);
 
   for (const ext of extensionRegistry) {
     if (isExtensionEnabled(ext.id)) {

@@ -110,6 +110,70 @@ function generateRegistry(): void {
   }
 }
 
+function generateMeta(): void {
+  const glob = new Bun.Glob('*/*/index.ts');
+  const extensionPaths = Array.from(glob.scanSync(extensionsDir)).sort();
+
+  const typeImport = "import type { ExtensionMetadata } from './types';";
+  const imports: string[] = [];
+  const entries: string[] = [];
+
+  for (const extensionPath of extensionPaths) {
+    const [group, name] = extensionPath.split('/') as [string, string];
+    const alias = toCamelCase(name);
+    const importPath = `./${group}/${name}`;
+
+    imports.push(`import { metadata as ${alias}Metadata } from '${importPath}';`);
+    entries.push(`  { ...${alias}Metadata, group: '${group}' },`);
+  }
+
+  const content = [
+    typeImport,
+    '',
+    'export interface ExtensionMetaEntry extends ExtensionMetadata {',
+    "  group: string;",
+    '}',
+    '',
+    ...imports,
+    '',
+    'export const extensionMeta: ExtensionMetaEntry[] = [',
+    ...entries,
+    '];',
+    '',
+  ].join('\n');
+
+  const metaPath = join(extensionsDir, 'meta.ts');
+  const existing = existsSync(metaPath) ? readFileSync(metaPath, 'utf-8') : '';
+
+  if (existing !== content) {
+    writeFileSync(metaPath, content);
+    console.log('Meta updated.');
+  }
+}
+
+const VIDEO_EXTENSIONS = new Set(['.mp4', '.webm', '.ogg', '.mov']);
+
+function copyVideoAssets(): void {
+  const glob = new Bun.Glob('*/*/video/*');
+  const videoPaths = Array.from(glob.scanSync(extensionsDir));
+
+  for (const videoPath of videoPaths) {
+    const parts = videoPath.split(sep);
+    if (parts.length < 4) continue;
+
+    const [group, name, , filename] = parts as [string, string, string, string];
+    const ext = filename ? `.${filename.split('.').pop()?.toLowerCase()}` : '';
+    if (!filename || !VIDEO_EXTENSIONS.has(ext)) continue;
+
+    const srcPath = join(extensionsDir, videoPath);
+    const destDir = join(distDir, 'extensions', group, name, 'video');
+    const destPath = join(destDir, filename);
+
+    mkdirSync(destDir, { recursive: true });
+    copyFileSync(srcPath, destPath);
+  }
+}
+
 function discoverCssFiles(): string[] {
   const glob = new Bun.Glob('**/*.css');
   const relativePaths = Array.from(glob.scanSync(srcDir)).sort();
@@ -142,6 +206,7 @@ function buildPopupCss(): string {
 
 if (isGenerateOnly) {
   generateRegistry();
+  generateMeta();
   process.exit(0);
 }
 
@@ -149,6 +214,7 @@ async function build() {
   console.log('Building n8n-xtend...');
 
   generateRegistry();
+  generateMeta();
 
   if (existsSync(distDir)) {
     rmSync(distDir, { recursive: true });
@@ -272,6 +338,8 @@ async function build() {
   if (existsSync(srcIconsDir)) {
     cpSync(srcIconsDir, iconsDir, { recursive: true });
   }
+
+  copyVideoAssets();
 
   console.log(`Build complete! (v${manifest.version})`);
 }

@@ -1,5 +1,4 @@
 import { logger } from '@/shared/utils/logger';
-import { getBrowserId } from '@/shared/utils/storage';
 import { isN8nHost } from '@/shared/utils/url';
 
 const log = logger.child('api:client');
@@ -8,6 +7,11 @@ const REQUEST_TIMEOUT_MS = 10000;
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
 const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
+const BROWSER_ID_KEY = 'n8n-browserId';
+
+function getBrowserId(): string {
+  return localStorage.getItem(BROWSER_ID_KEY) ?? '';
+}
 
 export class ApiError extends Error {
   constructor(

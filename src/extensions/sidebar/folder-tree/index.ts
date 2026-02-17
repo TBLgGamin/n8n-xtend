@@ -8,6 +8,8 @@ export const metadata: ExtensionMetadata = {
   id: 'folder-tree',
   name: 'Folder Tree',
   description: 'Adds a collapsible folder tree to the sidebar for quick navigation',
+  howToUse:
+    'Open any n8n project. A collapsible folder tree appears in the left sidebar. Click folder names to expand or collapse them. Drag workflows onto folders to organize them. Folders can be nested — drag a workflow onto a subfolder to move it deeper.',
   enabledByDefault: true,
 };
 

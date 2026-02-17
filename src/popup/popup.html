@@ -6,32 +6,85 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <div class="n8n-xtend-popup">
-      <div class="n8n-xtend-popup-header">
-        <img src="icons/icon-48.png" alt="" class="n8n-xtend-popup-logo" />
-        <span class="n8n-xtend-popup-title">n8n-xtend</span>
-      </div>
+    <div class="popup">
 
-      <div class="n8n-xtend-popup-divider"></div>
-
-      <div class="n8n-xtend-popup-section">
-        <span class="n8n-xtend-popup-label">Self-Hosted Instances</span>
-        <div id="origins-list" class="n8n-xtend-popup-origins"></div>
-        <div class="n8n-xtend-popup-add-row">
-          <input
-            id="origin-input"
-            type="url"
-            class="n8n-xtend-popup-input"
-            placeholder="n8n.example.com"
-          />
-          <button id="add-btn" class="n8n-xtend-popup-btn">Add</button>
+      <div class="popup-header">
+        <div class="popup-header-left">
+          <img src="icons/icon-48.png" alt="" class="popup-logo" />
+          <span class="popup-title">n8n-xtend</span>
         </div>
-        <p id="error-msg" class="n8n-xtend-popup-error" hidden></p>
+        <div class="popup-header-right">
+          <span id="update-badge" class="popup-update-badge" hidden>Update</span>
+          <a id="version-link" class="popup-version" target="_blank" rel="noopener noreferrer"></a>
+        </div>
       </div>
 
-      <div class="n8n-xtend-popup-divider"></div>
+      <div class="popup-tabs">
+        <button class="popup-tab popup-tab--active" data-tab="extensions">Extensions</button>
+        <button class="popup-tab" data-tab="instances">Instances</button>
+      </div>
 
-      <div id="version-footer" class="n8n-xtend-popup-footer"></div>
+      <div class="popup-content">
+
+        <div class="popup-panel" id="panel-extensions">
+          <div id="extensions-list"></div>
+        </div>
+
+        <div class="popup-panel popup-panel--hidden" id="panel-extensions-detail">
+          <div class="detail-header">
+            <button class="detail-back-btn" id="detail-back-btn" aria-label="Back">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <div class="detail-header-text">
+              <span class="detail-name" id="detail-name"></span>
+              <span class="detail-group-badge" id="detail-group-badge"></span>
+            </div>
+          </div>
+          <div class="detail-body">
+            <p class="detail-description" id="detail-description"></p>
+            <div class="detail-section">
+              <span class="detail-section-label">How to use</span>
+              <p class="detail-how-to-use" id="detail-how-to-use"></p>
+            </div>
+            <div class="detail-video" id="detail-video" hidden>
+              <video id="detail-video-el" controls preload="metadata"></video>
+              <button class="detail-fullscreen-btn" id="detail-fullscreen-btn" aria-label="Fullscreen">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 5V1H5M9 1H13V5M13 9V13H9M5 13H1V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+            <div class="detail-toggle-row">
+              <span class="detail-toggle-label">Enabled</span>
+              <label class="toggle">
+                <input type="checkbox" class="toggle-input" id="detail-toggle" />
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </label>
+            </div>
+            <p class="detail-reload-hint" id="detail-reload-hint" hidden>Reload your n8n tab to apply changes.</p>
+          </div>
+        </div>
+
+        <div class="popup-panel popup-panel--hidden" id="panel-instances">
+          <div class="instances-section">
+            <div id="origins-list" class="origins-list"></div>
+            <div class="instances-add-row">
+              <input
+                id="origin-input"
+                type="url"
+                class="instances-input"
+                placeholder="n8n.example.com"
+              />
+              <button id="origin-add-btn" class="instances-add-btn">Add</button>
+            </div>
+            <p id="origin-error" class="instances-error" hidden></p>
+          </div>
+        </div>
+
+      </div>
+
     </div>
     <script src="popup.js"></script>
   </body>

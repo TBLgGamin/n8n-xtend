@@ -1,5 +1,5 @@
+import { getLocalItem, setLocalItem } from '@/shared/utils/chrome-storage';
 import { logger } from '@/shared/utils/logger';
-import { getStorageItem, setStorageItem } from '@/shared/utils/storage';
 import { createDebounced } from '@/shared/utils/timing';
 
 const log = logger.child('folder-tree:state');
@@ -13,14 +13,14 @@ let cachedState: ExpandedFolders | null = null;
 
 function getExpandedFolders(): ExpandedFolders {
   if (cachedState === null) {
-    cachedState = getStorageItem<ExpandedFolders>(EXPANDED_FOLDERS_KEY) ?? {};
+    cachedState = getLocalItem<ExpandedFolders>(EXPANDED_FOLDERS_KEY) ?? {};
   }
   return cachedState;
 }
 
 const scheduleSave = createDebounced(() => {
   if (cachedState !== null) {
-    setStorageItem(EXPANDED_FOLDERS_KEY, cachedState);
+    setLocalItem(EXPANDED_FOLDERS_KEY, cachedState);
   }
 }, SAVE_DEBOUNCE_MS);
 

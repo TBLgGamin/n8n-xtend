@@ -8,12 +8,7 @@ Create a git commit following conventional commit standards and project pipeline
 2. Run `git diff --staged` and `git diff` to understand all changes
 3. Run `git log --oneline -5` to see recent commit style
 
-4. Update `CHANGELOG.md` with the changes being committed:
-   - Add entry under `## [Unreleased]` section
-   - Use appropriate category: Added, Changed, Fixed, Removed
-   - Keep descriptions concise and user-focused
-
-5. Analyze all changes and create a commit message following Conventional Commits:
+4. Analyze all changes and create a commit message following Conventional Commits:
    - `feat:` - New feature
    - `fix:` - Bug fix
    - `refactor:` - Code refactoring
@@ -23,9 +18,9 @@ Create a git commit following conventional commit standards and project pipeline
    - `chore:` - Maintenance tasks
    - `perf:` - Performance improvements
 
-6. Stage appropriate files including CHANGELOG.md (prefer specific files over `git add -A`)
+5. Stage appropriate files (prefer specific files over `git add -A`)
 
-7. Create the commit using this exact format with HEREDOC:
+6. Create the commit using this exact format with HEREDOC:
 ```bash
 git commit -m "$(cat <<'EOF'
 <type>: <short description>
@@ -37,7 +32,7 @@ EOF
 )"
 ```
 
-8. Run `git status` to verify the commit succeeded
+7. Run `git status` to verify the commit succeeded
 
 ## Rules
 - NEVER use --no-verify (must run Husky hooks)

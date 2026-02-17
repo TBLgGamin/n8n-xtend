@@ -8,6 +8,8 @@ export const metadata: ExtensionMetadata = {
   id: 'show-password',
   name: 'Show Password',
   description: 'Adds toggle buttons to reveal password fields',
+  howToUse:
+    'Navigate to any credential form or settings page that contains password fields. An eye icon appears at the right edge of each password input. Click it to reveal or hide the value. The toggle is keyboard-accessible via Tab and Enter.',
   enabledByDefault: true,
 };
 
