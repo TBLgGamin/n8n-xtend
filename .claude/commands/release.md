@@ -23,9 +23,10 @@ Create a new release with built extension and GitHub release.
 
 6. Generate changelog from commits:
    ```bash
-   bunx conventional-changelog -p angular -i CHANGELOG.md -s -r 0
+   bash scripts/changelog.sh
    ```
-   - This auto-generates changelog entries from conventional commits
+   - Run directly via bash (not `bun run`) — bun snap has no git in its PATH
+   - Sources nvm automatically to find the real node
    - Review the generated changes and fix any formatting if needed
 
 7. Commit the version bump:

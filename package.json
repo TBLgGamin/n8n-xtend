@@ -30,8 +30,7 @@
     "browser-extension",
     "chrome-extension",
     "automation",
-    "workflow",
-    "tree-view"
+    "workflow"
   ],
   "license": "MIT",
   "private": true,
@@ -42,7 +41,7 @@
     "lint": "biome check src",
     "lint:fix": "biome check --write src",
     "format": "biome format --write src",
-    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0",
+    "changelog": "bash scripts/changelog.sh",
     "prepare": "husky"
   },
   "type": "module",
