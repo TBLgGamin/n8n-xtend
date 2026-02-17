@@ -2,22 +2,22 @@
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-02-17
+
 ### Added
-- Narrow permission model: static content script for *.n8n.cloud, dynamic registration for self-hosted instances
-- Background service worker for dynamic content script registration and origin storage
-- Popup UI to manage self-hosted n8n instance permissions
-- Separate popup CSS build (variables + popup-specific styles)
 - Popup: clickable origin rows that open the instance in a new tab
 - Popup: version footer with link to GitHub release changelog
 - Popup: GitHub release check — shows "Update available" badge when a newer version exists
 - Popup: instances persisted in IndexedDB via shared storage utilities for instant rendering
 - Popup: flexible URL input accepting bare domains, full URLs, or URLs with paths
+- Narrow permission model: static content script for *.n8n.cloud, dynamic registration for self-hosted instances
+- Background service worker for dynamic content script registration and origin storage
+- Popup UI to manage self-hosted n8n instance permissions
 
 ### Changed
+- Popup: removed verbose hint text and n8n Cloud section for a cleaner UI
 - Manifest narrowed from broad host access to per-origin optional permissions
 - Build system now produces three bundles: content script, background worker, popup script
-- Updated PRIVACY.md, CONTRIBUTING.md, and CLAUDE.md for new permission model
-- Popup: removed verbose hint text and n8n Cloud section for a cleaner UI
 
 ### Removed
 - Broad `<all_urls>` host permission
@@ -36,64 +36,90 @@
 - Extension init functions standardized to `init()` with auto-generated registry
 
 ### Fixed
-- Variables extension: handle Vue re-renders that reset text content while keeping the enhanced attribute
-- Graph extension: use project main content area instead of content wrapper for view injection
+- Variables extension: enhance detection and wrapping reliability
 
 ## [1.7.0] - 2026-02-08
 
 ### Added
-- Graph extension: sidebar menu item with blank page view and active state management
-- Graph extension: workflow data fetching with project detection and loading states
-- Graph extension: infinite canvas with pan (drag), zoom (scroll), and reset (Ctrl+0)
-- Graph extension: workflow call-tree visualization with sequential chaining and left-to-right layout
-- Graph extension: SVG bezier edge connections between parent and child workflows
-- Graph extension: MCP tool resolution — mcpClientTool nodes matched to workflows via fuzzy name comparison
-- Graph extension: visual grouping — connected flows and standalone workflows separated with section labels and grid layout
-- Graph extension: published/unpublished indicator on workflow cards (circle-check / circle-minus icons)
-- Graph extension: edge labels showing connection type (sub-workflow or mcp) with dashed MCP edges
-- Graph extension: fit-to-view toolbar button to auto-zoom the entire graph into the viewport
-- Graph extension: minimap in bottom-right corner showing card positions and live viewport rectangle
-- Shared workflow API: bulk fetch, detail fetch, and project workflow listing
-- Shared types: WorkflowNode, WorkflowDetail, WorkflowDetailResponse, WorkflowListResponse
+- Graph sidebar extension with workflow call-tree visualization
+- Infinite canvas with workflow cards
+- Sequential chaining layout for call-tree graph
+- MCP tool resolution and visual grouping in graph view
+- Graph enhancements: minimap, edge labels, and toolbar
 
-### Changed
-- Moved fetchWorkflowProjectId to shared API for reuse across extensions
+### Fixed
+- Handle possibly undefined array access in graph renderer
 
 ## [1.6.0] - 2026-02-07
 
 ### Added
-- Note title rename extension: rename sticky note titles with Space shortcut
-- Logging auditor agent for codebase observability audits
-- Comprehensive structured logging across all extensions, API client, storage, theme system, and settings
-- Runtime API response validation
+- Note title rename extension (Space shortcut on sticky notes)
+- Settings groups derived from extension folder structure
 
 ### Changed
-- Restructured extensions with co-located metadata and n8n-specific categories
-- Settings groups now derived from folder structure
-- Parallelized folder sync and copy operations for better performance
-- Pre-grouped extensions with Map instead of O(n^2) filter in settings
-- Reduced redundant DOM queries in tree operations
-- Added early return guard in escapeHtml for strings without special characters
-- Normalized icon exports to object pattern with `as const`
-- Consistent barrel imports across all extensions
-- Boolean variables renamed to use is/has prefix convention
+- Extensions restructured with co-located metadata and n8n-specific categories
+- Comprehensive logging, security hardening, and performance optimizations
 
-### Fixed
-- Escape chrome.runtime.getURL() output in settings injector
-- Safe number interpolation for folder item counts
-- Theme data validation against expected values
-- Silent JSON.parse failures now properly logged
-- Structured error context in all API catch blocks
-
-## [1.5.0] - 2025-06-07
+## [1.5.0] - 2026-02-07
 
 ### Added
-- Workflow copy functionality
-- Incremental tree updates
-- Drag-drop support with copy (Ctrl/Cmd) and move
-
-### Changed
-- Removed keyboard navigation
+- Incremental tree updates for folder tree
+- Workflow copy support
+- Keyboard navigation improvements
 
 ### Fixed
 - Drag-drop event bubbling
+
+### Changed
+- Added resilience, shared utilities, and cache TTL
+
+## [1.4.2] - 2026-02-04
+
+### Fixed
+- XSS and security vulnerabilities
+
+## [1.4.1] - 2026-02-04
+
+### Fixed
+- Correct export name for `removeFolderTree`
+
+### Changed
+- Optimized monitors, caching, and capture UX
+
+## [1.4.0] - 2026-02-04
+
+### Added
+- Settings panel for enabling/disabling individual extensions
+- Improved theme reactivity
+
+### Changed
+- Storage migrated from localStorage to IndexedDB
+- Monitors consolidated into shared utilities
+
+## [1.3.2] - 2026-02-01
+
+### Fixed
+- Override vulnerable `@conventional-changelog/git-client` dependency
+
+## [1.3.1] - 2026-02-01
+
+### Changed
+- Shared utilities consolidated and performance improved
+
+## [1.3.0] - 2026-02-01
+
+### Added
+- Capture extension for exporting workflows as PNG/SVG
+
+## [1.2.0] - 2026-02-01
+
+### Fixed
+- TypeScript strict mode errors in CI
+
+## [1.1.0] - 2026-02-01
+
+### Added
+- Drag-drop support in folder tree
+- Keyboard navigation
+- Variables extension with `{{ }}` auto-wrap and click-to-copy
+- Dark mode support
