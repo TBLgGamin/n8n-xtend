@@ -72,7 +72,7 @@
 - Silent JSON.parse failures now properly logged
 - Structured error context in all API catch blocks
 
-## [1.5.0] - 2025-06-07
+## [1.5.0] - 2026-02-07
 
 ### Added
 - Workflow copy functionality
@@ -84,3 +84,54 @@
 
 ### Fixed
 - Drag-drop event bubbling
+
+## [1.4.2] - 2026-02-04
+
+### Fixed
+- XSS and security vulnerabilities
+
+## [1.4.1] - 2026-02-04
+
+### Fixed
+- Correct export name for `removeFolderTree`
+
+### Changed
+- Optimized monitors, caching, and capture UX
+
+## [1.4.0] - 2026-02-04
+
+### Added
+- Settings panel for enabling/disabling individual extensions
+- Improved theme reactivity
+
+### Changed
+- Storage migrated from localStorage to IndexedDB
+- Monitors consolidated into shared utilities
+
+## [1.3.2] - 2026-02-01
+
+### Fixed
+- Override vulnerable `@conventional-changelog/git-client` dependency
+
+## [1.3.1] - 2026-02-01
+
+### Changed
+- Shared utilities consolidated and performance improved
+
+## [1.3.0] - 2026-02-01
+
+### Added
+- Capture extension for exporting workflows as PNG/SVG
+
+## [1.2.0] - 2026-02-01
+
+### Fixed
+- TypeScript strict mode errors in CI
+
+## [1.1.0] - 2026-02-01
+
+### Added
+- Drag-drop support in folder tree
+- Keyboard navigation
+- Variables extension with `{{ }}` auto-wrap and click-to-copy
+- Dark mode support
