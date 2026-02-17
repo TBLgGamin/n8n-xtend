@@ -12,10 +12,6 @@ function getCache(area: 'sync' | 'local'): Map<string, unknown> {
   return area === 'sync' ? syncCache : localCache;
 }
 
-function getStorageArea(area: 'sync' | 'local'): chrome.storage.StorageArea {
-  return area === 'sync' ? chrome.storage.sync : chrome.storage.local;
-}
-
 function handleStorageChange(
   changes: Record<string, chrome.storage.StorageChange>,
   areaName: string,
