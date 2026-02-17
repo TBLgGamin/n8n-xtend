@@ -8,82 +8,117 @@
   <body>
     <div class="popup">
 
-      <div class="popup-header">
-        <div class="popup-header-left">
-          <img src="icons/icon-48.png" alt="" class="popup-logo" />
-          <span class="popup-title">n8n-xtend</span>
+      <header class="popup-header">
+        <nav class="popup-nav">
+          <button class="popup-nav-home" id="header-home" type="button" aria-label="Extensions">
+            <img src="icons/icon-48.png" alt="" class="popup-logo" />
+          </button>
+          <span class="popup-nav-sep" id="header-sep" hidden>/</span>
+          <button class="popup-nav-parent" id="header-parent" type="button" hidden></button>
+          <span class="popup-nav-sep" id="header-sep-2" hidden>/</span>
+          <span class="popup-nav-page" id="header-page" hidden></span>
+        </nav>
+        <div class="popup-meta">
+          <a id="update-badge" class="popup-update" hidden
+            target="_blank" rel="noopener noreferrer">Update available</a>
+          <button id="settings-btn" class="popup-settings-btn" type="button" aria-label="Settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
         </div>
-        <div class="popup-header-right">
-          <span id="update-badge" class="popup-update-badge" hidden>Update</span>
-          <a id="version-link" class="popup-version" target="_blank" rel="noopener noreferrer"></a>
-        </div>
+      </header>
+
+      <div id="reload-banner" class="reload-banner" hidden>
+        Reload your n8n tab to apply changes
       </div>
 
-      <div class="popup-tabs">
-        <button class="popup-tab popup-tab--active" data-tab="extensions">Extensions</button>
-        <button class="popup-tab" data-tab="instances">Instances</button>
-      </div>
+      <main class="popup-body">
 
-      <div class="popup-content">
+        <section class="popup-view" id="view-extensions"></section>
 
-        <div class="popup-panel" id="panel-extensions">
-          <div id="extensions-list"></div>
-        </div>
+        <section class="popup-view popup-view--hidden" id="view-detail">
+          <h2 class="detail-name" id="detail-name"></h2>
+          <p class="detail-desc" id="detail-desc"></p>
+          <div class="detail-video-wrap" id="detail-video-wrap" hidden>
+            <video id="detail-video" controls preload="metadata"></video>
+          </div>
+          <div class="detail-field">
+            <span class="detail-field-label">How to use</span>
+            <p class="detail-field-value" id="detail-how-to-use"></p>
+          </div>
+          <div class="detail-toggle-card">
+            <span class="detail-toggle-text">Enabled</span>
+            <label class="toggle">
+              <input type="checkbox" class="toggle-input" id="detail-toggle" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+          <p class="detail-hint" id="detail-hint" hidden>Reload your n8n tab to apply changes.</p>
+        </section>
 
-        <div class="popup-panel popup-panel--hidden" id="panel-extensions-detail">
-          <div class="detail-header">
-            <button class="detail-back-btn" id="detail-back-btn" aria-label="Back">
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </button>
-            <div class="detail-header-text">
-              <span class="detail-name" id="detail-name"></span>
-              <span class="detail-group-badge" id="detail-group-badge"></span>
+        <section class="popup-view popup-view--hidden" id="view-settings">
+          <h2 class="settings-title">Settings</h2>
+
+          <div class="settings-section">
+            <span class="settings-section-title">Connections</span>
+            <div class="settings-row settings-row--link" id="go-instances">
+              <div class="settings-row-info">
+                <span class="settings-row-name">Self-Hosted Instances</span>
+                <span class="settings-row-desc">Connect your n8n instance to enable extensions</span>
+              </div>
+              <svg class="settings-row-chevron" width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
           </div>
-          <div class="detail-body">
-            <p class="detail-description" id="detail-description"></p>
-            <div class="detail-section">
-              <span class="detail-section-label">How to use</span>
-              <p class="detail-how-to-use" id="detail-how-to-use"></p>
-            </div>
-            <div class="detail-video" id="detail-video" hidden>
-              <video id="detail-video-el" controls preload="metadata"></video>
-              <button class="detail-fullscreen-btn" id="detail-fullscreen-btn" aria-label="Fullscreen">
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M1 5V1H5M9 1H13V5M13 9V13H9M5 13H1V9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </button>
-            </div>
-            <div class="detail-toggle-row">
-              <span class="detail-toggle-label">Enabled</span>
+
+          <div class="settings-section">
+            <span class="settings-section-title">Preferences</span>
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-name">Check for updates</span>
+                <span class="settings-row-desc">Notify when a new version is available</span>
+              </div>
               <label class="toggle">
-                <input type="checkbox" class="toggle-input" id="detail-toggle" />
+                <input type="checkbox" class="toggle-input" id="pref-check-updates" />
                 <span class="toggle-track"><span class="toggle-thumb"></span></span>
               </label>
             </div>
-            <p class="detail-reload-hint" id="detail-reload-hint" hidden>Reload your n8n tab to apply changes.</p>
-          </div>
-        </div>
-
-        <div class="popup-panel popup-panel--hidden" id="panel-instances">
-          <div class="instances-section">
-            <div id="origins-list" class="origins-list"></div>
-            <div class="instances-add-row">
-              <input
-                id="origin-input"
-                type="url"
-                class="instances-input"
-                placeholder="n8n.example.com"
-              />
-              <button id="origin-add-btn" class="instances-add-btn">Add</button>
+            <div class="settings-row">
+              <div class="settings-row-info">
+                <span class="settings-row-name">Reset all extensions</span>
+                <span class="settings-row-desc">Restore default enabled/disabled states</span>
+              </div>
+              <button class="settings-row-action" id="reset-settings" type="button">Reset</button>
             </div>
-            <p id="origin-error" class="instances-error" hidden></p>
           </div>
-        </div>
 
-      </div>
+          <footer class="settings-footer">
+            <span class="settings-footer-version" id="settings-version-text"></span>
+            <a class="settings-footer-update" id="settings-update-link" hidden
+              target="_blank" rel="noopener noreferrer"></a>
+            <div class="settings-footer-links">
+              <a href="https://github.com/TBLgGamin/n8n-xtend" class="settings-footer-link"
+                target="_blank" rel="noopener noreferrer">GitHub</a>
+              <a href="https://github.com/TBLgGamin/n8n-xtend/releases" class="settings-footer-link"
+                target="_blank" rel="noopener noreferrer">Changelog</a>
+              <a href="https://github.com/TBLgGamin/n8n-xtend/issues" class="settings-footer-link"
+                target="_blank" rel="noopener noreferrer">Report Issue</a>
+            </div>
+          </footer>
+        </section>
+
+        <section class="popup-view popup-view--hidden" id="view-instances">
+          <div class="instances-form-wrap">
+            <div class="instance-form">
+              <input id="origin-input" type="url" class="instance-input"
+                placeholder="https://n8n.example.com" />
+              <button id="origin-add" class="instance-add-btn" type="button">Add</button>
+            </div>
+            <p id="origin-error" class="instance-error" hidden></p>
+          </div>
+          <ul class="instances-list" id="instances-list" hidden></ul>
+          <p class="instances-note">n8n Cloud instances work automatically.</p>
+        </section>
+
+      </main>
 
     </div>
     <script src="popup.js"></script>

@@ -8,14 +8,22 @@ const log = logger.child('popup');
 
 const GITHUB_REPO = 'TBLgGamin/n8n-xtend';
 const SETTINGS_KEY = 'n8n-xtend-settings';
+const PREFERENCES_KEY = 'n8n-xtend-preferences';
 
-const CHEVRON_SVG = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 3L9 7L5 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const EXTERNAL_LINK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+const ROW_CHEVRON_SVG = `<svg class="ext-row-arrow" width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const INSTANCE_ICON_SVG = `<svg class="instances-item-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20M12 2a14.5 14.5 0 0 1 0 20M2 12h20"/></svg>`;
+const TRASH_ICON_SVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
 
 type ExtensionSettings = Record<string, boolean>;
-type TabId = 'extensions' | 'instances';
+
+interface Preferences {
+  checkForUpdates: boolean;
+}
+
+const defaultPreferences: Preferences = { checkForUpdates: true };
 
 let settings: ExtensionSettings = {};
+let preferences: Preferences = { ...defaultPreferences };
 let currentExtension: ExtensionMetaEntry | null = null;
 
 function sendMessage(message: MessageRequest): Promise<MessageResponse> {
@@ -30,13 +38,32 @@ function saveSettings(): void {
   setSyncItem(SETTINGS_KEY, settings);
 }
 
+function loadPreferences(): void {
+  preferences = getSyncItem<Preferences>(PREFERENCES_KEY) ?? {
+    ...defaultPreferences,
+  };
+}
+
+function savePreferences(): void {
+  setSyncItem(PREFERENCES_KEY, preferences);
+}
+
 function isEnabled(id: string): boolean {
   const ext = extensionMeta.find((e) => e.id === id);
   return settings[id] ?? ext?.enabledByDefault ?? true;
 }
 
+function showReloadBanner(): void {
+  const banner = document.getElementById('reload-banner');
+  if (banner) banner.hidden = false;
+}
+
 function groupDisplayName(group: string): string {
-  const names: Record<string, string> = { sidebar: 'Sidebar', editor: 'Editor', ui: 'UI' };
+  const names: Record<string, string> = {
+    sidebar: 'Sidebar',
+    editor: 'Editor',
+    ui: 'UI',
+  };
   return names[group] ?? group;
 }
 
@@ -71,21 +98,105 @@ function createToggle(id: string, checked: boolean): HTMLLabelElement {
   return label;
 }
 
-function syncDetailToggle(id: string, checked: boolean): void {
-  if (currentExtension?.id !== id) return;
-  const detailToggle = document.getElementById('detail-toggle') as HTMLInputElement | null;
-  if (detailToggle) detailToggle.checked = checked;
+function showView(viewId: string): void {
+  for (const view of document.querySelectorAll<HTMLElement>('.popup-view')) {
+    view.classList.add('popup-view--hidden');
+  }
+  const target = document.getElementById(`view-${viewId}`);
+  if (target) target.classList.remove('popup-view--hidden');
+
+  const isMain = viewId === 'extensions';
+  const sep = document.getElementById('header-sep');
+  const page = document.getElementById('header-page');
+  const parent = document.getElementById('header-parent');
+  const sep2 = document.getElementById('header-sep-2');
+
+  if (sep) sep.hidden = isMain;
+  if (page) page.hidden = isMain;
+
+  const hasParent = viewId === 'instances';
+  if (parent) parent.hidden = !hasParent;
+  if (sep2) sep2.hidden = !hasParent;
 }
 
 function syncListToggle(id: string, checked: boolean): void {
-  const listToggle = document.querySelector<HTMLInputElement>(
-    `.toggle-input[data-extension-id="${id}"]`,
-  );
-  if (listToggle) listToggle.checked = checked;
+  const el = document.querySelector<HTMLInputElement>(`.toggle-input[data-extension-id="${id}"]`);
+  if (el) el.checked = checked;
 }
 
-function renderExtensionGroups(): void {
-  const container = document.getElementById('extensions-list');
+function setupVideo(ext: ExtensionMetaEntry): void {
+  const wrap = document.getElementById('detail-video-wrap');
+  const video = document.getElementById('detail-video') as HTMLVideoElement | null;
+  if (!wrap || !video) return;
+
+  wrap.hidden = true;
+  video.src = '';
+
+  const url = chrome.runtime.getURL(`extensions/${ext.group}/${ext.id}/video/${ext.id}.mp4`);
+
+  video.addEventListener(
+    'loadedmetadata',
+    () => {
+      wrap.hidden = false;
+    },
+    { once: true },
+  );
+  video.addEventListener(
+    'error',
+    () => {
+      wrap.hidden = true;
+    },
+    { once: true },
+  );
+
+  video.src = url;
+  video.load();
+}
+
+function showExtensionDetail(ext: ExtensionMetaEntry): void {
+  currentExtension = ext;
+
+  const pageEl = document.getElementById('header-page');
+  const nameEl = document.getElementById('detail-name');
+  const desc = document.getElementById('detail-desc');
+  const howTo = document.getElementById('detail-how-to-use');
+  const toggle = document.getElementById('detail-toggle') as HTMLInputElement | null;
+  const hint = document.getElementById('detail-hint');
+
+  if (pageEl) pageEl.textContent = ext.name;
+  if (nameEl) nameEl.textContent = ext.name;
+  if (desc) desc.textContent = ext.description;
+  if (howTo) howTo.textContent = ext.howToUse;
+  if (toggle) toggle.checked = isEnabled(ext.id);
+  if (hint) hint.hidden = true;
+
+  setupVideo(ext);
+  showView('detail');
+}
+
+function showExtensionsList(): void {
+  currentExtension = null;
+  renderExtensions();
+  showView('extensions');
+}
+
+function showSettings(): void {
+  const pageEl = document.getElementById('header-page');
+  if (pageEl) pageEl.textContent = 'Settings';
+  showView('settings');
+}
+
+function showInstances(): void {
+  const pageEl = document.getElementById('header-page');
+  const parentEl = document.getElementById('header-parent');
+  if (pageEl) pageEl.textContent = 'Instances';
+  if (parentEl) parentEl.textContent = 'Settings';
+  showView('instances');
+  void loadOrigins();
+}
+
+function renderExtensions(): void {
+  const container = document.getElementById('view-extensions');
   if (!container) return;
   container.innerHTML = '';
 
@@ -93,10 +204,10 @@ function renderExtensionGroups(): void {
     const groupEl = document.createElement('div');
     groupEl.className = 'ext-group';
 
-    const labelEl = document.createElement('span');
-    labelEl.className = 'ext-group-label';
-    labelEl.textContent = groupDisplayName(group);
-    groupEl.appendChild(labelEl);
+    const label = document.createElement('span');
+    label.className = 'ext-group-label';
+    label.textContent = groupDisplayName(group);
+    groupEl.appendChild(label);
 
     for (const ext of extensions) {
       const row = document.createElement('div');
@@ -105,19 +216,16 @@ function renderExtensionGroups(): void {
       const info = document.createElement('div');
       info.className = 'ext-row-info';
 
-      const nameEl = document.createElement('span');
-      nameEl.className = 'ext-row-name';
-      nameEl.textContent = ext.name;
+      const name = document.createElement('span');
+      name.className = 'ext-row-name';
+      name.textContent = ext.name;
 
-      const descEl = document.createElement('span');
-      descEl.className = 'ext-row-desc';
-      descEl.textContent = ext.description;
+      const desc = document.createElement('span');
+      desc.className = 'ext-row-desc';
+      desc.textContent = ext.description;
 
-      info.appendChild(nameEl);
-      info.appendChild(descEl);
-
-      const actions = document.createElement('div');
-      actions.className = 'ext-row-actions';
+      info.appendChild(name);
+      info.appendChild(desc);
 
       const toggle = createToggle(ext.id, isEnabled(ext.id));
       toggle.addEventListener('click', (e) => e.stopPropagation());
@@ -126,19 +234,13 @@ function renderExtensionGroups(): void {
       toggleInput?.addEventListener('change', () => {
         settings[ext.id] = toggleInput.checked;
         saveSettings();
-        syncDetailToggle(ext.id, toggleInput.checked);
+        showReloadBanner();
       });
 
-      const chevron = document.createElement('span');
-      chevron.className = 'ext-row-chevron';
-      chevron.innerHTML = CHEVRON_SVG;
-
-      actions.appendChild(toggle);
-      actions.appendChild(chevron);
-
       row.appendChild(info);
-      row.appendChild(actions);
-      row.addEventListener('click', () => showDetail(ext));
+      row.appendChild(toggle);
+      row.insertAdjacentHTML('beforeend', ROW_CHEVRON_SVG);
+      row.addEventListener('click', () => showExtensionDetail(ext));
 
       groupEl.appendChild(row);
     }
@@ -147,101 +249,9 @@ function renderExtensionGroups(): void {
   }
 }
 
-function setupVideoForExtension(ext: ExtensionMetaEntry): void {
-  const videoSection = document.getElementById('detail-video');
-  const videoEl = document.getElementById('detail-video-el') as HTMLVideoElement | null;
-  if (!videoSection || !videoEl) return;
-
-  videoSection.hidden = true;
-  videoEl.src = '';
-
-  const videoUrl = chrome.runtime.getURL(`extensions/${ext.group}/${ext.id}/video/${ext.id}.mp4`);
-
-  videoEl.addEventListener(
-    'loadedmetadata',
-    () => {
-      videoSection.hidden = false;
-    },
-    { once: true },
-  );
-
-  videoEl.addEventListener(
-    'error',
-    () => {
-      videoSection.hidden = true;
-    },
-    { once: true },
-  );
-
-  videoEl.src = videoUrl;
-  videoEl.load();
-}
-
-function showDetail(ext: ExtensionMetaEntry): void {
-  currentExtension = ext;
-
-  const listPanel = document.getElementById('panel-extensions');
-  const detailPanel = document.getElementById('panel-extensions-detail');
-  if (listPanel) listPanel.classList.add('popup-panel--hidden');
-  if (detailPanel) detailPanel.classList.remove('popup-panel--hidden');
-
-  const nameEl = document.getElementById('detail-name');
-  const groupBadge = document.getElementById('detail-group-badge');
-  const descEl = document.getElementById('detail-description');
-  const howToEl = document.getElementById('detail-how-to-use');
-  const toggleEl = document.getElementById('detail-toggle') as HTMLInputElement | null;
-  const reloadHint = document.getElementById('detail-reload-hint');
-
-  if (nameEl) nameEl.textContent = ext.name;
-  if (groupBadge) groupBadge.textContent = groupDisplayName(ext.group);
-  if (descEl) descEl.textContent = ext.description;
-  if (howToEl) howToEl.textContent = ext.howToUse;
-  if (toggleEl) toggleEl.checked = isEnabled(ext.id);
-  if (reloadHint) reloadHint.hidden = true;
-
-  setupVideoForExtension(ext);
-}
-
-function showList(): void {
-  currentExtension = null;
-
-  const listPanel = document.getElementById('panel-extensions');
-  const detailPanel = document.getElementById('panel-extensions-detail');
-  if (listPanel) listPanel.classList.remove('popup-panel--hidden');
-  if (detailPanel) detailPanel.classList.add('popup-panel--hidden');
-
-  renderExtensionGroups();
-}
-
-function showTab(tabId: TabId): void {
-  if (tabId === 'extensions') {
-    showList();
-  }
-
-  for (const tab of document.querySelectorAll<HTMLButtonElement>('.popup-tab')) {
-    const isActive = tab.dataset.tab === tabId;
-    tab.classList.toggle('popup-tab--active', isActive);
-  }
-
-  const allPanels = ['panel-extensions', 'panel-extensions-detail', 'panel-instances'];
-  for (const panelId of allPanels) {
-    const panel = document.getElementById(panelId);
-    if (panel) panel.classList.add('popup-panel--hidden');
-  }
-
-  if (tabId === 'extensions') {
-    const listPanel = document.getElementById('panel-extensions');
-    if (listPanel) listPanel.classList.remove('popup-panel--hidden');
-  } else if (tabId === 'instances') {
-    const instancesPanel = document.getElementById('panel-instances');
-    if (instancesPanel) instancesPanel.classList.remove('popup-panel--hidden');
-  }
-}
-
 function isN8nCloudOrigin(origin: string): boolean {
   try {
-    const { hostname } = new URL(origin);
-    return hostname.endsWith('.n8n.cloud');
+    return new URL(origin).hostname.endsWith('.n8n.cloud');
   } catch {
     return false;
   }
@@ -258,47 +268,57 @@ function normalizeToOrigin(input: string): string | null {
   }
 }
 
-function renderOrigins(origins: string[]): void {
-  const list = document.getElementById('origins-list');
+function renderOriginsList(origins: string[]): void {
+  const list = document.getElementById('instances-list');
   if (!list) return;
+
   list.innerHTML = '';
 
   if (origins.length === 0) {
-    const empty = document.createElement('p');
-    empty.className = 'origins-empty';
-    empty.textContent = 'No instances added yet.';
-    list.appendChild(empty);
+    list.hidden = true;
     return;
   }
 
+  list.hidden = false;
+
   for (const origin of origins) {
-    const row = document.createElement('div');
-    row.className = 'origin-row';
+    const li = document.createElement('li');
+    li.className = 'instances-item';
 
     const link = document.createElement('a');
-    link.className = 'origin-link';
+    link.className = 'instances-item-link';
     link.href = origin;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
 
-    const urlSpan = document.createElement('span');
-    urlSpan.className = 'origin-url';
-    urlSpan.textContent = origin;
+    const info = document.createElement('div');
+    info.className = 'instances-item-info';
 
-    link.appendChild(urlSpan);
-    link.insertAdjacentHTML('beforeend', EXTERNAL_LINK_SVG);
+    const host = document.createElement('span');
+    host.className = 'instances-item-host';
+    host.textContent = new URL(origin).hostname;
+
+    const originText = document.createElement('span');
+    originText.className = 'instances-item-origin';
+    originText.textContent = origin;
+
+    info.appendChild(host);
+    info.appendChild(originText);
+    link.appendChild(info);
 
     const removeBtn = document.createElement('button');
-    removeBtn.className = 'origin-remove-btn';
-    removeBtn.textContent = '\u00d7';
+    removeBtn.className = 'instances-item-remove';
+    removeBtn.innerHTML = TRASH_ICON_SVG;
+    removeBtn.setAttribute('aria-label', 'Remove');
     removeBtn.addEventListener('click', async () => {
       await sendMessage({ type: 'REMOVE_ORIGIN', origin });
       await loadOrigins();
     });
 
-    row.appendChild(link);
-    row.appendChild(removeBtn);
-    list.appendChild(row);
+    li.insertAdjacentHTML('afterbegin', INSTANCE_ICON_SVG);
+    li.appendChild(link);
+    li.appendChild(removeBtn);
+    list.appendChild(li);
   }
 }
 
@@ -319,51 +339,50 @@ function clearOriginError(): void {
 async function loadOrigins(): Promise<void> {
   const response = await sendMessage({ type: 'GET_ORIGINS' });
   if (response.success) {
-    renderOrigins(response.origins);
-  }
-}
-
-function setupTabs(): void {
-  for (const tab of document.querySelectorAll<HTMLButtonElement>('.popup-tab')) {
-    tab.addEventListener('click', () => {
-      const tabId = tab.dataset.tab as TabId | undefined;
-      if (tabId) showTab(tabId);
-    });
+    renderOriginsList(response.origins);
   }
 }
 
 function setupDetailToggle(): void {
-  const toggleEl = document.getElementById('detail-toggle') as HTMLInputElement | null;
-  const reloadHint = document.getElementById('detail-reload-hint');
-  if (!toggleEl) return;
+  const toggle = document.getElementById('detail-toggle') as HTMLInputElement | null;
+  const hint = document.getElementById('detail-hint');
+  if (!toggle) return;
 
-  toggleEl.addEventListener('change', () => {
+  toggle.addEventListener('change', () => {
     if (!currentExtension) return;
-    settings[currentExtension.id] = toggleEl.checked;
+    settings[currentExtension.id] = toggle.checked;
     saveSettings();
-    syncListToggle(currentExtension.id, toggleEl.checked);
-    if (reloadHint) reloadHint.hidden = false;
+    syncListToggle(currentExtension.id, toggle.checked);
+    showReloadBanner();
+    if (hint) hint.hidden = false;
   });
 }
 
-function setupDetailBackButton(): void {
-  const btn = document.getElementById('detail-back-btn');
-  if (!btn) return;
-  btn.addEventListener('click', showList);
+function setupHomeButton(): void {
+  document.getElementById('header-home')?.addEventListener('click', showExtensionsList);
+  document.getElementById('header-parent')?.addEventListener('click', showSettings);
 }
 
-function setupDetailFullscreenButton(): void {
-  const btn = document.getElementById('detail-fullscreen-btn');
-  const videoEl = document.getElementById('detail-video-el') as HTMLVideoElement | null;
-  if (!btn || !videoEl) return;
-
-  btn.addEventListener('click', () => {
-    void videoEl.requestFullscreen();
+function setupSettingsButton(): void {
+  document.getElementById('settings-btn')?.addEventListener('click', () => {
+    const settingsView = document.getElementById('view-settings');
+    const instancesView = document.getElementById('view-instances');
+    const onSettings = settingsView && !settingsView.classList.contains('popup-view--hidden');
+    const onInstances = instancesView && !instancesView.classList.contains('popup-view--hidden');
+    if (onSettings || onInstances) {
+      showExtensionsList();
+    } else {
+      showSettings();
+    }
   });
+}
+
+function setupInstancesNavigation(): void {
+  document.getElementById('go-instances')?.addEventListener('click', showInstances);
 }
 
 function setupAddOrigin(): void {
-  const addBtn = document.getElementById('origin-add-btn');
+  const addBtn = document.getElementById('origin-add');
   const input = document.getElementById('origin-input') as HTMLInputElement | null;
   if (!addBtn || !input) return;
 
@@ -383,13 +402,15 @@ function setupAddOrigin(): void {
     }
 
     if (isN8nCloudOrigin(origin)) {
-      showOriginError('n8n Cloud instances are already supported automatically.');
+      showOriginError('n8n Cloud instances are supported automatically.');
       return;
     }
 
     let granted: boolean;
     try {
-      granted = await chrome.permissions.request({ origins: [`${origin}/*`] });
+      granted = await chrome.permissions.request({
+        origins: [`${origin}/*`],
+      });
     } catch {
       showOriginError('Permission request failed. Please try again.');
       return;
@@ -417,6 +438,30 @@ function setupAddOrigin(): void {
   });
 }
 
+function setupPreferences(): void {
+  const updateToggle = document.getElementById('pref-check-updates') as HTMLInputElement | null;
+  if (updateToggle) {
+    updateToggle.checked = preferences.checkForUpdates;
+    updateToggle.addEventListener('change', () => {
+      preferences.checkForUpdates = updateToggle.checked;
+      savePreferences();
+    });
+  }
+
+  const resetBtn = document.getElementById('reset-settings');
+  resetBtn?.addEventListener('click', () => {
+    settings = {};
+    saveSettings();
+    renderExtensions();
+    showReloadBanner();
+
+    resetBtn.textContent = 'Done';
+    setTimeout(() => {
+      resetBtn.textContent = 'Reset';
+    }, 1500);
+  });
+}
+
 function isNewerVersion(latest: string, current: string): boolean {
   const parse = (v: string) => v.split('.').map(Number);
   const [lMaj = 0, lMin = 0, lPatch = 0] = parse(latest);
@@ -435,35 +480,51 @@ async function checkForUpdate(currentVersion: string): Promise<void> {
     if (!tagName) return;
     const latestVersion = tagName.replace(/^v/, '');
     if (!isNewerVersion(latestVersion, currentVersion)) return;
-    const badge = document.getElementById('update-badge');
-    if (badge) badge.hidden = false;
+
+    const badge = document.getElementById('update-badge') as HTMLAnchorElement | null;
+    if (badge) {
+      badge.href = `https://github.com/${GITHUB_REPO}/releases/tag/${tagName}`;
+      badge.hidden = false;
+    }
+
+    const updateLink = document.getElementById('settings-update-link') as HTMLAnchorElement | null;
+    if (updateLink) {
+      updateLink.href = `https://github.com/${GITHUB_REPO}/releases/tag/${tagName}`;
+      updateLink.textContent = `Update available \u2014 Download v${latestVersion}`;
+      updateLink.hidden = false;
+    }
   } catch {
     log.debug('Update check failed');
   }
 }
 
-function renderVersionInfo(): void {
+function renderVersion(): void {
   const { version } = chrome.runtime.getManifest();
-  const versionLink = document.getElementById('version-link') as HTMLAnchorElement | null;
-  if (versionLink) {
-    versionLink.href = `https://github.com/${GITHUB_REPO}/releases/tag/v${version}`;
-    versionLink.textContent = `v${version}`;
+
+  const versionText = document.getElementById('settings-version-text');
+  if (versionText) {
+    versionText.textContent = `n8n-xtend v${version}`;
   }
-  void checkForUpdate(version);
+
+  if (preferences.checkForUpdates) {
+    void checkForUpdate(version);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
   await initChromeStorage();
   loadSettings();
+  loadPreferences();
 
-  renderExtensionGroups();
-  renderVersionInfo();
+  renderExtensions();
+  renderVersion();
 
-  setupTabs();
-  setupDetailBackButton();
+  setupHomeButton();
+  setupSettingsButton();
   setupDetailToggle();
-  setupDetailFullscreenButton();
   setupAddOrigin();
+  setupPreferences();
+  setupInstancesNavigation();
 
   await loadOrigins();
 });

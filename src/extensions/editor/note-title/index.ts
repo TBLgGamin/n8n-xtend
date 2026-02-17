@@ -10,7 +10,7 @@ export const metadata: ExtensionMetadata = {
   description: 'Rename sticky note visible titles with Space shortcut',
   howToUse:
     'Open any workflow that contains sticky notes. Click a sticky note to select it, then press Space to open the rename dialog. Type a new title and press Enter to confirm. The title appears above the note on the canvas.',
-  enabledByDefault: true,
+  enabledByDefault: false,
 };
 
 export function init(): void {
