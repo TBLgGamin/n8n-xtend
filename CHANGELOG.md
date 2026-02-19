@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [1.8.2] - 2026-02-19
+
+### Added
+
+- add unified toast system, undo support, and fix drag-drop to root
+
+
 ## [1.8.1] - 2026-02-17
 
 ### Added
@@ -13,8 +20,6 @@
 
 - restore full changelog history to initial release
 - replace conventional-changelog with native bash script
-
-
 ## [1.8.0] - 2026-02-17
 
 ### Added
