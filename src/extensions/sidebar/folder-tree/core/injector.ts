@@ -1,4 +1,5 @@
 import { findElementByClassPattern, logger } from '@/shared/utils';
+import { clearSelection } from './dragdrop';
 import { loadTree } from './tree';
 
 const log = logger.child('folder-tree:injector');
@@ -94,6 +95,13 @@ export function injectFolderTree(projectId: string): boolean {
   if (content) {
     setupResizeObserver(sidebar);
     loadTree(content, projectId);
+
+    content.addEventListener('click', (event) => {
+      if (!event.ctrlKey && !event.metaKey && !event.shiftKey) {
+        clearSelection();
+      }
+    });
+
     return true;
   }
 

@@ -22,8 +22,7 @@ export async function moveWorkflow(workflowId: string, parentFolderId: string): 
       log.debug('Failed to get workflow versionId', { workflowId });
       return false;
     }
-    const targetFolderId = parentFolderId === '0' ? null : parentFolderId;
-    await patch(`/rest/workflows/${workflowId}`, { parentFolderId: targetFolderId, versionId });
+    await patch(`/rest/workflows/${workflowId}`, { versionId, parentFolderId });
     return true;
   } catch (error) {
     log.debug('Failed to move workflow', { workflowId, error });
@@ -40,9 +39,7 @@ export async function copyWorkflow(
     const response = await request<WorkflowDetailResponse>(`/rest/workflows/${workflowId}`);
     const workflow = response.data;
 
-    const parentFolder = targetFolderId === '0' ? null : targetFolderId;
-
-    await post('/rest/workflows', {
+    const body: Record<string, unknown> = {
       name: workflow.name,
       nodes: workflow.nodes,
       connections: workflow.connections,
@@ -50,10 +47,13 @@ export async function copyWorkflow(
       pinData: workflow.pinData ?? {},
       tags: workflow.tags ?? [],
       active: false,
-      parentFolderId: parentFolder,
       projectId,
-    });
+    };
+    if (targetFolderId !== '0') {
+      body.parentFolderId = targetFolderId;
+    }
 
+    await post('/rest/workflows', body);
     return true;
   } catch (error) {
     log.debug('Failed to copy workflow', { workflowId, error });

@@ -1,5 +1,5 @@
 import type { WorkflowDetail } from '@/shared/types';
-import { buildWorkflowUrl, isValidId } from '@/shared/utils';
+import { buildWorkflowUrl, emit, isValidId } from '@/shared/utils';
 import { icons } from '../icons';
 import {
   type ConnectionType,
@@ -42,6 +42,9 @@ function createCardElement(
   const link = document.createElement('a');
   link.className = 'n8n-xtend-graph-card-link';
   link.href = buildWorkflowUrl(workflow.id);
+  link.addEventListener('click', () => {
+    emit('graph:workflow-clicked', { workflowId: workflow.id });
+  });
 
   const header = document.createElement('div');
   header.className = 'n8n-xtend-graph-card-header';

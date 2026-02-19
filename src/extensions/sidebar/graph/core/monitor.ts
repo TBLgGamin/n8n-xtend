@@ -6,6 +6,7 @@ import {
   getWorkflowIdFromUrl,
   isAuthPage,
   logger,
+  on,
 } from '@/shared/utils';
 import {
   checkNavigationChange,
@@ -65,5 +66,26 @@ const monitor: PollMonitor = createPollMonitor({
   onStart: () => log.debug('Graph monitor started'),
 });
 
-export const startMonitor = monitor.start;
-export const stopMonitor = monitor.stop;
+export function startMonitor(): void {
+  monitor.start();
+
+  on('folder-tree:item-moved', () => {
+    log.debug('Item moved in folder tree, graph data may be stale');
+    clearGraphState();
+  });
+
+  on('folder-tree:items-moved', () => {
+    log.debug('Batch move in folder tree, graph data may be stale');
+    clearGraphState();
+  });
+
+  on('folder-tree:tree-refreshed', () => {
+    log.debug('Tree refreshed externally, graph data may be stale');
+    clearGraphState();
+  });
+}
+
+export function stopMonitor(): void {
+  monitor.stop();
+  clearGraphState();
+}

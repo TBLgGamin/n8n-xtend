@@ -38,61 +38,73 @@ src/
 ├── background/                 # Service worker (manages dynamic content script registration)
 │   ├── index.ts                # onInstalled, onStartup, message handling
 │   └── types.ts                # MessageRequest/Response types, storage key, script ID
-├── popup/                      # Extension popup (manage self-hosted instance permissions)
-│   ├── index.ts                # Origin add/remove UI logic, permission requests
+├── popup/                      # Extension popup (multi-view SPA)
+│   ├── index.ts                # Extension list, detail, settings, instances views
 │   ├── popup.html              # Popup page markup
 │   └── styles/
 │       └── popup.css           # Popup-specific styles (built separately from content CSS)
-├── settings/                   # Extension manager (settings panel at /settings/personal)
-│   ├── index.ts                # initSettingsExtension(), isExtensionEnabled()
-│   ├── core/
-│   │   ├── injector.ts         # Settings panel DOM injection
-│   │   ├── monitor.ts          # PollMonitor for settings page detection
-│   │   └── storage.ts          # Extension enable/disable persistence
-│   └── styles/
-│       └── settings.css
+├── settings/                   # Extension enable/disable logic
+│   ├── index.ts                # Re-exports from core
+│   └── core/
+│       ├── index.ts            # Re-exports from storage
+│       └── storage.ts          # loadSettings(), isExtensionEnabled(), setExtensionEnabled()
 ├── shared/
 │   ├── api/
-│   │   └── client.ts           # REST API client with retry logic (3 attempts, exponential backoff)
+│   │   ├── client.ts           # REST API client with retry logic (3 attempts, exponential backoff)
+│   │   ├── workflows.ts        # Workflow list/detail fetching helpers
+│   │   └── index.ts
 │   ├── types/
-│   │   └── api.ts              # Folder, Workflow, TreeItem interfaces
+│   │   ├── api.ts              # Folder, Workflow, TreeItem, WorkflowDetail interfaces
+│   │   └── index.ts
 │   ├── utils/
-│   │   ├── database.ts         # IndexedDB via Dexie.js + in-memory cache
-│   │   ├── storage.ts          # Storage abstraction (sync read, async write)
+│   │   ├── chrome-storage.ts   # In-memory cache over chrome.storage.sync + chrome.storage.local
 │   │   ├── monitor.ts          # PollMonitor, MutationMonitor, AdaptivePollMonitor
 │   │   ├── theme.ts            # Theme detection (dark/light)
-│   │   ├── theme-colors.ts     # Light/dark color palettes
+│   │   ├── theme-colors.ts     # Light/dark color palettes + onThemeColorsChange()
 │   │   ├── theme-manager.ts    # Manages n8n-xtend-dark class on html element
-│   │   ├── url.ts              # URL parsing and page detection helpers
-│   │   ├── dom.ts              # DOM query helpers
+│   │   ├── url.ts              # URL parsing, page detection, isN8nHost()
+│   │   ├── dom.ts              # DOM query helpers (findElementBySelectors, findElementByClassPattern)
 │   │   ├── html.ts             # HTML escaping (XSS prevention)
 │   │   ├── validation.ts       # ID validation and object sanitization
-│   │   └── logger.ts           # Hierarchical logging with levels
+│   │   ├── timing.ts           # createDebounced(), createThrottled()
+│   │   ├── logger.ts           # Hierarchical logging with levels
+│   │   └── index.ts
 │   └── styles/
 │       └── variables.css       # CSS variables (colors, spacing)
 ├── extensions/
 │   ├── index.ts                # Re-exports registry and types
-│   ├── registry.ts             # Assembles extensions from co-located metadata
+│   ├── registry.ts             # Auto-generated: assembles extensions from discovered index.ts files
+│   ├── meta.ts                 # Auto-generated: metadata-only variant for popup bundle
 │   ├── types.ts                # ExtensionMetadata, ExtensionEntry interfaces
 │   ├── sidebar/                # Sidebar/navigation extensions
-│   │   └── folder-tree/        # Collapsible tree navigation with drag-drop
-│   │       ├── api/            # fetchFolders, fetchWorkflowProjectId, move operations
-│   │       ├── components/     # folder.ts, workflow.ts element creation
-│   │       ├── core/           # injector, monitor, tree, state, dragdrop
-│   │       ├── icons/          # SVG icons (chevron, folder, workflow)
-│   │       └── styles/
+│   │   ├── folder-tree/        # Collapsible tree navigation with drag-drop
+│   │   │   ├── api/            # fetchFolders, move/copy operations
+│   │   │   ├── components/     # folder.ts, workflow.ts element creation
+│   │   │   ├── core/           # injector, monitor, tree, state, dragdrop, sync
+│   │   │   ├── icons/          # SVG icons (chevron, folder, workflow)
+│   │   │   ├── styles/
+│   │   │   └── video/
+│   │   └── graph/              # Workflow dependency graph visualization
+│   │       ├── core/           # injector, monitor, canvas, renderer, graph-builder, data, state
+│   │       ├── icons/
+│   │       ├── styles/
+│   │       └── video/
 │   ├── editor/                 # Workflow canvas extensions
 │   │   ├── capture/            # Export workflows as PNG/SVG
 │   │   │   ├── core/           # injector, monitor
-│   │   │   └── utils/          # capture.ts (modern-screenshot)
+│   │   │   ├── utils/          # capture.ts (modern-screenshot)
+│   │   │   └── video/
 │   │   └── note-title/         # Rename sticky note titles with Space shortcut
-│   │       └── core/           # injector (keyboard listener + rename modal), monitor
+│   │       ├── core/           # injector (keyboard listener + rename modal), monitor
+│   │       └── video/
 │   └── ui/                     # UI enhancement extensions
 │       ├── show-password/      # Toggle password field visibility
 │       │   ├── core/           # injector, monitor
-│       │   └── icons/          # eye icons
+│       │   ├── icons/          # eye icons
+│       │   └── video/
 │       └── variables/          # Auto-wrap {{ }} with click-to-copy
-│           └── core/           # enhancer, monitor
+│           ├── core/           # enhancer, monitor
+│           └── video/
 └── icons/                      # Extension icons (16, 48, 128)
 ```
 
@@ -113,29 +125,30 @@ Three entry points are built separately:
 |-------------|--------|------|
 | `src/index.ts` | `content.js` | Content script (injected into n8n pages) |
 | `src/background/index.ts` | `background.js` | Service worker (dynamic script registration) |
-| `src/popup/index.ts` | `popup.js` | Popup UI (manage self-hosted permissions) |
+| `src/popup/index.ts` | `popup.js` | Popup UI (extensions, settings, instances) |
 
 ### Extension System
 
 Each extension is self-contained with co-located metadata:
 
 ```typescript
-// extensions/ui/your-extension/index.ts
+// extensions/{sidebar|editor|ui}/your-extension/index.ts
 export const metadata: ExtensionMetadata = {
   id: 'your-extension',
   name: 'Your Extension',
   description: 'What it does',
+  howToUse: 'How to use it',
   enabledByDefault: true,
 };
 
-export function initYourExtension(): void {
+export function init(): void {
   startMonitor();
 }
 ```
 
-The registry (`extensions/registry.ts`) assembles all extensions with their group (derived from folder path) and init function. `src/index.ts` loops over the registry — no per-extension wiring needed there.
+The registry (`extensions/registry.ts`) is **auto-generated** by the build system — it discovers all `extensions/*/*/index.ts` files and assembles them with their group (derived from folder path) and init function. A parallel `meta.ts` is also generated with metadata-only imports for the popup bundle.
 
-Settings panel (`src/settings/`) manages enable/disable toggles. It reads from the registry, not a separate config.
+`src/index.ts` loops over the registry, checking `isExtensionEnabled()` for each.
 
 ### Monitor Factories (`shared/utils/monitor.ts`)
 
@@ -147,33 +160,74 @@ Three reusable monitor types:
 
 ### Storage System
 
-- **IndexedDB** via Dexie.js with in-memory cache (content script data)
-- Sync reads (`getStorageItem`), async writes (`setStorageItem`)
-- Initialize with `initStorage()`, wait with `waitForStorage()`
-- Keys: `n8n-xtend-settings`, `n8ntree-expanded`
-- **chrome.storage.sync** for self-hosted origins (background/popup), key: `n8n-xtend-origins`
+- **chrome.storage.sync** + **chrome.storage.local** with in-memory cache (`chrome-storage.ts`)
+- At init, all keys loaded into `syncCache` / `localCache` Maps via `chrome.storage.*.get(null)`
+- `chrome.storage.onChanged` listener keeps cache in sync
+- Sync reads: `getSyncItem()`, `getLocalItem()` — no async after init
+- Async writes: `setSyncItem()`, `setLocalItem()` — update cache immediately, fire-and-forget to chrome.storage
+
+Storage keys:
+
+| Key | Storage | Used By | Data |
+|-----|---------|---------|------|
+| `n8n-xtend-settings` | sync | content + popup | `Record<string, boolean>` extension toggles |
+| `n8n-xtend-origins` | sync | background + popup | `string[]` self-hosted origins |
+| `n8n-xtend-preferences` | sync | popup | `{ checkForUpdates: boolean }` |
+| `n8ntree-expanded` | local | folder-tree | expanded folder IDs |
 
 ### Theme System
 
 - `getCurrentTheme()` returns `'dark' | 'light'`
-- `ThemeManager` adds `n8n-xtend-dark` class to document
+- `initThemeManager()` adds/removes `n8n-xtend-dark` class on `<html>`
 - `getThemeColors()` returns light/dark color palette
-- CSS uses `.n8n-xtend-dark` selector for dark mode
+- `onThemeColorsChange(cb)` for reactive theme updates
+- CSS uses `:root.n8n-xtend-dark` selector for dark mode
+
+### Toast System (`shared/utils/toast.ts`)
+
+- `showToast({ message, action?, duration? })` - Show notification toast
+- All toasts have a unified look: green checkmark icon + message + optional action + dismiss
+- `action: { label, onClick }` adds an action button (e.g., "Undo")
+- Default duration: 6000ms, auto-dismisses
+- Toasts stack bottom-right, slide in/out with 300ms transitions
+- CSS in `shared/styles/toast.css`, success color via `--n8n-xtend-color-success`
+
+### Event Bus (`shared/utils/event-bus.ts`)
+
+- `emit(event, payload)` / `on(event, handler)` - Typed pub-sub
+- `on()` returns an unsubscribe function
+- Key cross-extension events:
+  - `folder-tree:item-moved` / `items-moved` → graph clears cached state
+  - `folder-tree:tree-refreshed` → graph invalidates when sync detects external changes
+  - `undo:operation-registered` → notifies listeners of new undoable action
+  - `undo:requested` → triggers undo execution
+
+### Undo System (`shared/utils/undo.ts`)
+
+- `registerUndo({ description, undo })` - Register undoable operation + show success toast with Undo button
+- `initUndoSystem()` - Called at content script init, registers Ctrl+Z handler
+- Single-operation stack (latest only, no history)
+- Keyboard shortcut skips INPUT/TEXTAREA/contentEditable elements
 
 ### API Client (`shared/api/client.ts`)
 
 - `request<T>(endpoint)` - GET with retry
+- `post<T>(endpoint, body)` - POST with retry
 - `patch<T>(endpoint, body)` - PATCH with retry
-- Retry logic: 3 attempts, exponential backoff (1s, 2s)
+- Retry logic: 3 attempts (1 initial + 2 retries), exponential backoff (1s, 2s)
 - Retryable codes: 408, 429, 500, 502, 503, 504
-- Includes `browser-id` header from localStorage
+- `assertTrustedOrigin()` validates `isN8nHost()` before every request
+- `fetchWithTimeout()` wraps fetch with 10s AbortController
+- Includes `browser-id` header from localStorage, `credentials: 'include'`
 
 ## Key Types (`shared/types/api.ts`)
 
 ```typescript
 interface Folder { id, name, resource: 'folder', parentFolderId?, workflowCount?, subFolderCount? }
-interface Workflow { id, name, resource?, versionId?, parentFolderId?, homeProject: { id } }
+interface Workflow { id, name, resource?, versionId?, parentFolderId?, homeProject?: { id } }
+interface WorkflowDetail { id, name, active, nodes, connections, settings, pinData, tags, ... }
 type TreeItem = Folder | Workflow
+function isFolder(item: TreeItem): item is Folder
 ```
 
 ## Security Conventions
@@ -189,10 +243,10 @@ type TreeItem = Folder | Workflow
 1. Create folder: `src/extensions/sidebar/`, `src/extensions/editor/`, or `src/extensions/ui/`
 2. Create `core/monitor.ts` - watch for activation conditions
 3. Create `core/injector.ts` - inject UI into DOM
-4. Create `index.ts` - export `metadata` (ExtensionMetadata) and `initYourExtension()`
-5. Add entry to `extensions/registry.ts` with group and init function
+4. Create `index.ts` - export `metadata` (ExtensionMetadata) and `init()`
+5. Optionally add `video/` directory with demo video + `VIDEO.md`
 
-That's it. No need to touch `src/index.ts` or any config file.
+That's it. The build system auto-generates the registry. No need to touch `src/index.ts`, `registry.ts`, or any config file.
 
 ## Commands
 
@@ -240,14 +294,15 @@ Do not manually edit `CHANGELOG.md` during commits — write good conventional c
 
 ## Build System (`scripts/build.ts`)
 
-1. Cleans `dist/` directory
-2. Auto-generates `extensions/registry.ts` from discovered extensions
+1. Auto-generates `extensions/registry.ts` and `extensions/meta.ts` from discovered extensions
+2. Cleans `dist/` directory
 3. Bundles three entry points: content script, background service worker, popup script
-4. Combines content CSS files (excludes `popup/**/*.css`), embeds fonts as base64
-5. Builds popup CSS separately (`variables.css` + `popup/styles/popup.css`)
-6. Copies `popup.html` and icons to `dist/`
-7. Generates `manifest.json` with version from `package.json`
-8. Watch mode: debounced rebuild on changes
+4. Defines `__DEV__` as `"true"` in watch mode, `"false"` in production
+5. Combines content CSS files (excludes `popup/**/*.css`), embeds fonts as base64
+6. Builds popup CSS separately (`variables.css` + `popup/styles/popup.css`)
+7. Copies `popup.html`, icons, and video assets to `dist/`
+8. Generates `manifest.json` with version from `package.json`
+9. Watch mode: `node:fs.watch` on `src/` recursive, 100ms debounce
 
 ### Build Output
 ```
@@ -260,12 +315,16 @@ dist/
   popup.css        # Popup styles (variables + popup-specific)
   manifest.json    # Narrow permissions manifest
   icons/           # Extension icons
+  extensions/      # Video assets per extension
 ```
 
 ## Dependencies
 
-- `dexie` - IndexedDB wrapper
 - `modern-screenshot` - DOM to PNG/SVG capture
 - `@biomejs/biome` - Linting/formatting
+- `@commitlint/cli` + `@commitlint/config-conventional` - Conventional commit enforcement
+- `@types/bun` - Bun TypeScript types
+- `@types/chrome` - Chrome extension API types
 - `typescript` - Type checking
 - `husky` - Git hooks
+- `lint-staged` - Pre-commit staged file checking

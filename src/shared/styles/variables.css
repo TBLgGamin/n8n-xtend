@@ -22,6 +22,7 @@
   --n8n-xtend-color-scrollbar-thumb-hover: rgb(173, 173, 173);
 
   --n8n-xtend-color-toggle-knob: rgb(255, 255, 255);
+  --n8n-xtend-color-success: rgb(76, 175, 80);
   --n8n-xtend-color-shadow: rgba(68, 28, 23, 0.06);
   --n8n-xtend-color-overlay: rgba(0, 0, 0, 0.5);
 }
@@ -47,6 +48,7 @@
   --n8n-xtend-color-scrollbar-thumb-hover: rgb(90, 90, 90);
 
   --n8n-xtend-color-toggle-knob: rgb(224, 224, 224);
+  --n8n-xtend-color-success: rgb(102, 187, 106);
   --n8n-xtend-color-shadow: rgba(0, 0, 0, 0.3);
   --n8n-xtend-color-overlay: rgba(0, 0, 0, 0.7);
 }

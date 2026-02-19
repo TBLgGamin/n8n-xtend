@@ -24,7 +24,7 @@
 }
 
 #n8n-xtend-folder-tree-content {
-  padding: 0 4px;
+  padding: 0 4px 40px;
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 500px;
@@ -161,5 +161,11 @@ a.n8n-xtend-folder-tree-item {
 }
 
 #n8n-xtend-folder-tree-content.n8n-xtend-folder-tree-drag-over {
-  background: var(--n8n-xtend-color-bg-drag-container);
+  background: var(--n8n-xtend-color-bg-drag-over);
+}
+
+.n8n-xtend-folder-tree-item.n8n-xtend-folder-tree-selected {
+  background: var(--n8n-xtend-color-bg-drag-over);
+  outline: 1px solid var(--n8n-xtend-color-border-secondary);
+  outline-offset: -1px;
 }

@@ -48,4 +48,7 @@ export {
   isVariablesPage,
   isWorkflowPage,
 } from './url';
+export { emit, on, type EventMap, type MoveOperation, type SelectionState } from './event-bus';
+export { showToast, type ToastAction, type ToastOptions } from './toast';
+export { initUndoSystem, registerUndo, type UndoableOperation } from './undo';
 export { isValidId, sanitizeId, sanitizeObject, validateAndEncodeId } from './validation';

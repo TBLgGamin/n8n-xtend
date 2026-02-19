@@ -1,11 +1,11 @@
 import { type Folder, type TreeItem, type Workflow, isFolder } from '@/shared/types';
-import { logger } from '@/shared/utils';
+import { emit, logger } from '@/shared/utils';
 
 const log = logger.child('folder-tree');
 import { getFolderIdFromUrl } from '@/shared/utils/url';
 import { clearFolderCache, fetchFolderPath, fetchFolders, fetchFoldersFresh } from '../api';
 import { createFolderElement, createWorkflowElement } from '../components';
-import { setDragContext, setupDropTarget } from './dragdrop';
+import { setDragContext, setupDropZone } from './dragdrop';
 import { setFolderExpanded } from './state';
 import { type TreeDiff, computeDiff, hasDifferences, logDiff } from './sync';
 
@@ -139,6 +139,7 @@ export async function syncFolderContents(projectId: string, parentFolderId: stri
       logDiff(diff, parentFolderId);
       applyDiffToContainer(container, diff, projectId);
       treeState.currentItems.set(parentFolderId, newItems);
+      emit('folder-tree:tree-refreshed', { projectId });
     }
   } catch (error) {
     log.debug('Failed to sync folder contents', { parentFolderId, error });
@@ -190,7 +191,8 @@ export async function loadTree(container: HTMLElement, projectId: string): Promi
     container.textContent = '';
     container.appendChild(fragment);
 
-    setupDropTarget(container, '0', true);
+    setupDropZone(container);
+    emit('folder-tree:tree-loaded', { projectId });
   } catch (error) {
     log.debug('Failed to load folder tree', error);
     container.innerHTML =

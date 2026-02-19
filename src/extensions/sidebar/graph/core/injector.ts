@@ -1,5 +1,5 @@
 import type { WorkflowDetail } from '@/shared/types';
-import { escapeHtml, logger } from '@/shared/utils';
+import { emit, escapeHtml, logger } from '@/shared/utils';
 import { icons } from '../icons';
 import { type CanvasController, createCanvas } from './canvas';
 import { loadProjectWorkflows } from './data';
@@ -245,6 +245,10 @@ function activateGraphView(): void {
   log.debug('Graph view activated');
 
   if (currentProjectId) {
+    emit('graph:activated', { projectId: currentProjectId });
+  }
+
+  if (currentProjectId) {
     renderLoadingState(graphView, 0, 0);
     loadProjectWorkflows(currentProjectId, (loaded, total) => {
       const view = document.getElementById(GRAPH_VIEW_ID);
@@ -276,6 +280,7 @@ function deactivateGraphView(): void {
   clearGraphActive();
   graphViewActive = false;
   log.debug('Graph view deactivated');
+  emit('graph:deactivated', {});
 }
 
 function toggleGraphView(): void {

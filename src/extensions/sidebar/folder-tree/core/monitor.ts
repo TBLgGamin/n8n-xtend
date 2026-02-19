@@ -3,6 +3,8 @@ import {
   type PollMonitor,
   createAdaptivePollMonitor,
   createPollMonitor,
+  emit,
+  getFolderIdFromUrl,
   getNormalizedContextPath,
   getProjectIdFromUrl,
   getWorkflowIdFromUrl,
@@ -12,6 +14,7 @@ import {
 
 const log = logger.child('folder-tree:monitor');
 import { fetchWorkflowProjectId } from '../api';
+import { clearSelection } from './dragdrop';
 import { removeFolderTree, tryInject } from './injector';
 import { clearTreeState, getTreeState, syncFolderContents } from './tree';
 
@@ -59,10 +62,19 @@ async function checkAndInject(): Promise<void> {
 
     removeFolderTree();
     clearTreeState();
+    clearSelection();
     currentProjectId = projectId;
     currentPath = normalizedPath;
 
     tryInject(projectId);
+
+    const folderId = getFolderIdFromUrl();
+    const navPayload: { projectId: string; folderId?: string; workflowId?: string } = {
+      projectId,
+    };
+    if (folderId) navPayload.folderId = folderId;
+    if (workflowId) navPayload.workflowId = workflowId;
+    emit('folder-tree:navigated', navPayload);
   }
 }
 

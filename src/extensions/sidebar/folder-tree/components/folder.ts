@@ -1,10 +1,11 @@
 import type { Folder } from '@/shared/types';
 import { buildFolderUrl, escapeHtml, getFolderIdFromUrl, isValidId, logger } from '@/shared/utils';
 import { fetchFolders } from '../api';
-import { setupDraggable, setupDropTarget } from '../core';
+import { isItemSelected, setupDraggable } from '../core';
 import { isFolderExpanded, setFolderExpanded } from '../core/state';
 import { getTreeState, partitionItems } from '../core/tree';
 import { icons } from '../icons';
+import { handleItemClick } from './selection';
 import { createWorkflowElement } from './workflow';
 
 const log = logger.child('folder-tree:components:folder');
@@ -25,7 +26,7 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
   const folderUrl = buildFolderUrl(projectId, folder.id);
 
   node.innerHTML = `
-    <div class="n8n-xtend-folder-tree-item${isActive ? ' active' : ''}">
+    <div class="n8n-xtend-folder-tree-item${isActive ? ' active' : ''}${isItemSelected(folder.id) ? ' n8n-xtend-folder-tree-selected' : ''}">
       <span class="n8n-xtend-folder-tree-chevron collapsed">${icons.chevron}</span>
       <a href="${escapeHtml(folderUrl)}" class="n8n-xtend-folder-tree-folder-link" title="${escapeHtml(folder.name)}">
         <span class="n8n-xtend-folder-tree-icon folder">${icons.folder}</span>
@@ -46,7 +47,6 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
   }
 
   setupDraggable(item, 'folder', folder.id, folder.name, folder.parentFolderId);
-  setupDropTarget(item, folder.id);
 
   const childrenEl = children;
   const chevronEl = chevron;
@@ -121,6 +121,17 @@ export function createFolderElement(folder: Folder, projectId: string): HTMLDivE
   }
 
   chevron.onclick = toggle;
+
+  item.addEventListener('click', (event) => {
+    if (event.ctrlKey || event.metaKey || event.shiftKey) {
+      const target = event.target as HTMLElement;
+      if (target.closest('.n8n-xtend-folder-tree-chevron')) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      handleItemClick(folder.id, event);
+    }
+  });
 
   if (isFolderExpanded(folder.id)) {
     requestAnimationFrame(() => expand());

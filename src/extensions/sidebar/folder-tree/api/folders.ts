@@ -26,6 +26,12 @@ export async function fetchFolders(projectId: string, parentFolderId = '0'): Pro
   const data = await request<FoldersResponse>(endpoint);
   const items = data.data ?? [];
 
+  for (const item of items) {
+    if (!item.parentFolderId) {
+      item.parentFolderId = parentFolderId;
+    }
+  }
+
   contentCache.set(cacheKey, { items, timestamp: Date.now() });
   return items;
 }

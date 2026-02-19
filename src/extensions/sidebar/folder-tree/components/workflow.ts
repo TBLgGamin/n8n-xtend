@@ -6,8 +6,9 @@ import {
   isValidId,
   logger,
 } from '@/shared/utils';
-import { setupDraggable } from '../core/dragdrop';
+import { isItemSelected, setupDraggable } from '../core/dragdrop';
 import { icons } from '../icons';
+import { handleItemClick } from './selection';
 
 const log = logger.child('folder-tree:components:workflow');
 
@@ -26,7 +27,7 @@ export function createWorkflowElement(workflow: Workflow): HTMLDivElement {
   const workflowUrl = buildWorkflowUrl(workflow.id);
 
   node.innerHTML = `
-    <a href="${escapeHtml(workflowUrl)}" class="n8n-xtend-folder-tree-item${isActive ? ' active' : ''}" title="${escapeHtml(workflow.name)}">
+    <a href="${escapeHtml(workflowUrl)}" class="n8n-xtend-folder-tree-item${isActive ? ' active' : ''}${isItemSelected(workflow.id) ? ' n8n-xtend-folder-tree-selected' : ''}" title="${escapeHtml(workflow.name)}">
       <span class="n8n-xtend-folder-tree-spacer"></span>
       <span class="n8n-xtend-folder-tree-icon workflow">${icons.workflow}</span>
       <span class="n8n-xtend-folder-tree-label">${escapeHtml(workflow.name)}</span>
@@ -36,6 +37,14 @@ export function createWorkflowElement(workflow: Workflow): HTMLDivElement {
   const item = node.querySelector<HTMLElement>('.n8n-xtend-folder-tree-item');
   if (item) {
     setupDraggable(item, 'workflow', workflow.id, workflow.name, workflow.parentFolderId);
+
+    item.addEventListener('click', (event) => {
+      if (event.ctrlKey || event.metaKey || event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        handleItemClick(workflow.id, event);
+      }
+    });
   }
 
   return node;

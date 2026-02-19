@@ -1,0 +1,88 @@
+#n8n-xtend-toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.n8n-xtend-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 8px;
+  background: var(--n8n-xtend-color-bg-primary);
+  border: 1px solid var(--n8n-xtend-color-border-primary);
+  box-shadow: 0 4px 16px var(--n8n-xtend-color-shadow);
+  font-family: InterVariable, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: var(--n8n-xtend-color-text-primary);
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  min-width: 280px;
+  max-width: 480px;
+}
+
+.n8n-xtend-toast.n8n-xtend-toast-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.n8n-xtend-toast.n8n-xtend-toast-hiding {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.n8n-xtend-toast-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--n8n-xtend-color-success);
+}
+
+.n8n-xtend-toast-message {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.n8n-xtend-toast-action {
+  background: none;
+  border: none;
+  color: var(--n8n-xtend-color-brand-primary);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.n8n-xtend-toast-action:hover {
+  background: var(--n8n-xtend-color-bg-hover);
+  color: var(--n8n-xtend-color-brand-hover);
+}
+
+.n8n-xtend-toast-dismiss {
+  background: none;
+  border: none;
+  color: var(--n8n-xtend-color-text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.n8n-xtend-toast-dismiss:hover {
+  color: var(--n8n-xtend-color-text-primary);
+}

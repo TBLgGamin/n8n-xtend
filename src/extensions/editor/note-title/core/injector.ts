@@ -1,4 +1,4 @@
-import { escapeHtml, logger } from '@/shared/utils';
+import { emit, escapeHtml, logger } from '@/shared/utils';
 
 const log = logger.child('note-title:injector');
 
@@ -162,6 +162,8 @@ function showRenameDialog(sticky: HTMLElement, currentTitle: string): void {
     if (newTitle) {
       log.debug(`Renaming note to: ${escapeHtml(newTitle)}`);
       applyTitle(sticky, newTitle);
+      const noteId = sticky.dataset.id ?? sticky.id ?? '';
+      emit('note-title:renamed', { noteId, title: newTitle });
     }
     close();
   };

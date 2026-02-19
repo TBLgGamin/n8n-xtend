@@ -1,4 +1,4 @@
-import { getThemeColors, logger } from '@/shared/utils';
+import { emit, getThemeColors, getWorkflowIdFromUrl, logger } from '@/shared/utils';
 import { captureWorkflow } from '../utils/capture';
 
 const log = logger.child('capture:injector');
@@ -193,6 +193,10 @@ function showFormatDialog(): void {
     close();
     log.debug(`Capturing workflow as ${format.toUpperCase()}`);
     captureWorkflow(format);
+    const workflowId = getWorkflowIdFromUrl();
+    if (workflowId) {
+      emit('capture:exported', { workflowId, format });
+    }
   };
 
   svgBtn.onclick = () => capture('svg');
