@@ -1,10 +1,10 @@
-import type { DragItemType } from '@/extensions/sidebar/folder-tree/core/dragdrop';
+import type { TreeItemType } from '@/shared/types';
 import { logger } from './logger';
 
 const log = logger.child('event-bus');
 
 export interface MoveOperation {
-  type: DragItemType;
+  type: TreeItemType;
   id: string;
   name: string;
   fromFolderId: string;
@@ -13,7 +13,7 @@ export interface MoveOperation {
 }
 
 export interface SelectionState {
-  items: Array<{ type: DragItemType; id: string; name: string; parentFolderId?: string }>;
+  items: Array<{ type: TreeItemType; id: string; name: string; parentFolderId?: string }>;
 }
 
 export interface EventMap {

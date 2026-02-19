@@ -1,4 +1,5 @@
 import { findElementByClassPattern, logger } from '@/shared/utils';
+import { showContextMenu } from './contextmenu';
 import { clearSelection } from './dragdrop';
 import { loadTree } from './tree';
 
@@ -101,6 +102,8 @@ export function injectFolderTree(projectId: string): boolean {
         clearSelection();
       }
     });
+
+    content.addEventListener('contextmenu', showContextMenu);
 
     return true;
   }

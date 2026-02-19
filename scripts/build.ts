@@ -257,6 +257,9 @@ async function build() {
     target: 'browser',
     minify: !isWatch,
     sourcemap: isWatch ? 'external' : 'none',
+    define: {
+      __DEV__: String(isWatch),
+    },
   });
 
   const backgroundOutputPath = join(distDir, 'background.js');
@@ -283,6 +286,9 @@ async function build() {
     target: 'browser',
     minify: !isWatch,
     sourcemap: isWatch ? 'external' : 'none',
+    define: {
+      __DEV__: String(isWatch),
+    },
   });
 
   const popupOutputPath = join(distDir, 'popup.js');

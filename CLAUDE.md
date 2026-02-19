@@ -297,7 +297,7 @@ Do not manually edit `CHANGELOG.md` during commits — write good conventional c
 1. Auto-generates `extensions/registry.ts` and `extensions/meta.ts` from discovered extensions
 2. Cleans `dist/` directory
 3. Bundles three entry points: content script, background service worker, popup script
-4. Defines `__DEV__` as `"true"` in watch mode, `"false"` in production
+4. Defines `__DEV__` as `true` in watch mode, `false` in production (all three entry points)
 5. Combines content CSS files (excludes `popup/**/*.css`), embeds fonts as base64
 6. Builds popup CSS separately (`variables.css` + `popup/styles/popup.css`)
 7. Copies `popup.html`, icons, and video assets to `dist/`

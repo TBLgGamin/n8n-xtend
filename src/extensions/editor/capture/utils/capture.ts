@@ -1,4 +1,4 @@
-import { findElementBySelectors, logger } from '@/shared/utils';
+import { findElementBySelectors, isDarkModeActive, logger, showToast } from '@/shared/utils';
 import { domToBlob, domToSvg } from 'modern-screenshot';
 
 const log = logger.child('capture:utils');
@@ -9,6 +9,10 @@ const NODE_SELECTOR = '.vue-flow__node';
 
 const PADDING = 50;
 const SCALE = 2;
+
+function getCaptureBackgroundColor(): string {
+  return isDarkModeActive() ? '#1e1e1e' : '#f5f5f5';
+}
 
 const WORKFLOW_NAME_SELECTOR =
   '[data-test-id="workflow-name-input"] input, input[placeholder*="workflow"], .workflow-name input';
@@ -147,7 +151,7 @@ async function capturePng(): Promise<void> {
       width: captureWidth,
       height: captureHeight,
       scale: SCALE,
-      backgroundColor: '#f5f5f5',
+      backgroundColor: getCaptureBackgroundColor(),
       style: {
         transform: 'none',
       },
@@ -156,7 +160,7 @@ async function capturePng(): Promise<void> {
     if (blob) {
       const filename = `${getWorkflowName()}.png`;
       downloadFile(blob, filename);
-      log.debug(`Captured as ${filename}`);
+      showToast({ message: `Saved ${filename}` });
     }
   });
 }
@@ -166,7 +170,7 @@ async function captureSvg(): Promise<void> {
     const svgDataUrl = await domToSvg(canvas, {
       width: captureWidth,
       height: captureHeight,
-      backgroundColor: '#f5f5f5',
+      backgroundColor: getCaptureBackgroundColor(),
       style: {
         transform: 'none',
       },
@@ -188,7 +192,7 @@ async function captureSvg(): Promise<void> {
       const blob = new Blob([svgContent], { type: 'image/svg+xml' });
       const filename = `${getWorkflowName()}.svg`;
       downloadFile(blob, filename);
-      log.debug(`Captured as ${filename}`);
+      showToast({ message: `Saved ${filename}` });
     }
   });
 }
@@ -202,5 +206,6 @@ export async function captureWorkflow(format: 'png' | 'svg'): Promise<void> {
     }
   } catch (error) {
     log.debug('Failed to capture workflow', error);
+    showToast({ message: 'Failed to capture workflow' });
   }
 }

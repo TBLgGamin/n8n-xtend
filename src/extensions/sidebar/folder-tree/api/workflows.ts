@@ -1,4 +1,4 @@
-import { patch, post, request } from '@/shared/api';
+import { del, patch, post, request } from '@/shared/api';
 export { fetchWorkflowProjectId } from '@/shared/api';
 import type { WorkflowDetailResponse } from '@/shared/types';
 import { logger } from '@/shared/utils';
@@ -57,6 +57,28 @@ export async function copyWorkflow(
     return true;
   } catch (error) {
     log.debug('Failed to copy workflow', { workflowId, error });
+    return false;
+  }
+}
+
+export async function renameWorkflow(workflowId: string, name: string): Promise<boolean> {
+  try {
+    const versionId = await fetchWorkflowVersionId(workflowId);
+    if (!versionId) return false;
+    await patch(`/rest/workflows/${workflowId}`, { versionId, name });
+    return true;
+  } catch (error) {
+    log.debug('Failed to rename workflow', { workflowId, name, error });
+    return false;
+  }
+}
+
+export async function deleteWorkflow(workflowId: string): Promise<boolean> {
+  try {
+    await del(`/rest/workflows/${workflowId}`);
+    return true;
+  } catch (error) {
+    log.debug('Failed to delete workflow', { workflowId, error });
     return false;
   }
 }

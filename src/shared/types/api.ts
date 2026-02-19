@@ -42,6 +42,8 @@ export interface FolderFilter {
 
 export type TreeItem = Folder | Workflow;
 
+export type TreeItemType = 'folder' | 'workflow';
+
 export function isFolder(item: TreeItem): item is Folder {
   return item.resource === 'folder';
 }

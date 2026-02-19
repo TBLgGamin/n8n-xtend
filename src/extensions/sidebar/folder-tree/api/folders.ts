@@ -1,4 +1,4 @@
-import { patch, post, request } from '@/shared/api';
+import { del, patch, post, request } from '@/shared/api';
 import type { FolderFilter, FolderResponse, FoldersResponse, TreeItem } from '@/shared/types';
 import { isFolder } from '@/shared/types/api';
 import { logger } from '@/shared/utils';
@@ -170,6 +170,32 @@ export async function copyFolder(
     return true;
   } catch (error) {
     log.debug('Failed to copy folder', { sourceFolderId, targetFolderId, error });
+    return false;
+  }
+}
+
+export async function renameFolder(
+  projectId: string,
+  folderId: string,
+  name: string,
+): Promise<boolean> {
+  try {
+    await patch(`/rest/projects/${projectId}/folders/${folderId}`, { name });
+    clearFolderCache();
+    return true;
+  } catch (error) {
+    log.debug('Failed to rename folder', { folderId, name, error });
+    return false;
+  }
+}
+
+export async function deleteFolder(projectId: string, folderId: string): Promise<boolean> {
+  try {
+    await del(`/rest/projects/${projectId}/folders/${folderId}`);
+    clearFolderCache();
+    return true;
+  } catch (error) {
+    log.debug('Failed to delete folder', { folderId, error });
     return false;
   }
 }

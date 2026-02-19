@@ -5,6 +5,7 @@ export type {
   FolderResponse,
   FoldersResponse,
   TreeItem,
+  TreeItemType,
   Workflow,
   WorkflowDetail,
   WorkflowDetailResponse,

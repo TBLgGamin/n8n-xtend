@@ -1,9 +1,10 @@
+import type { TreeItemType } from '@/shared/types';
 import { emit, isValidId, logger, registerUndo, showToast } from '@/shared/utils';
 import { copyFolder, copyWorkflow, moveFolder, moveWorkflow } from '../api';
 
 const log = logger.child('folder-tree:dragdrop');
 
-export type DragItemType = 'folder' | 'workflow';
+export type DragItemType = TreeItemType;
 
 export interface DragData {
   type: DragItemType;

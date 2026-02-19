@@ -114,6 +114,50 @@
   text-overflow: ellipsis;
 }
 
+.n8n-xtend-graph-search {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
+  background: var(--n8n-xtend-color-bg-primary);
+  border: 1px solid var(--n8n-xtend-color-border-primary);
+  border-radius: 6px;
+  padding: 0 8px;
+}
+
+.n8n-xtend-graph-search-input {
+  width: 180px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--n8n-xtend-color-text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+.n8n-xtend-graph-search-input::placeholder {
+  color: var(--n8n-xtend-color-text-muted);
+}
+
+.n8n-xtend-graph-search-counter {
+  font-size: 11px;
+  color: var(--n8n-xtend-color-text-muted);
+  white-space: nowrap;
+}
+
+.n8n-xtend-graph-card-highlight {
+  border-color: var(--n8n-xtend-color-brand-primary);
+  box-shadow: 0 0 0 2px var(--n8n-xtend-color-brand-primary);
+  z-index: 5;
+}
+
+.n8n-xtend-graph-card-dim {
+  opacity: 0.25;
+}
+
 .n8n-xtend-graph-toolbar {
   position: absolute;
   top: 12px;

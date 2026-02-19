@@ -17,7 +17,7 @@ class Logger {
 
   constructor(component?: string) {
     this.component = component ?? null;
-    this.minLevel = typeof __DEV__ !== 'undefined' && __DEV__ ? 'debug' : 'info';
+    this.minLevel = __DEV__ ? 'debug' : 'info';
   }
 
   private shouldLog(level: LogLevel): boolean {

@@ -162,3 +162,18 @@ export async function patch<T>(endpoint: string, body: Record<string, unknown>):
 
   return validateResponse<T>(await response.json());
 }
+
+export async function del(endpoint: string): Promise<void> {
+  assertTrustedOrigin();
+  log.debug(`DELETE ${endpoint}`);
+  const response = await fetchWithRetry(location.origin + endpoint, {
+    method: 'DELETE',
+    credentials: 'include',
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    log.debug(`DELETE ${endpoint} failed`, { status: response.status });
+    throw new ApiError(`HTTP ${response.status}`, response.status);
+  }
+}

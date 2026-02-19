@@ -1,4 +1,4 @@
-export { ApiError, patch, post, request } from './client';
+export { ApiError, del, patch, post, request } from './client';
 export {
   fetchAllWorkflowDetails,
   fetchProjectWorkflows,

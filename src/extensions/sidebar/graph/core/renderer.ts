@@ -36,6 +36,7 @@ function createCardElement(
 
   const card = document.createElement('div');
   card.className = 'n8n-xtend-graph-card';
+  card.dataset.workflowId = workflow.id;
   card.style.left = `${left}px`;
   card.style.top = `${top}px`;
 

@@ -87,6 +87,111 @@ function renderErrorState(container: HTMLElement): void {
   </div>`;
 }
 
+const HIGHLIGHT_CLASS = 'n8n-xtend-graph-card-highlight';
+const DIM_CLASS = 'n8n-xtend-graph-card-dim';
+
+function createSearchBox(canvas: CanvasController): HTMLDivElement {
+  const container = document.createElement('div');
+  container.className = 'n8n-xtend-graph-search';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'Search workflows\u2026';
+  input.className = 'n8n-xtend-graph-search-input';
+  container.appendChild(input);
+
+  const counter = document.createElement('span');
+  counter.className = 'n8n-xtend-graph-search-counter';
+  container.appendChild(counter);
+
+  let matchedCards: HTMLElement[] = [];
+  let currentIndex = -1;
+
+  function clearHighlights(): void {
+    const allCards = canvas.transformLayer.querySelectorAll('.n8n-xtend-graph-card');
+    for (const card of allCards) {
+      card.classList.remove(HIGHLIGHT_CLASS, DIM_CLASS);
+    }
+    matchedCards = [];
+    currentIndex = -1;
+    counter.textContent = '';
+  }
+
+  function panToCard(card: HTMLElement): void {
+    const x = Number.parseFloat(card.style.left);
+    const y = Number.parseFloat(card.style.top);
+    const w = card.offsetWidth || 220;
+    const h = card.offsetHeight || 80;
+    canvas.panTo(x + w / 2, y + h / 2);
+  }
+
+  function updateCounter(): void {
+    if (matchedCards.length === 0) {
+      counter.textContent = input.value ? '0 / 0' : '';
+      return;
+    }
+    counter.textContent = `${currentIndex + 1} / ${matchedCards.length}`;
+  }
+
+  function navigateToMatch(index: number): void {
+    if (matchedCards.length === 0) return;
+
+    const prev = matchedCards[currentIndex];
+    if (prev) prev.classList.remove(HIGHLIGHT_CLASS);
+
+    currentIndex = ((index % matchedCards.length) + matchedCards.length) % matchedCards.length;
+
+    const card = matchedCards[currentIndex];
+    if (card) {
+      card.classList.add(HIGHLIGHT_CLASS);
+      panToCard(card);
+    }
+    updateCounter();
+  }
+
+  function performSearch(): void {
+    clearHighlights();
+    const query = input.value.trim().toLowerCase();
+    if (!query) return;
+
+    const allCards = canvas.transformLayer.querySelectorAll<HTMLElement>('.n8n-xtend-graph-card');
+    for (const card of allCards) {
+      const name =
+        card.querySelector('.n8n-xtend-graph-card-name')?.textContent?.toLowerCase() ?? '';
+      if (name.includes(query)) {
+        matchedCards.push(card);
+      } else {
+        card.classList.add(DIM_CLASS);
+      }
+    }
+
+    if (matchedCards.length > 0) {
+      navigateToMatch(0);
+    }
+    updateCounter();
+  }
+
+  input.addEventListener('input', performSearch);
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        navigateToMatch(currentIndex - 1);
+      } else {
+        navigateToMatch(currentIndex + 1);
+      }
+    }
+    if (e.key === 'Escape') {
+      input.value = '';
+      clearHighlights();
+      input.blur();
+    }
+  });
+
+  return container;
+}
+
 function createToolbar(canvas: CanvasController): HTMLDivElement {
   const toolbar = document.createElement('div');
   toolbar.className = 'n8n-xtend-graph-toolbar';
@@ -216,6 +321,7 @@ function renderReadyState(container: HTMLElement, workflows: Map<string, Workflo
   container.innerHTML = '';
   const canvas = createCanvas(container);
   renderCallGraph(canvas.transformLayer, workflows);
+  canvas.viewport.appendChild(createSearchBox(canvas));
   canvas.viewport.appendChild(createToolbar(canvas));
   canvas.viewport.appendChild(createMinimap(canvas));
   activeCanvasController = canvas;

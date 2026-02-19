@@ -2,6 +2,7 @@ export interface CanvasController {
   viewport: HTMLDivElement;
   transformLayer: HTMLDivElement;
   fitToView: () => void;
+  panTo: (canvasX: number, canvasY: number) => void;
   getTransform: () => { panX: number; panY: number; scale: number };
   onTransformChange: (cb: () => void) => void;
   destroy: () => void;
@@ -81,6 +82,12 @@ export function createCanvas(container: HTMLElement): CanvasController {
     applyTransform();
   }
 
+  function panTo(canvasX: number, canvasY: number): void {
+    panX = viewport.clientWidth / 2 - canvasX * scale;
+    panY = viewport.clientHeight / 2 - canvasY * scale;
+    applyTransform();
+  }
+
   function getTransform(): { panX: number; panY: number; scale: number } {
     return { panX, panY, scale };
   }
@@ -90,6 +97,7 @@ export function createCanvas(container: HTMLElement): CanvasController {
     const target = e.target as HTMLElement;
     if (target.closest('.n8n-xtend-graph-card-link')) return;
     if (target.closest('.n8n-xtend-graph-toolbar')) return;
+    if (target.closest('.n8n-xtend-graph-search')) return;
 
     isPanning = true;
     startX = e.clientX - panX;
@@ -154,5 +162,5 @@ export function createCanvas(container: HTMLElement): CanvasController {
     document.removeEventListener('keydown', onKeyDown);
   }
 
-  return { viewport, transformLayer, fitToView, getTransform, onTransformChange, destroy };
+  return { viewport, transformLayer, fitToView, panTo, getTransform, onTransformChange, destroy };
 }

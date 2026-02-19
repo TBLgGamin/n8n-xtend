@@ -1,2 +1,3 @@
-for the graph make the ehm root nodes be grouped aways form the chains
-make sure mcp tools are considered sub workflows yknow
+make sure popup structure matches the others
+run all agents
+popup dark mode?
