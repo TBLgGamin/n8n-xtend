@@ -26,6 +26,7 @@ export {
 export { getCurrentTheme, isDarkMode, onThemeChange, type Theme } from './theme';
 export { getThemeColors, onThemeColorsChange, type ThemeColors } from './theme-colors';
 export {
+  THEME_STORAGE_KEY,
   cleanupThemeManager,
   initThemeManager,
   isDarkModeActive,

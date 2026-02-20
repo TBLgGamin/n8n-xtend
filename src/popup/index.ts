@@ -1,8 +1,14 @@
 import type { MessageRequest, MessageResponse } from '../background/types';
 import type { ExtensionMetaEntry } from '../extensions/meta';
 import { extensionMeta } from '../extensions/meta';
-import { getSyncItem, initChromeStorage, setSyncItem } from '../shared/utils/chrome-storage';
+import {
+  getLocalItem,
+  getSyncItem,
+  initChromeStorage,
+  setSyncItem,
+} from '../shared/utils/chrome-storage';
 import { logger } from '../shared/utils/logger';
+import { THEME_STORAGE_KEY } from '../shared/utils/theme-manager';
 
 const log = logger.child('popup');
 
@@ -511,8 +517,46 @@ function renderVersion(): void {
   }
 }
 
+function applyDarkMode(dark: boolean): void {
+  log.debug('Applying dark mode', { dark });
+  document.documentElement.classList.toggle('n8n-xtend-dark', dark);
+}
+
+function setupDarkMode(): void {
+  const storedTheme = getLocalItem<string>(THEME_STORAGE_KEY);
+  log.debug('Stored theme from content script', { storedTheme });
+
+  if (storedTheme === 'dark' || storedTheme === 'light') {
+    applyDarkMode(storedTheme === 'dark');
+  } else {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    log.debug('No stored theme, falling back to system preference', { dark: mq.matches });
+    applyDarkMode(mq.matches);
+  }
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local' && changes[THEME_STORAGE_KEY]) {
+      const newTheme = changes[THEME_STORAGE_KEY].newValue as string | undefined;
+      log.debug('Theme storage changed', { newTheme });
+      if (newTheme === 'dark' || newTheme === 'light') {
+        applyDarkMode(newTheme === 'dark');
+      }
+    }
+  });
+
+  const mq = window.matchMedia('(prefers-color-scheme: dark)');
+  mq.addEventListener('change', (e) => {
+    const storedNow = getLocalItem<string>(THEME_STORAGE_KEY);
+    if (!storedNow) {
+      log.debug('System preference changed, no stored theme', { dark: e.matches });
+      applyDarkMode(e.matches);
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   await initChromeStorage();
+  setupDarkMode();
   loadSettings();
   loadPreferences();
 

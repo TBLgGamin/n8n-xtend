@@ -1,3 +1,484 @@
 make sure popup structure matches the others
 run all agents
-popup dark mode?
+
+================================================================================
+1. FOLDER RENAME — NATIVE MODAL (quick fix)
+================================================================================
+
+Replace the browser `prompt()` in contextmenu.ts handleRename() with an n8n-native
+modal dialog, matching the capture extension's showFormatDialog() pattern exactly.
+
+WHERE:
+  src/extensions/sidebar/folder-tree/core/contextmenu.ts — handleRename() (line ~84)
+
+REFERENCE IMPLEMENTATION:
+  src/extensions/editor/capture/core/injector.ts — showFormatDialog() (lines 65-217)
+
+WHAT TO BUILD:
+  - Fixed overlay (inset: 0, z-index: 2100, overlay color from getThemeColors())
+  - Centered 400px dialog card (border-radius: 8px, bgPrimary, borderPrimary, shadow)
+  - Header: title "Rename {type}" + close X button (same CLOSE_ICON SVG as capture)
+  - Body: text input pre-filled with current name, text fully selected on open
+  - Footer: "Cancel" secondary button + "Rename" primary button (brandPrimary bg)
+  - Keyboard: Enter = confirm, Escape = cancel
+  - All colors from getThemeColors() — no CSS classes, all inline styles
+  - Same fade-in/slide-in keyframe animations (reuse the n8n-capture-* keyframes or
+    create n8n-xtend-modal-* equivalents)
+  - Focus the input on open
+
+ALSO REPLACE:
+  - handleDelete()'s browser `confirm()` with a similar native modal:
+    Title "Delete {type}", body text "{name}\n\nAll contents will be deleted." for
+    folders or "This cannot be undone." for workflows. "Cancel" + "Delete" (danger
+    style: brandPrimary bg) buttons.
+
+CONSIDER:
+  - Extract a shared createNativeModal() utility to shared/utils/ if the pattern is
+    reused 3+ times. Keep it inline if only used in contextmenu for now.
+
+================================================================================
+2. POPUP DARK MODE
+================================================================================
+
+The popup already imports variables.css which defines :root.n8n-xtend-dark overrides.
+The popup just never toggles that class. Content script has initThemeManager() but
+the popup runs in its own document context (chrome-extension:// origin), not the n8n
+page — so it can't read n8n's localStorage theme.
+
+WHERE:
+  src/popup/index.ts
+
+WHAT TO DO:
+  - On popup init (after initChromeStorage()), detect system dark mode preference:
+    `window.matchMedia('(prefers-color-scheme: dark)')`
+  - If dark: add class 'n8n-xtend-dark' to document.documentElement
+  - Listen for matchMedia changes to toggle class live
+  - That's it — all CSS variables already have :root.n8n-xtend-dark overrides
+
+VERIFY:
+  - Check that popup.css uses var(--n8n-xtend-color-*) everywhere (not hardcoded colors)
+  - Fix any hardcoded colors found in popup.css or popup/index.ts inline styles
+  - Test: Chrome Settings > Appearance > Dark, open popup — should be dark
+
+BONUS (optional):
+  - Add a theme toggle in view-settings (Auto / Light / Dark), stored in preferences
+  - "Auto" = follow system, Light/Dark = force. Default to Auto.
+
+================================================================================
+3. INLINE WORKFLOW DIFF (editor extension)
+================================================================================
+
+New extension: src/extensions/editor/diff/
+
+PURPOSE:
+  Show what changed in a workflow between the current live state and a previous
+  execution's snapshot — directly on the canvas, not in a modal. Nodes get colored
+  borders and badges, ghost nodes appear for removed nodes, connections light up
+  green/red. Like git diff but visual, inline, on the actual workflow canvas.
+
+n8n EXECUTION API (already available, no new permissions needed):
+  GET /rest/executions?workflowId={id}&limit=20&status=success,error
+    → { data: [{ id, startedAt, stoppedAt, status, mode, workflowData: WorkflowDetail }] }
+  GET /rest/executions/{id}
+    → { data: { id, workflowData: WorkflowDetail, ... } }
+
+  Key: each execution's `workflowData` is a full WorkflowDetail snapshot (nodes,
+  connections, settings) frozen at the time of execution. The diff is between the
+  current workflow state and any historical execution's workflowData.
+
+TYPES TO ADD (src/extensions/editor/diff/types.ts):
+  interface Execution {
+    id: string;
+    startedAt: string;
+    stoppedAt: string;
+    status: 'success' | 'error' | 'running' | 'waiting';
+    mode: string;
+    workflowData?: WorkflowDetail;
+  }
+  interface ExecutionListResponse {
+    data: Execution[];
+    nextCursor?: string;
+  }
+  interface NodeChange {
+    nodeId: string;
+    nodeName: string;
+    nodeType: string;
+    parameterChanges?: Array<{ key: string; oldValue: unknown; newValue: unknown }>;
+  }
+  interface ConnectionKey { source: string; sourcePort: string; target: string; targetPort: string }
+  interface DiffResult {
+    addedNodes: NodeChange[];
+    removedNodes: NodeChange[];
+    modifiedNodes: NodeChange[];
+    addedConnections: ConnectionKey[];
+    removedConnections: ConnectionKey[];
+  }
+
+EDITOR DOM STRUCTURE (what we're working with):
+  <div data-test-id="canvas-wrapper">
+    <div id="canvas">
+      <div class="vue-flow" data-test-id="canvas">
+        <div class="vue-flow__viewport">
+          <div class="vue-flow__pane selection">
+            <div class="vue-flow__transformationpane" style="transform: translate(X, Y) scale(S)">
+              <svg class="vue-flow__edges">         ← edge SVG paths live here
+              <div class="vue-flow__nodes">          ← node DOM elements live here
+                <div data-id="{uuid}" class="vue-flow__node"
+                     style="transform: translate(Xpx, Ypx)">
+                  <div data-node-name="..." data-node-type="...">
+                    ...node content (icon, label, handles)...
+  Nodes: 96x96px, positioned via translate(), identified by data-id attribute
+  Edges: <path> elements with data-source-node-name / data-target-node-name
+  Canvas controls: bottom-left (.vue-flow__controls)
+  Node buttons: bottom-right (._nodeButtonsWrapper_*)
+
+INJECTION POINT — DIFF BUTTON:
+  Inject a "Diff" icon button into the canvas controls panel at bottom-left:
+    document.querySelector('.vue-flow__controls')
+  Append our button after the existing zoom/tidy controls. Use the same button
+  class pattern (._button_d3r54_125 ._subtle_d3r54_221 ._large_d3r54_194).
+  Icon: git-compare or file-diff SVG (two overlapping documents with arrows).
+  When clicked → enters diff mode.
+
+  Alternative: inject alongside the node buttons (bottom-right) next to the
+  sticky note button. Pick whichever feels more natural — bottom-left groups
+  with "view" controls which makes more sense for a diff overlay.
+
+UI — DIFF MODE (inline on canvas):
+
+  When diff mode activates:
+
+  1. CONTROL BAR (top of canvas, overlaid)
+     ┌────────────────────────────────────────────────────────────────────┐
+     │  Compare with: [▼ 2 hours ago — Success     ]  │  2+ 1- 3~  │  ✕ │
+     └────────────────────────────────────────────────────────────────────┘
+     - Fixed position at top of the canvas-wrapper, z-index above canvas
+     - Full width, ~44px height, bgElevated background, bottom border
+     - Left: execution dropdown (styled select or custom dropdown)
+     - Center: summary chips — green "2 added", red "1 removed", amber "3 modified"
+     - Right: close button (X) to exit diff mode
+     - Dropdown items: relative time + status badge (green dot / red dot)
+       "2 hours ago — Success"
+       "Yesterday 3:42 PM — Error"
+       "Feb 17, 2:10 PM — Success"
+     - On dropdown change → re-run diff, update canvas annotations
+
+  2. EXISTING NODES — COLOR-CODED OVERLAYS
+     For each existing vue-flow__node in the DOM, match by data-id to diff result:
+
+     ADDED (exists in current, not in historical):
+       - Green ring: 2px solid rgb(76, 175, 80) outline around the 96x96 node
+       - Green "+" badge: small 20x20 circle, absolute positioned top-right corner
+         of the node, green background, white "+" text, font-weight bold
+       - Subtle green glow: box-shadow 0 0 12px rgba(76, 175, 80, 0.3)
+
+     MODIFIED (exists in both, parameters differ):
+       - Amber ring: 2px solid rgb(255, 179, 0) outline
+       - Amber "~" badge: same position as added badge, amber background
+       - On hover/click of the badge → show parameter change popover (see below)
+
+     UNCHANGED:
+       - Dim opacity to 0.4 so changed nodes stand out
+       - No badge, no border change
+
+  3. GHOST NODES — REMOVED NODES
+     For nodes that exist in historical but NOT in current:
+     - Inject a ghost DOM element into .vue-flow__nodes container
+     - Position with same transform: translate(Xpx, Ypx) from the historical
+       node's position[] array (n8n stores [x, y] on each node)
+     - Structure: simplified version of a real node — 96x96 rounded box with
+       the node name and a "-" badge
+     - Styling: red dashed border (2px dashed rgb(239, 83, 80)), opacity 0.5,
+       background with diagonal stripes or crosshatch pattern to look "deleted"
+     - Red "-" badge: top-right corner, red background, white "-"
+     - Non-interactive: pointer-events none, no toolbar, no handles
+     - Must be inside the transformationpane so it participates in pan/zoom
+
+  4. CONNECTION OVERLAYS
+     Inject an SVG overlay element inside the transformationpane (after edges):
+
+     ADDED CONNECTIONS (in current, not historical):
+       - Draw a green path along the same route (use node positions to compute
+         cubic bezier like vue-flow does: horizontal C curve between nodes)
+       - stroke: rgb(76, 175, 80), stroke-width: 2, stroke-dasharray: none
+       - Overlay on top of the real edge (which also exists)
+
+     REMOVED CONNECTIONS (in historical, not current):
+       - Draw a red dashed path between the historical node positions
+       - stroke: rgb(239, 83, 80), stroke-width: 2, stroke-dasharray: 6 4
+       - These paths connect ghost nodes and/or existing nodes
+
+     UNCHANGED CONNECTIONS:
+       - Dim opacity on existing edge SVGs to 0.3
+
+  5. PARAMETER CHANGE POPOVER (for modified nodes)
+     When user clicks the amber "~" badge on a modified node:
+     - Show a floating popover anchored to the node (positioned via transform
+       coordinates, below or to the right of the node)
+     - Native-styled card (bgPrimary, borderPrimary, shadow, border-radius 8px)
+     - Title: node name + "— Changes"
+     - List of parameter changes in monospace diff style:
+       ┌────────────────────────────────────────┐
+       │  Config — Changes                   ✕  │
+       │──────────────────────────────────────── │
+       │  url                                    │
+       │  - https://api.old.com/v1               │
+       │  + https://api.new.com/v2               │
+       │                                         │
+       │  keepOnlySet                             │
+       │  - false                                 │
+       │  + true                                  │
+       └────────────────────────────────────────┘
+     - Red lines (- prefix) for old values, green lines (+ prefix) for new
+     - Monospace font (font-family: 'SF Mono', 'Fira Code', monospace)
+     - Max-height with scroll for nodes with many parameter changes
+     - Click X or click elsewhere to dismiss
+     - Position: inside the transformationpane so it pans/zooms with canvas
+
+  6. KEYBOARD SHORTCUT
+     Ctrl+Shift+D — toggle diff mode on/off (skip if inside input/textarea)
+
+VISUAL MOCKUP (what the canvas looks like in diff mode):
+
+  ┌─ control bar ──────────────────────────────────────────────────────────┐
+  │  Compare with: [▼ 2 hours ago — Success]  │  1+ 1- 2~  │  ✕          │
+  └────────────────────────────────────────────────────────────────────────┘
+
+  Canvas (panned/zoomed as normal):
+
+    ┌╌╌╌╌╌╌╌╌╌╌╌╌┐                 ╔══════════════╗
+    ┊  Old Slack  ┊  ──red dash──>  ║  Transform   ║
+    ┊  (removed)  ┊                 ║  (modified)  ║
+    ┊    [-]      ┊                 ║    [~]       ║
+    └╌╌╌╌╌╌╌╌╌╌╌╌┘                 ╚══════════════╝
+                                          │
+      ┌──────────────┐                    │ (existing edge, dimmed)
+      │  Schedule     │                   ▼
+      │  Trigger      │  ───────>   ┌──────────────┐
+      │  (unchanged,  │             │  HTTP Request │
+      │   dimmed)     │             │  (unchanged,  │
+      └──────────────┘              │   dimmed)     │
+                                    └──────────────┘
+    ╔══════════════╗                      │
+    ║ New Format   ║  <──green line───────┘
+    ║  (added)     ║
+    ║    [+]       ║
+    ╚══════════════╝
+
+  Legend:
+    ┌╌╌╌┐ = ghost node (red dashed border, semi-transparent)
+    ╔═══╗ = highlighted node (green=added, amber=modified border)
+    ┌───┐ = existing node (dimmed to 0.4 opacity)
+    ──red dash──> = removed connection
+    ──green line──> = added connection
+
+DIFF ALGORITHM (src/extensions/editor/diff/core/differ.ts):
+  Pure function, no DOM access. Same as before:
+  Input: WorkflowDetail (current) vs WorkflowDetail (historical)
+  1. Node diff — match by node.id (stable UUID across saves):
+     - Added: node ID exists in current but not historical
+     - Removed: node ID exists in historical but not current (include position[])
+     - Modified: node ID exists in both, deep-compare .parameters object
+       → produce list of changed parameter key paths + old/new values
+       → also detect name changes (node renamed)
+  2. Connection diff — serialize to "sourceNodeId:port→targetNodeId:port"
+     strings, set-diff for added/removed
+  3. Return: DiffResult
+
+CANVAS OVERLAY (src/extensions/editor/diff/core/overlay.ts):
+  Responsible for all DOM manipulation on the canvas:
+  - applyDiffOverlay(diffResult, historicalNodes): void
+    → finds .vue-flow__nodes container
+    → adds CSS classes/inline styles to existing nodes by data-id
+    → injects ghost nodes for removed nodes
+    → injects SVG overlay for connection diff
+    → dims unchanged nodes/edges
+  - removeDiffOverlay(): void
+    → removes all injected elements (ghost nodes, SVG overlay, popovers)
+    → removes added classes/styles from existing nodes
+    → restores opacity on all nodes/edges
+  - showParameterPopover(nodeId, changes, anchorElement): void
+    → creates and positions the parameter change popover
+  Guard: all injected elements get a data-n8n-xtend-diff marker attribute
+  for easy cleanup. removeDiffOverlay() queries all [data-n8n-xtend-diff]
+  and removes them, plus removes any added inline styles.
+
+CONNECTION PATH DRAWING:
+  n8n uses horizontal bezier curves between nodes. To draw overlay connections:
+  - Get source node center-right: (x + 96, y + 48)
+  - Get target node center-left: (x, y + 48)
+  - Compute horizontal C curve: M x1,y1 C x1+dx,y1 x2-dx,y2 x2,y2
+    where dx = (x2-x1)/2 (same as vue-flow's default)
+  - For removed connections to ghost nodes: use the ghost node's historical position
+
+MONITOR:
+  - MutationMonitor on canvas-wrapper detecting isWorkflowPage()
+  - Inject diff button when canvas controls panel appears
+  - Remove when navigating away from workflow page
+
+ENTERING DIFF MODE:
+  1. User clicks diff button (or Ctrl+Shift+D)
+  2. Fetch current workflow via API: GET /rest/workflows/{id}
+  3. Fetch recent executions: GET /rest/executions?workflowId={id}&limit=20
+  4. Show control bar with execution dropdown
+  5. Auto-select most recent execution, fetch its full data if needed
+  6. Run differ.ts to compute DiffResult
+  7. Call overlay.ts applyDiffOverlay() to annotate canvas
+  8. User can switch executions via dropdown → re-diff, re-overlay
+
+EXITING DIFF MODE:
+  1. User clicks X in control bar, or presses Escape, or Ctrl+Shift+D
+  2. Call overlay.ts removeDiffOverlay() to clean up all injections
+  3. Remove control bar
+  4. Restore normal canvas appearance
+
+STATE MANAGEMENT:
+  Module-level state in overlay.ts:
+  - isDiffModeActive: boolean
+  - currentDiffResult: DiffResult | null
+  - injectedElements: HTMLElement[] (for cleanup)
+  - activePopover: HTMLElement | null
+
+FILE STRUCTURE:
+  src/extensions/editor/diff/
+  ├── index.ts           — metadata + init (id: 'diff', group: editor, default: on)
+  ├── types.ts           — Execution, DiffResult, NodeChange, ConnectionKey
+  ├── core/
+  │   ├── index.ts       — barrel export
+  │   ├── injector.ts    — inject diff button into canvas controls
+  │   ├── monitor.ts     — detect workflow page, watch for canvas ready
+  │   ├── differ.ts      — pure diff algorithm (no DOM)
+  │   ├── overlay.ts     — canvas DOM manipulation (apply/remove annotations)
+  │   ├── api.ts         — fetchExecutions(), fetchExecution() helpers
+  │   └── controller.ts  — orchestrates enter/exit diff mode, dropdown changes
+  └── styles/
+      └── diff.css       — ghost node styles, badge styles, control bar, popover
+
+STYLES (diff.css):
+  .n8n-xtend-diff-control-bar     — top overlay bar
+  .n8n-xtend-diff-ghost-node      — removed node ghost (red dashed, semi-transparent)
+  .n8n-xtend-diff-badge           — +/-/~ badge circles
+  .n8n-xtend-diff-badge--added    — green badge
+  .n8n-xtend-diff-badge--removed  — red badge
+  .n8n-xtend-diff-badge--modified — amber badge
+  .n8n-xtend-diff-popover         — parameter change popover
+  .n8n-xtend-diff-added-line      — green + line in popover
+  .n8n-xtend-diff-removed-line    — red - line in popover
+  .n8n-xtend-diff-node--dimmed    — opacity 0.4 for unchanged nodes
+  .n8n-xtend-diff-edge--dimmed    — opacity 0.3 for unchanged edges
+  .n8n-xtend-diff-edge--added     — green connection overlay
+  .n8n-xtend-diff-edge--removed   — red dashed connection overlay
+
+METADATA:
+  id: 'diff'
+  name: 'Workflow Diff'
+  description: 'See what changed since the last execution, directly on the canvas'
+  howToUse: 'Open a workflow and click the diff icon in the bottom-left controls, or press Ctrl+Shift+D. Select an execution to compare against — added, removed, and modified nodes light up inline with git-style color coding.'
+  enabledByDefault: true
+
+EVENT BUS:
+  - Emit: diff:activated, diff:deactivated
+  - Listen: (none currently, but could react to workflow saves to auto-refresh)
+
+================================================================================
+4. CROSS-WORKFLOW FIND & REPLACE (sidebar extension)
+================================================================================
+
+New extension: src/extensions/sidebar/search/
+
+PURPOSE:
+  Search across ALL workflow node parameters in a project. Find every HTTP Request
+  node pointing to a specific URL, every expression referencing a field name, every
+  node of a certain type. Results as a clickable list that navigates to the workflow.
+
+DATA SOURCE:
+  Reuse fetchAllWorkflowDetails() from shared/api/workflows.ts — this already loads
+  all workflows with full node data in batches of 5 with progress callback.
+  The graph extension already does this exact pattern. The data infrastructure exists.
+
+INJECTION POINT:
+  Same pattern as graph extension — add a "Search" nav item to the sidebar, after
+  the Graph item. When clicked, replace the main content area with the search panel
+  (same show/hide pattern as graph: hide contentWrapper, show search view).
+
+  Alternatively: inject as a floating panel / command-palette overlay triggered by
+  a keyboard shortcut (Ctrl+Shift+F). This might be more natural for "find" UX.
+  → Recommend: sidebar nav item for discoverability, PLUS Ctrl+Shift+F shortcut.
+
+UI — SEARCH PANEL:
+  ┌─────────────────────────────────────────────────────────┐
+  │  🔍 [Search across all workflows...              ] [⚙]  │
+  │  Filters: [Node type ▼] [Active only ☐]                │
+  │─────────────────────────────────────────────────────────│
+  │  Results: 12 matches in 7 workflows                     │
+  │                                                         │
+  │  ▸ Deploy to Production (workflow)                      │
+  │    └ HTTP Request — url: "https://api.oldservice.com/…" │
+  │    └ HTTP Request 2 — url: "https://api.oldservice.com" │
+  │                                                         │
+  │  ▸ Sync CRM Data (workflow)                             │
+  │    └ Set — value1: "={{$json.legacyField}}"             │
+  │                                                         │
+  │  ▸ Nightly Backup (workflow)                            │
+  │    └ Function — code contains "oldservice"              │
+  └─────────────────────────────────────────────────────────┘
+
+SEARCH ALGORITHM (src/extensions/sidebar/search/core/searcher.ts):
+  Input: query string, Map<string, WorkflowDetail>, optional filters
+  For each workflow → for each node → search these fields:
+    1. node.name (display name)
+    2. node.type (e.g., "n8n-nodes-base.httpRequest")
+    3. node.parameters — recursive deep search of all string values
+       (this catches URLs, expressions like "={{$json.field}}", code in Function nodes,
+       header values, query params, etc.)
+  Return: Array<{ workflowId, workflowName, nodeId, nodeName, nodeType, matchField,
+    matchValue, matchIndex }> sorted by workflow name
+
+SEARCH FEATURES:
+  - Text search: plain substring match (case-insensitive) across all parameter values
+  - Regex mode: toggle to enable regex patterns (wrap in /.../ or toggle button)
+  - Node type filter: dropdown with all node types found in the project
+  - Active-only filter: checkbox to limit to active workflows
+  - Debounced search: 300ms debounce on input to avoid lag on large projects
+  - Progress indicator while loading workflow details (reuse the graph's pattern)
+  - Click any result row → navigate to that workflow URL (buildWorkflowUrl)
+
+STRETCH — REPLACE (can be added later):
+  - "Replace" input appears when user clicks a replace toggle
+  - Shows preview of changes (old → new) for each match
+  - "Replace All" button that PATCHes each affected workflow via the API
+  - Each replacement is undoable via registerUndo()
+  - This is powerful but dangerous — start with find-only, add replace as v2
+
+FILE STRUCTURE:
+  src/extensions/sidebar/search/
+  ├── index.ts           — metadata + init (id: 'search', group: sidebar)
+  ├── core/
+  │   ├── injector.ts    — inject sidebar nav item + search panel
+  │   ├── monitor.ts     — detect project context (same as graph monitor pattern)
+  │   ├── searcher.ts    — pure search algorithm (no DOM)
+  │   └── renderer.ts    — render search results list
+  └── styles/
+      └── search.css     — search panel styles
+
+METADATA:
+  id: 'search'
+  name: 'Workflow Search'
+  description: 'Search across all workflow node parameters in your project'
+  howToUse: 'Click "Search" in the sidebar or press Ctrl+Shift+F to search across all workflows in your project. Filter by node type or active status.'
+  enabledByDefault: true
+
+EVENT BUS:
+  - Emit: search:activated, search:deactivated, search:result-clicked
+  - Listen: folder-tree:item-moved, folder-tree:tree-refreshed (invalidate cached data)
+
+KEYBOARD SHORTCUT:
+  Ctrl+Shift+F — open/focus the search panel (skip if inside input/textarea/contentEditable)
+
+================================================================================
+PRIORITY ORDER
+================================================================================
+1. Folder rename native modal (quick fix, improves existing feature)
+2. Popup dark mode (quick win, already half-done)
+3. Workflow Diff Viewer (high impact, fills major gap)
+4. Cross-Workflow Find & Replace (power user feature, reuses existing infra)
