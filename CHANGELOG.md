@@ -2,13 +2,19 @@
 
 ## [Unreleased]
 
+## [1.8.3] - 2026-02-20
+
+### Added
+
+- add native dialogs for context menu and popup dark mode
+- add context menu, graph search, and capture improvements
+
+
 ## [1.8.2] - 2026-02-19
 
 ### Added
 
 - add unified toast system, undo support, and fix drag-drop to root
-
-
 ## [1.8.1] - 2026-02-17
 
 ### Added
