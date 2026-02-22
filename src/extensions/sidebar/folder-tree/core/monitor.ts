@@ -26,8 +26,20 @@ const SYNC_POLL_INTERVAL = 5000;
 
 let currentProjectId: string | null = null;
 let currentPath: string | null = null;
+let isChecking = false;
 
 async function checkAndInject(): Promise<void> {
+  if (isChecking) return;
+  isChecking = true;
+
+  try {
+    await checkAndInjectCore();
+  } finally {
+    isChecking = false;
+  }
+}
+
+async function checkAndInjectCore(): Promise<void> {
   if (isAuthPage()) {
     currentProjectId = null;
     currentPath = null;
@@ -78,15 +90,26 @@ async function checkAndInject(): Promise<void> {
   }
 }
 
+let isSyncing = false;
+
 async function syncExpandedFolders(): Promise<void> {
-  const state = getTreeState();
-  if (!state) return;
+  if (isSyncing) return;
+  isSyncing = true;
 
-  const foldersToSync = Array.from(state.currentItems.keys());
-  if (foldersToSync.length === 0) return;
+  try {
+    const state = getTreeState();
+    if (!state) return;
 
-  log.debug(`Syncing ${foldersToSync.length} expanded folders`);
-  await Promise.all(foldersToSync.map((folderId) => syncFolderContents(state.projectId, folderId)));
+    const foldersToSync = Array.from(state.currentItems.keys());
+    if (foldersToSync.length === 0) return;
+
+    log.debug(`Syncing ${foldersToSync.length} expanded folders`);
+    await Promise.all(
+      foldersToSync.map((folderId) => syncFolderContents(state.projectId, folderId)),
+    );
+  } finally {
+    isSyncing = false;
+  }
 }
 
 const monitor: AdaptivePollMonitor = createAdaptivePollMonitor({

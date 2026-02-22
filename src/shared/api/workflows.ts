@@ -12,21 +12,21 @@ const log = logger.child('api:workflows');
 const BATCH_CONCURRENCY = 5;
 const PAGE_LIMIT = 250;
 
-const workflowProjectCache = new Map<string, string>();
+const workflowProjectCache = new Map<string, string | null>();
 
 export async function fetchWorkflowProjectId(workflowId: string): Promise<string | null> {
-  const cached = workflowProjectCache.get(workflowId);
-  if (cached) {
-    return cached;
+  if (workflowProjectCache.has(workflowId)) {
+    return workflowProjectCache.get(workflowId) ?? null;
   }
 
   try {
     const data = await request<WorkflowResponse>(`/rest/workflows/${workflowId}`);
-    const projectId = data.data?.homeProject?.id;
-    if (projectId) {
-      workflowProjectCache.set(workflowId, projectId);
-    }
-    return projectId ?? null;
+    const projectId =
+      data.data?.homeProject?.id ??
+      data.data?.shared?.find((s) => s.role === 'workflow:owner')?.projectId ??
+      null;
+    workflowProjectCache.set(workflowId, projectId);
+    return projectId;
   } catch (error) {
     log.debug('Failed to fetch workflow project', { workflowId, error });
     return null;

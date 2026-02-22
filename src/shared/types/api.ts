@@ -11,6 +11,11 @@ export interface FolderResponse {
   data: Folder;
 }
 
+export interface WorkflowSharedEntry {
+  role: string;
+  projectId: string;
+}
+
 export interface Workflow {
   id: string;
   name: string;
@@ -20,6 +25,7 @@ export interface Workflow {
   homeProject?: {
     id: string;
   };
+  shared?: WorkflowSharedEntry[];
 }
 
 export interface WorkflowResponse {

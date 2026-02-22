@@ -1,7 +1,8 @@
 #n8n-xtend-folder-tree {
   display: flex;
   flex-direction: column;
-  max-height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
   font-family: InterVariable, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
     Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
@@ -27,8 +28,8 @@
   padding: 0 4px 40px;
   overflow-y: auto;
   overflow-x: hidden;
-  min-height: 500px;
-  max-height: 500px;
+  flex: 1;
+  min-height: 100px;
 }
 
 .n8n-xtend-folder-tree-node {

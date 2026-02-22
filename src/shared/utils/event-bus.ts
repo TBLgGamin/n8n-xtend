@@ -30,6 +30,8 @@ export interface EventMap {
   'graph:workflow-clicked': { workflowId: string };
   'capture:exported': { workflowId: string; format: 'png' | 'svg' };
   'note-title:renamed': { noteId: string; title: string };
+  'workflow-lint:applied': { workflowId: string; changes: string[] };
+  'workflow-lint:config-changed': Record<string, never>;
   'undo:requested': Record<string, never>;
   'undo:operation-registered': { description: string };
 }
