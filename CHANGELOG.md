@@ -2,13 +2,18 @@
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-03-16
+
+### Added
+
+- user-first lint engine, security hardening, and codebase audit fixes
+
+
 ## [1.9.0] - 2026-02-22
 
 ### Added
 
 - add workflow lint extension with overlap resolution
-
-
 ## [1.8.3] - 2026-02-20
 
 ### Added
