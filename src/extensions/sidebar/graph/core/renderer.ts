@@ -3,6 +3,7 @@ import { buildWorkflowUrl, emit, isValidId } from '@/shared/utils';
 import { icons } from '../icons';
 import {
   type ConnectionType,
+  type DependencyMap,
   type LayoutEdge,
   type LayoutNode,
   buildCallGraph,
@@ -62,8 +63,13 @@ function createCardElement(
   statusDiv.className = `n8n-xtend-graph-card-status ${workflow.active ? 'published' : 'unpublished'}`;
   statusDiv.innerHTML = workflow.active ? icons.published : icons.unpublished;
 
+  const nodeCount = document.createElement('span');
+  nodeCount.className = 'n8n-xtend-graph-card-count';
+  nodeCount.textContent = `${workflow.nodes.length}`;
+
   header.appendChild(iconDiv);
   header.appendChild(nameDiv);
+  header.appendChild(nodeCount);
   header.appendChild(statusDiv);
   link.appendChild(header);
 
@@ -99,6 +105,8 @@ function createEdgeGroup(edge: LayoutEdge): SVGGElement {
     `M ${edge.fromX} ${edge.fromY} C ${midX} ${edge.fromY}, ${midX} ${edge.toY}, ${edge.toX} ${edge.toY}`,
   );
   path.setAttribute('class', `n8n-xtend-graph-edge ${edge.type === 'mcp' ? 'mcp' : ''}`);
+  path.dataset.fromId = edge.fromId;
+  path.dataset.toId = edge.toId;
   g.appendChild(path);
 
   const labelX = midX;
@@ -153,7 +161,7 @@ function createGroupLabel(text: string, x: number, y: number): HTMLDivElement {
 export function renderCallGraph(
   transformLayer: HTMLElement,
   workflows: Map<string, WorkflowDetail>,
-): void {
+): DependencyMap {
   const layout = buildCallGraph(workflows);
   const fragment = document.createDocumentFragment();
   const showLabels = layout.roots.length > 0 && layout.standalone.length > 0;
@@ -181,4 +189,5 @@ export function renderCallGraph(
   }
 
   transformLayer.appendChild(fragment);
+  return layout.dependencies;
 }

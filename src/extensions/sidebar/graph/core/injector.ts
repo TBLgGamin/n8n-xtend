@@ -1,8 +1,9 @@
 import type { WorkflowDetail } from '@/shared/types';
-import { emit, escapeHtml, logger } from '@/shared/utils';
+import { buildWorkflowUrl, emit, escapeHtml, isWorkflowPage, logger } from '@/shared/utils';
 import { icons } from '../icons';
 import { type CanvasController, createCanvas } from './canvas';
 import { loadProjectWorkflows } from './data';
+import type { DependencyMap } from './graph-builder';
 import { renderCallGraph } from './renderer';
 
 const log = logger.child('graph:injector');
@@ -11,6 +12,13 @@ const MENU_ITEM_ID = 'n8n-xtend-graph';
 const GRAPH_VIEW_ID = 'n8n-xtend-graph-view';
 const CHAT_MENU_ITEM_SELECTOR = '[data-test-id="project-chat-menu-item"]';
 const SIDEBAR_LISTENER_ATTR = 'data-xtend-graph-listener';
+const PENDING_GRAPH_KEY = 'n8n-xtend-open-graph';
+
+const HIGHLIGHT_CLASS = 'n8n-xtend-graph-card-highlight';
+const DIM_CLASS = 'n8n-xtend-graph-card-dim';
+const UPSTREAM_CLASS = 'n8n-xtend-graph-card-upstream';
+const DOWNSTREAM_CLASS = 'n8n-xtend-graph-card-downstream';
+const EDGE_DIM_CLASS = 'n8n-xtend-graph-edge-dim';
 
 let graphViewActive = false;
 let activeUrl = '';
@@ -18,6 +26,7 @@ let previouslyActiveLink: HTMLElement | null = null;
 let previousActiveClass = '';
 let currentProjectId: string | null = null;
 let activeCanvasController: CanvasController | null = null;
+let activeDependencies: DependencyMap | null = null;
 
 export function setProjectId(projectId: string): void {
   currentProjectId = projectId;
@@ -87,22 +96,164 @@ function renderErrorState(container: HTMLElement): void {
   </div>`;
 }
 
-const HIGHLIGHT_CLASS = 'n8n-xtend-graph-card-highlight';
-const DIM_CLASS = 'n8n-xtend-graph-card-dim';
+function collectFullChain(
+  workflowId: string,
+  direction: 'upstream' | 'downstream',
+  deps: DependencyMap,
+): Set<string> {
+  const result = new Set<string>();
+  const map = direction === 'upstream' ? deps.upstream : deps.downstream;
+  const queue = [workflowId];
 
-function createSearchBox(canvas: CanvasController): HTMLDivElement {
+  while (queue.length > 0) {
+    const current = queue.pop();
+    if (!current) break;
+    for (const related of map.get(current) ?? []) {
+      if (!result.has(related)) {
+        result.add(related);
+        queue.push(related);
+      }
+    }
+  }
+
+  return result;
+}
+
+function classifyCard(
+  cardId: string,
+  hoveredId: string,
+  upstreamIds: Set<string>,
+  downstreamIds: Set<string>,
+): string {
+  if (cardId === hoveredId) return HIGHLIGHT_CLASS;
+  if (upstreamIds.has(cardId)) return UPSTREAM_CLASS;
+  if (downstreamIds.has(cardId)) return DOWNSTREAM_CLASS;
+  return DIM_CLASS;
+}
+
+function applyDepHighlight(layer: HTMLElement, wfId: string, deps: DependencyMap): void {
+  const upstreamIds = collectFullChain(wfId, 'upstream', deps);
+  const downstreamIds = collectFullChain(wfId, 'downstream', deps);
+  const relatedIds = new Set([wfId, ...upstreamIds, ...downstreamIds]);
+
+  for (const c of layer.querySelectorAll<HTMLElement>('.n8n-xtend-graph-card')) {
+    c.classList.add(classifyCard(c.dataset.workflowId ?? '', wfId, upstreamIds, downstreamIds));
+  }
+  for (const edge of layer.querySelectorAll('.n8n-xtend-graph-edge')) {
+    const fromId = (edge as SVGElement).dataset.fromId ?? '';
+    const toId = (edge as SVGElement).dataset.toId ?? '';
+    if (!relatedIds.has(fromId) || !relatedIds.has(toId)) {
+      edge.classList.add(EDGE_DIM_CLASS);
+    }
+  }
+}
+
+function clearDepHighlight(layer: HTMLElement): void {
+  for (const c of layer.querySelectorAll<HTMLElement>('.n8n-xtend-graph-card')) {
+    c.classList.remove(HIGHLIGHT_CLASS, DIM_CLASS, UPSTREAM_CLASS, DOWNSTREAM_CLASS);
+  }
+  for (const edge of layer.querySelectorAll('.n8n-xtend-graph-edge')) {
+    edge.classList.remove(EDGE_DIM_CLASS);
+  }
+}
+
+function setupDependencyHighlighting(canvas: CanvasController, deps: DependencyMap): void {
+  canvas.transformLayer.addEventListener(
+    'mouseenter',
+    (e) => {
+      const card = (e.target as HTMLElement).closest<HTMLElement>('.n8n-xtend-graph-card');
+      if (!card?.dataset.workflowId) return;
+      applyDepHighlight(canvas.transformLayer, card.dataset.workflowId, deps);
+    },
+    true,
+  );
+
+  canvas.transformLayer.addEventListener(
+    'mouseleave',
+    (e) => {
+      const card = (e.target as HTMLElement).closest<HTMLElement>('.n8n-xtend-graph-card');
+      if (!card) return;
+      clearDepHighlight(canvas.transformLayer);
+    },
+    true,
+  );
+}
+
+function setupCardClickNavigation(canvas: CanvasController): void {
+  canvas.transformLayer.addEventListener('click', (e) => {
+    const link = (e.target as HTMLElement).closest<HTMLAnchorElement>('.n8n-xtend-graph-card-link');
+    if (!link) return;
+    e.preventDefault();
+    deactivateGraphView();
+    window.location.href = link.href;
+  });
+}
+
+function buildSearchableText(workflow: WorkflowDetail): string {
+  const parts = [workflow.name.toLowerCase()];
+  if (workflow.tags) {
+    for (const tag of workflow.tags) {
+      if (typeof tag === 'object' && tag && 'name' in tag) {
+        parts.push((tag as { name: string }).name.toLowerCase());
+      }
+    }
+  }
+  for (const node of workflow.nodes) {
+    const typeName = node.type.split('.').pop() ?? '';
+    parts.push(typeName.toLowerCase());
+  }
+  return parts.join(' ');
+}
+
+function createCommandBar(
+  canvas: CanvasController,
+  workflows: Map<string, WorkflowDetail>,
+): HTMLDivElement {
   const container = document.createElement('div');
-  container.className = 'n8n-xtend-graph-search';
+  container.className = 'n8n-xtend-graph-cmdbar';
+
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'n8n-xtend-graph-cmdbar-search';
+
+  const searchIcon = document.createElement('span');
+  searchIcon.className = 'n8n-xtend-graph-cmdbar-icon';
+  searchIcon.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>`;
+  searchWrap.appendChild(searchIcon);
 
   const input = document.createElement('input');
   input.type = 'text';
-  input.placeholder = 'Search workflows\u2026';
-  input.className = 'n8n-xtend-graph-search-input';
-  container.appendChild(input);
+  input.placeholder = 'Search name, tag, or node type\u2026';
+  input.className = 'n8n-xtend-graph-cmdbar-input';
+  searchWrap.appendChild(input);
 
   const counter = document.createElement('span');
-  counter.className = 'n8n-xtend-graph-search-counter';
-  container.appendChild(counter);
+  counter.className = 'n8n-xtend-graph-cmdbar-counter';
+  searchWrap.appendChild(counter);
+
+  const prevBtn = document.createElement('button');
+  prevBtn.className = 'n8n-xtend-graph-cmdbar-nav';
+  prevBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  prevBtn.title = 'Previous (Shift+Enter)';
+  searchWrap.appendChild(prevBtn);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'n8n-xtend-graph-cmdbar-nav';
+  nextBtn.innerHTML = `<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  nextBtn.title = 'Next (Enter)';
+  searchWrap.appendChild(nextBtn);
+
+  const ghost = document.createElement('span');
+  ghost.className = 'n8n-xtend-graph-cmdbar-ghost';
+  searchWrap.appendChild(ghost);
+
+  container.appendChild(searchWrap);
+
+  const allNames = [...workflows.values()].map((wf) => wf.name).sort();
+
+  const searchIndex = new Map<string, string>();
+  for (const [id, wf] of workflows) {
+    searchIndex.set(id, buildSearchableText(wf));
+  }
 
   let matchedCards: HTMLElement[] = [];
   let currentIndex = -1;
@@ -112,17 +263,20 @@ function createSearchBox(canvas: CanvasController): HTMLDivElement {
     for (const card of allCards) {
       card.classList.remove(HIGHLIGHT_CLASS, DIM_CLASS);
     }
+    const edges = canvas.transformLayer.querySelectorAll('.n8n-xtend-graph-edge');
+    for (const edge of edges) {
+      edge.classList.remove(EDGE_DIM_CLASS);
+    }
     matchedCards = [];
     currentIndex = -1;
     counter.textContent = '';
+    ghost.textContent = '';
   }
 
   function panToCard(card: HTMLElement): void {
     const x = Number.parseFloat(card.style.left);
     const y = Number.parseFloat(card.style.top);
-    const w = card.offsetWidth || 220;
-    const h = card.offsetHeight || 80;
-    canvas.panTo(x + w / 2, y + h / 2);
+    canvas.panTo(x + 110, y + 40);
   }
 
   function updateCounter(): void {
@@ -135,12 +289,10 @@ function createSearchBox(canvas: CanvasController): HTMLDivElement {
 
   function navigateToMatch(index: number): void {
     if (matchedCards.length === 0) return;
-
     const prev = matchedCards[currentIndex];
     if (prev) prev.classList.remove(HIGHLIGHT_CLASS);
 
     currentIndex = ((index % matchedCards.length) + matchedCards.length) % matchedCards.length;
-
     const card = matchedCards[currentIndex];
     if (card) {
       card.classList.add(HIGHLIGHT_CLASS);
@@ -149,38 +301,92 @@ function createSearchBox(canvas: CanvasController): HTMLDivElement {
     updateCounter();
   }
 
-  function performSearch(): void {
-    clearHighlights();
-    const query = input.value.trim().toLowerCase();
-    if (!query) return;
+  function resolveMatchedIds(query: string): Set<string> {
+    const ids = new Set<string>();
+    for (const [id, text] of searchIndex) {
+      if (query && !text.includes(query)) continue;
+      ids.add(id);
+    }
+    return ids;
+  }
 
+  function expandWithConnections(ids: Set<string>): void {
+    if (!activeDependencies) return;
+    const connected = new Set<string>();
+    for (const id of ids) {
+      for (const up of collectFullChain(id, 'upstream', activeDependencies)) connected.add(up);
+      for (const down of collectFullChain(id, 'downstream', activeDependencies))
+        connected.add(down);
+    }
+    for (const id of connected) ids.add(id);
+  }
+
+  function applySearchVisuals(matchedIds: Set<string>): void {
     const allCards = canvas.transformLayer.querySelectorAll<HTMLElement>('.n8n-xtend-graph-card');
     for (const card of allCards) {
-      const name =
-        card.querySelector('.n8n-xtend-graph-card-name')?.textContent?.toLowerCase() ?? '';
-      if (name.includes(query)) {
+      const wfId = card.dataset.workflowId ?? '';
+      if (matchedIds.has(wfId)) {
         matchedCards.push(card);
       } else {
         card.classList.add(DIM_CLASS);
       }
     }
-
-    if (matchedCards.length > 0) {
-      navigateToMatch(0);
+    for (const edge of canvas.transformLayer.querySelectorAll('.n8n-xtend-graph-edge')) {
+      const fromId = (edge as SVGElement).dataset.fromId ?? '';
+      const toId = (edge as SVGElement).dataset.toId ?? '';
+      if (!matchedIds.has(fromId) || !matchedIds.has(toId)) {
+        edge.classList.add(EDGE_DIM_CLASS);
+      }
     }
+  }
+
+  function updateGhostText(query: string): void {
+    if (!query) {
+      ghost.textContent = '';
+      return;
+    }
+    const match = allNames.find((n) => n.toLowerCase().startsWith(query));
+    ghost.textContent = match ? query + match.slice(query.length) : '';
+  }
+
+  function acceptGhostText(): boolean {
+    const query = input.value.trim().toLowerCase();
+    if (!query) return false;
+    const match = allNames.find((n) => n.toLowerCase().startsWith(query));
+    if (match && match.toLowerCase() !== query) {
+      input.value = match;
+      performSearch();
+      return true;
+    }
+    return false;
+  }
+
+  function performSearch(): void {
+    clearHighlights();
+    const query = input.value.trim().toLowerCase();
+    if (!query) return;
+
+    const matchedIds = resolveMatchedIds(query);
+    expandWithConnections(matchedIds);
+    applySearchVisuals(matchedIds);
+
+    if (matchedCards.length > 0) navigateToMatch(0);
     updateCounter();
+    updateGhostText(query);
   }
 
   input.addEventListener('input', performSearch);
 
   input.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab' && ghost.textContent) {
+      e.preventDefault();
+      acceptGhostText();
+      return;
+    }
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (e.shiftKey) {
-        navigateToMatch(currentIndex - 1);
-      } else {
-        navigateToMatch(currentIndex + 1);
-      }
+      if (e.shiftKey) navigateToMatch(currentIndex - 1);
+      else navigateToMatch(currentIndex + 1);
     }
     if (e.key === 'Escape') {
       input.value = '';
@@ -188,6 +394,9 @@ function createSearchBox(canvas: CanvasController): HTMLDivElement {
       input.blur();
     }
   });
+
+  prevBtn.addEventListener('click', () => navigateToMatch(currentIndex - 1));
+  nextBtn.addEventListener('click', () => navigateToMatch(currentIndex + 1));
 
   return container;
 }
@@ -320,8 +529,13 @@ function createMinimap(canvas: CanvasController): HTMLDivElement {
 function renderReadyState(container: HTMLElement, workflows: Map<string, WorkflowDetail>): void {
   container.innerHTML = '';
   const canvas = createCanvas(container);
-  renderCallGraph(canvas.transformLayer, workflows);
-  canvas.viewport.appendChild(createSearchBox(canvas));
+  const deps = renderCallGraph(canvas.transformLayer, workflows);
+  activeDependencies = deps;
+
+  setupDependencyHighlighting(canvas, deps);
+  setupCardClickNavigation(canvas);
+
+  canvas.viewport.appendChild(createCommandBar(canvas, workflows));
   canvas.viewport.appendChild(createToolbar(canvas));
   canvas.viewport.appendChild(createMinimap(canvas));
   activeCanvasController = canvas;
@@ -376,6 +590,7 @@ function deactivateGraphView(): void {
 
   activeCanvasController?.destroy();
   activeCanvasController = null;
+  activeDependencies = null;
 
   const graphView = document.getElementById(GRAPH_VIEW_ID);
   if (graphView) graphView.remove();
@@ -389,11 +604,32 @@ function deactivateGraphView(): void {
   emit('graph:deactivated', {});
 }
 
+function navigateToFirstWorkflow(): void {
+  if (!currentProjectId) return;
+  loadProjectWorkflows(currentProjectId, () => {}).then((result) => {
+    if (!result) return;
+    const first = [...result.workflows.values()][0];
+    if (first) {
+      sessionStorage.setItem(PENDING_GRAPH_KEY, 'true');
+      window.location.href = buildWorkflowUrl(first.id);
+    }
+  });
+}
+
+export function resumePendingGraph(): void {
+  if (sessionStorage.getItem(PENDING_GRAPH_KEY)) {
+    sessionStorage.removeItem(PENDING_GRAPH_KEY);
+    activateGraphView();
+  }
+}
+
 function toggleGraphView(): void {
   if (graphViewActive) {
     deactivateGraphView();
-  } else {
+  } else if (isWorkflowPage()) {
     activateGraphView();
+  } else {
+    navigateToFirstWorkflow();
   }
 }
 

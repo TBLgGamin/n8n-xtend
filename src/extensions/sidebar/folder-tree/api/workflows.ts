@@ -82,3 +82,29 @@ export async function deleteWorkflow(workflowId: string): Promise<boolean> {
     return false;
   }
 }
+
+export async function createNewWorkflow(
+  projectId: string,
+  parentFolderId: string,
+): Promise<string | null> {
+  try {
+    const body: Record<string, unknown> = {
+      name: 'New Workflow',
+      nodes: [],
+      connections: {},
+      settings: { executionOrder: 'v1' },
+      pinData: {},
+      tags: [],
+      active: false,
+      projectId,
+    };
+    if (parentFolderId !== '0') {
+      body.parentFolderId = parentFolderId;
+    }
+    const response = await post<{ data: { id: string } }>('/rest/workflows', body);
+    return response.data?.id ?? null;
+  } catch (error) {
+    log.debug('Failed to create workflow', { error });
+    return null;
+  }
+}

@@ -200,3 +200,17 @@ export async function deleteFolder(projectId: string, folderId: string): Promise
     return false;
   }
 }
+
+export async function createNewFolder(
+  projectId: string,
+  parentFolderId: string,
+): Promise<string | null> {
+  try {
+    const id = await createFolder(projectId, 'New Folder', parentFolderId);
+    clearFolderCache();
+    return id;
+  } catch (error) {
+    log.debug('Failed to create folder', { error });
+    return null;
+  }
+}

@@ -12,6 +12,7 @@ import {
   checkNavigationChange,
   injectGraphMenuItem,
   removeGraphMenuItem,
+  resumePendingGraph,
   setProjectId,
 } from './injector';
 import { clearGraphState } from './state';
@@ -56,7 +57,8 @@ async function checkAndInject(): Promise<void> {
   }
 
   setProjectId(projectId);
-  injectGraphMenuItem();
+  const injected = injectGraphMenuItem();
+  if (injected) resumePendingGraph();
   checkNavigationChange();
 }
 

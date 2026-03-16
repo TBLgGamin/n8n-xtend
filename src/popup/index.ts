@@ -9,7 +9,6 @@ import {
 } from '../shared/utils/chrome-storage';
 import { logger } from '../shared/utils/logger';
 import { THEME_STORAGE_KEY } from '../shared/utils/theme-manager';
-import { renderMarkdown } from './markdown';
 
 const log = logger.child('popup');
 
@@ -17,8 +16,6 @@ const GITHUB_REPO = 'TBLgGamin/n8n-xtend';
 const SETTINGS_KEY = 'n8n-xtend-settings';
 const PREFERENCES_KEY = 'n8n-xtend-preferences';
 
-const ROW_CHEVRON_SVG = `<svg class="ext-row-arrow" width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-const INSTANCE_ICON_SVG = `<svg class="instances-item-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20M12 2a14.5 14.5 0 0 1 0 20M2 12h20"/></svg>`;
 const TRASH_ICON_SVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
 
 type ExtensionSettings = Record<string, boolean>;
@@ -31,7 +28,7 @@ const defaultPreferences: Preferences = { checkForUpdates: true };
 
 let settings: ExtensionSettings = {};
 let preferences: Preferences = { ...defaultPreferences };
-let currentExtension: ExtensionMetaEntry | null = null;
+let searchQuery = '';
 
 function sendMessage(message: MessageRequest): Promise<MessageResponse> {
   return chrome.runtime.sendMessage(message);
@@ -106,12 +103,16 @@ function createToggle(id: string, checked: boolean): HTMLLabelElement {
   return label;
 }
 
+let activeViewId = 'extensions';
+
 function showView(viewId: string): void {
   for (const view of document.querySelectorAll<HTMLElement>('.popup-view')) {
     view.classList.add('popup-view--hidden');
   }
   const target = document.getElementById(`view-${viewId}`);
   if (target) target.classList.remove('popup-view--hidden');
+
+  activeViewId = viewId;
 
   const isMain = viewId === 'extensions';
   const sep = document.getElementById('header-sep');
@@ -125,11 +126,6 @@ function showView(viewId: string): void {
   const hasParent = viewId === 'instances';
   if (parent) parent.hidden = !hasParent;
   if (sep2) sep2.hidden = !hasParent;
-}
-
-function syncListToggle(id: string, checked: boolean): void {
-  const el = document.querySelector<HTMLInputElement>(`.toggle-input[data-extension-id="${id}"]`);
-  if (el) el.checked = checked;
 }
 
 function setupVideo(ext: ExtensionMetaEntry): void {
@@ -162,40 +158,21 @@ function setupVideo(ext: ExtensionMetaEntry): void {
 }
 
 function showExtensionDetail(ext: ExtensionMetaEntry): void {
-  currentExtension = ext;
-
   const pageEl = document.getElementById('header-page');
   const nameEl = document.getElementById('detail-name');
   const desc = document.getElementById('detail-desc');
   const howTo = document.getElementById('detail-how-to-use');
-  const toggle = document.getElementById('detail-toggle') as HTMLInputElement | null;
-  const hint = document.getElementById('detail-hint');
-  const docsWrap = document.getElementById('detail-docs');
-  const docsContent = document.getElementById('detail-docs-content');
 
   if (pageEl) pageEl.textContent = ext.name;
   if (nameEl) nameEl.textContent = ext.name;
   if (desc) desc.textContent = ext.description;
   if (howTo) howTo.textContent = ext.howToUse;
-  if (toggle) toggle.checked = isEnabled(ext.id);
-  if (hint) hint.hidden = true;
-
-  if (docsWrap && docsContent) {
-    if (ext.usage) {
-      docsContent.innerHTML = renderMarkdown(ext.usage);
-      docsWrap.hidden = false;
-    } else {
-      docsContent.innerHTML = '';
-      docsWrap.hidden = true;
-    }
-  }
 
   setupVideo(ext);
   showView('detail');
 }
 
 function showExtensionsList(): void {
-  currentExtension = null;
   renderExtensions();
   showView('extensions');
 }
@@ -215,23 +192,83 @@ function showInstances(): void {
   void loadOrigins();
 }
 
-function renderExtensions(): void {
+function setGroupEnabled(extensions: ExtensionMetaEntry[], enabled: boolean): void {
+  for (const ext of extensions) {
+    settings[ext.id] = enabled;
+  }
+  saveSettings();
+  showReloadBanner();
+  renderExtensions();
+}
+
+function matchesSearch(ext: ExtensionMetaEntry): boolean {
+  if (!searchQuery) return true;
+  const q = searchQuery.toLowerCase();
+  return ext.name.toLowerCase().includes(q) || ext.description.toLowerCase().includes(q);
+}
+
+const SEARCH_ICON_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>`;
+
+function ensureSearchBar(container: HTMLElement): void {
+  if (container.querySelector('.ext-search-wrap')) return;
+  const search = document.createElement('div');
+  search.className = 'ext-search-wrap';
+  const icon = document.createElement('span');
+  icon.className = 'ext-search-icon';
+  icon.innerHTML = SEARCH_ICON_SVG;
+  search.appendChild(icon);
+  const searchInput = document.createElement('input');
+  searchInput.type = 'text';
+  searchInput.className = 'ext-search';
+  searchInput.placeholder = 'Search\u2026';
+  searchInput.addEventListener('input', () => {
+    searchQuery = searchInput.value;
+    renderExtensionRows();
+  });
+  search.appendChild(searchInput);
+  container.prepend(search);
+}
+
+function renderExtensionRows(): void {
   const container = document.getElementById('view-extensions');
   if (!container) return;
-  container.innerHTML = '';
+
+  const existing = container.querySelectorAll('.ext-group');
+  for (const el of existing) el.remove();
+
+  let focusableIndex = 0;
 
   for (const [group, extensions] of buildExtensionsByGroup()) {
+    const filtered = extensions.filter(matchesSearch);
+    if (filtered.length === 0) continue;
+
     const groupEl = document.createElement('div');
     groupEl.className = 'ext-group';
 
+    const header = document.createElement('div');
+    header.className = 'ext-group-header';
+
     const label = document.createElement('span');
     label.className = 'ext-group-label';
-    label.textContent = groupDisplayName(group);
-    groupEl.appendChild(label);
+    label.textContent = `${groupDisplayName(group)} (${filtered.length})`;
 
-    for (const ext of extensions) {
+    const allEnabled = filtered.every((e) => isEnabled(e.id));
+    const toggleAllBtn = document.createElement('button');
+    toggleAllBtn.className = 'ext-group-toggle';
+    toggleAllBtn.textContent = allEnabled ? 'Disable all' : 'Enable all';
+    toggleAllBtn.addEventListener('click', () => {
+      setGroupEnabled(filtered, !allEnabled);
+    });
+
+    header.appendChild(label);
+    header.appendChild(toggleAllBtn);
+    groupEl.appendChild(header);
+
+    for (const ext of filtered) {
       const row = document.createElement('div');
       row.className = 'ext-row';
+      row.tabIndex = 0;
+      row.dataset.focusIndex = String(focusableIndex++);
 
       const info = document.createElement('div');
       info.className = 'ext-row-info';
@@ -260,14 +297,63 @@ function renderExtensions(): void {
 
       row.appendChild(info);
       row.appendChild(toggle);
-      row.insertAdjacentHTML('beforeend', ROW_CHEVRON_SVG);
       row.addEventListener('click', () => showExtensionDetail(ext));
+      row.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') showExtensionDetail(ext);
+      });
 
       groupEl.appendChild(row);
     }
 
     container.appendChild(groupEl);
   }
+}
+
+function renderExtensions(): void {
+  const container = document.getElementById('view-extensions');
+  if (!container) return;
+  ensureSearchBar(container);
+  renderExtensionRows();
+}
+
+function handleEscapeKey(): boolean {
+  if (activeViewId === 'detail') {
+    showExtensionsList();
+    return true;
+  }
+  if (activeViewId === 'instances') {
+    showSettings();
+    return true;
+  }
+  if (activeViewId === 'settings') {
+    showExtensionsList();
+    return true;
+  }
+  return false;
+}
+
+function handleArrowNavigation(e: KeyboardEvent): void {
+  if (activeViewId !== 'extensions') return;
+  if (e.target instanceof HTMLInputElement) return;
+
+  const rows = Array.from(document.querySelectorAll<HTMLElement>('.ext-row[tabindex]'));
+  if (rows.length === 0) return;
+  const currentIndex = rows.indexOf(document.activeElement as HTMLElement);
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    rows[currentIndex < rows.length - 1 ? currentIndex + 1 : 0]?.focus();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    rows[currentIndex > 0 ? currentIndex - 1 : rows.length - 1]?.focus();
+  }
+}
+
+function setupKeyboardNavigation(): void {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && handleEscapeKey()) return;
+    handleArrowNavigation(e);
+  });
 }
 
 function isN8nCloudOrigin(origin: string): boolean {
@@ -290,43 +376,45 @@ function normalizeToOrigin(input: string): string | null {
 }
 
 function renderOriginsList(origins: string[]): void {
-  const list = document.getElementById('instances-list');
-  if (!list) return;
+  const table = document.getElementById('instances-list');
+  const tbody = document.getElementById('instances-tbody');
+  if (!table || !tbody) return;
 
-  list.innerHTML = '';
+  tbody.innerHTML = '';
 
   if (origins.length === 0) {
-    list.hidden = true;
+    table.hidden = true;
     return;
   }
 
-  list.hidden = false;
+  table.hidden = false;
 
   for (const origin of origins) {
-    const li = document.createElement('li');
-    li.className = 'instances-item';
+    const tr = document.createElement('tr');
+    tr.className = 'instances-tr';
 
+    const tdInfo = document.createElement('td');
+    tdInfo.className = 'instances-td-info';
     const link = document.createElement('a');
-    link.className = 'instances-item-link';
     link.href = origin;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
-
-    const info = document.createElement('div');
-    info.className = 'instances-item-info';
+    link.className = 'instances-td-link';
 
     const host = document.createElement('span');
-    host.className = 'instances-item-host';
+    host.className = 'instances-td-host';
     host.textContent = new URL(origin).hostname;
 
     const originText = document.createElement('span');
-    originText.className = 'instances-item-origin';
+    originText.className = 'instances-td-origin';
     originText.textContent = origin;
 
-    info.appendChild(host);
-    info.appendChild(originText);
-    link.appendChild(info);
+    link.appendChild(host);
+    link.appendChild(originText);
+    tdInfo.appendChild(link);
 
+    const tdAction = document.createElement('td');
+    tdAction.className = 'instances-td-action';
     const removeBtn = document.createElement('button');
     removeBtn.className = 'instances-item-remove';
     removeBtn.innerHTML = TRASH_ICON_SVG;
@@ -336,11 +424,11 @@ function renderOriginsList(origins: string[]): void {
       await sendMessage({ type: 'REMOVE_ORIGIN', origin });
       await loadOrigins();
     });
+    tdAction.appendChild(removeBtn);
 
-    li.insertAdjacentHTML('afterbegin', INSTANCE_ICON_SVG);
-    li.appendChild(link);
-    li.appendChild(removeBtn);
-    list.appendChild(li);
+    tr.appendChild(tdInfo);
+    tr.appendChild(tdAction);
+    tbody.appendChild(tr);
   }
 }
 
@@ -365,21 +453,6 @@ async function loadOrigins(): Promise<void> {
   }
 }
 
-function setupDetailToggle(): void {
-  const toggle = document.getElementById('detail-toggle') as HTMLInputElement | null;
-  const hint = document.getElementById('detail-hint');
-  if (!toggle) return;
-
-  toggle.addEventListener('change', () => {
-    if (!currentExtension) return;
-    settings[currentExtension.id] = toggle.checked;
-    saveSettings();
-    syncListToggle(currentExtension.id, toggle.checked);
-    showReloadBanner();
-    if (hint) hint.hidden = false;
-  });
-}
-
 function setupHomeButton(): void {
   document.getElementById('header-home')?.addEventListener('click', showExtensionsList);
   document.getElementById('header-parent')?.addEventListener('click', showSettings);
@@ -401,6 +474,26 @@ function setupSettingsButton(): void {
 
 function setupInstancesNavigation(): void {
   document.getElementById('go-instances')?.addEventListener('click', showInstances);
+}
+
+const PENDING_ORIGIN_KEY = 'n8n-xtend-pending-origin';
+
+async function finishAddOrigin(origin: string): Promise<void> {
+  const hasPermission = await chrome.permissions.contains({ origins: [`${origin}/*`] });
+  if (!hasPermission) return;
+
+  localStorage.removeItem(PENDING_ORIGIN_KEY);
+  const response = await sendMessage({ type: 'ADD_ORIGIN', origin });
+  if (response.success) {
+    log.debug('Origin added', { origin });
+    await loadOrigins();
+  }
+}
+
+async function resumePendingOrigin(): Promise<void> {
+  const pending = localStorage.getItem(PENDING_ORIGIN_KEY);
+  if (!pending) return;
+  await finishAddOrigin(pending);
 }
 
 function setupAddOrigin(): void {
@@ -428,32 +521,29 @@ function setupAddOrigin(): void {
       return;
     }
 
+    localStorage.setItem(PENDING_ORIGIN_KEY, origin);
+
     let granted: boolean;
     try {
       granted = await chrome.permissions.request({
         origins: [`${origin}/*`],
       });
     } catch {
+      localStorage.removeItem(PENDING_ORIGIN_KEY);
       showOriginError('Permission request failed. Please try again.');
       return;
     }
 
     if (!granted) {
+      localStorage.removeItem(PENDING_ORIGIN_KEY);
       showOriginError(
         'Permission was denied. The extension needs access to work on this instance.',
       );
       return;
     }
 
-    const response = await sendMessage({ type: 'ADD_ORIGIN', origin });
-    if (!response.success) {
-      showOriginError(response.error ?? 'Failed to add instance.');
-      return;
-    }
-
-    log.debug('Origin added', { origin });
+    await finishAddOrigin(origin);
     input.value = '';
-    await loadOrigins();
   });
 
   input.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -506,16 +596,10 @@ async function checkForUpdate(currentVersion: string): Promise<void> {
     if (!isNewerVersion(latestVersion, currentVersion)) return;
 
     const safeTag = encodeURIComponent(tagName);
-    const badge = document.getElementById('update-badge') as HTMLAnchorElement | null;
-    if (badge) {
-      badge.href = `https://github.com/${GITHUB_REPO}/releases/tag/${safeTag}`;
-      badge.hidden = false;
-    }
-
     const updateLink = document.getElementById('settings-update-link') as HTMLAnchorElement | null;
     if (updateLink) {
       updateLink.href = `https://github.com/${GITHUB_REPO}/releases/tag/${safeTag}`;
-      updateLink.textContent = `Update available \u2014 Download v${latestVersion}`;
+      updateLink.textContent = `v${latestVersion} available \u2014 Download`;
       updateLink.hidden = false;
     }
   } catch {
@@ -584,10 +668,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   setupHomeButton();
   setupSettingsButton();
-  setupDetailToggle();
   setupAddOrigin();
   setupPreferences();
   setupInstancesNavigation();
+  setupKeyboardNavigation();
 
   await loadOrigins();
+  await resumePendingOrigin();
 });

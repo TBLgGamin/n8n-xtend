@@ -97,7 +97,7 @@ export function createCanvas(container: HTMLElement): CanvasController {
     const target = e.target as HTMLElement;
     if (target.closest('.n8n-xtend-graph-card-link')) return;
     if (target.closest('.n8n-xtend-graph-toolbar')) return;
-    if (target.closest('.n8n-xtend-graph-search')) return;
+    if (target.closest('.n8n-xtend-graph-cmdbar')) return;
 
     isPanning = true;
     startX = e.clientX - panX;

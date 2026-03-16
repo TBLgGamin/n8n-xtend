@@ -1,7 +1,7 @@
-import { findElementByClassPattern, logger } from '@/shared/utils';
-import { showContextMenu } from './contextmenu';
+import { buildWorkflowUrl, findElementByClassPattern, logger, showToast } from '@/shared/utils';
+import { clearFolderCache, createNewFolder, createNewWorkflow } from '../api';
 import { clearSelection } from './dragdrop';
-import { loadTree } from './tree';
+import { getTreeState, loadTree } from './tree';
 
 const log = logger.child('folder-tree:injector');
 
@@ -45,13 +45,63 @@ function setupResizeObserver(sidebar: Element): void {
   updateVisibility(sidebar);
 }
 
+function handleNewFolder(): void {
+  const state = getTreeState();
+  if (!state) return;
+  createNewFolder(state.projectId, '0').then((id) => {
+    if (id) {
+      clearFolderCache();
+      loadTree(state.rootContainer, state.projectId);
+      showToast({ message: 'Folder created' });
+    }
+  });
+}
+
+function handleNewWorkflow(): void {
+  const state = getTreeState();
+  if (!state) return;
+  createNewWorkflow(state.projectId, '0').then((id) => {
+    if (id) {
+      window.location.href = buildWorkflowUrl(id);
+    }
+  });
+}
+
 function createContainer(): HTMLElement {
   const container = document.createElement('div');
   container.id = CONTAINER_ID;
-  container.innerHTML = `
-    <div class="n8n-xtend-folder-tree-header">Folders</div>
-    <div id="${CONTENT_ID}"></div>
-  `;
+
+  const header = document.createElement('div');
+  header.className = 'n8n-xtend-folder-tree-header';
+
+  const title = document.createElement('span');
+  title.textContent = 'Folders';
+
+  const actions = document.createElement('div');
+  actions.className = 'n8n-xtend-folder-tree-header-actions';
+
+  const newFolderBtn = document.createElement('button');
+  newFolderBtn.className = 'n8n-xtend-folder-tree-header-btn';
+  newFolderBtn.title = 'New Folder';
+  newFolderBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>`;
+  newFolderBtn.addEventListener('click', handleNewFolder);
+
+  const newWorkflowBtn = document.createElement('button');
+  newWorkflowBtn.className = 'n8n-xtend-folder-tree-header-btn';
+  newWorkflowBtn.title = 'New Workflow';
+  newWorkflowBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+  newWorkflowBtn.addEventListener('click', handleNewWorkflow);
+
+  actions.appendChild(newFolderBtn);
+  actions.appendChild(newWorkflowBtn);
+  header.appendChild(title);
+  header.appendChild(actions);
+
+  const content = document.createElement('div');
+  content.id = CONTENT_ID;
+
+  container.appendChild(header);
+  container.appendChild(content);
   return container;
 }
 
@@ -102,8 +152,6 @@ export function injectFolderTree(projectId: string): boolean {
         clearSelection();
       }
     });
-
-    content.addEventListener('contextmenu', showContextMenu);
 
     return true;
   }

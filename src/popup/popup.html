@@ -19,8 +19,6 @@
           <span class="popup-nav-page" id="header-page" hidden></span>
         </nav>
         <div class="popup-meta">
-          <a id="update-badge" class="popup-update" hidden
-            target="_blank" rel="noopener noreferrer">Update available</a>
           <button id="settings-btn" class="popup-settings-btn" type="button" aria-label="Settings">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           </button>
@@ -46,17 +44,8 @@
             <p class="detail-field-value" id="detail-how-to-use"></p>
           </div>
           <div class="detail-docs" id="detail-docs" hidden>
-            <span class="detail-field-label">Documentation</span>
             <div class="detail-docs-content" id="detail-docs-content"></div>
           </div>
-          <div class="detail-toggle-card">
-            <span class="detail-toggle-text">Enabled</span>
-            <label class="toggle">
-              <input type="checkbox" class="toggle-input" id="detail-toggle" />
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            </label>
-          </div>
-          <p class="detail-hint" id="detail-hint" hidden>Reload your n8n tab to apply changes.</p>
         </section>
 
         <section class="popup-view popup-view--hidden" id="view-settings">
@@ -118,7 +107,15 @@
             </div>
             <p id="origin-error" class="instance-error" hidden></p>
           </div>
-          <ul class="instances-list" id="instances-list" hidden></ul>
+          <table class="instances-table" id="instances-list" hidden>
+            <thead>
+              <tr>
+                <th>Instance</th>
+                <th class="instances-th-action"></th>
+              </tr>
+            </thead>
+            <tbody id="instances-tbody"></tbody>
+          </table>
           <p class="instances-note">n8n Cloud instances work automatically.</p>
         </section>
 

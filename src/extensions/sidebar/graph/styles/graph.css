@@ -78,6 +78,15 @@
   flex: 1;
 }
 
+.n8n-xtend-graph-card-count {
+  font-size: 10px;
+  color: var(--n8n-xtend-color-text-muted);
+  background: var(--n8n-xtend-color-bg-hover);
+  padding: 1px 5px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
 .n8n-xtend-graph-card-status {
   flex-shrink: 0;
   display: flex;
@@ -114,38 +123,84 @@
   text-overflow: ellipsis;
 }
 
-.n8n-xtend-graph-search {
+.n8n-xtend-graph-cmdbar {
   position: absolute;
   top: 12px;
   left: 12px;
+  z-index: 10;
+}
+
+.n8n-xtend-graph-cmdbar-search {
   display: flex;
   align-items: center;
-  gap: 6px;
-  z-index: 10;
+  gap: 4px;
   background: var(--n8n-xtend-color-bg-primary);
   border: 1px solid var(--n8n-xtend-color-border-primary);
   border-radius: 6px;
-  padding: 0 8px;
+  padding: 0 6px;
+  position: relative;
 }
 
-.n8n-xtend-graph-search-input {
-  width: 180px;
+.n8n-xtend-graph-cmdbar-icon {
+  display: flex;
+  align-items: center;
+  color: var(--n8n-xtend-color-text-dim);
+  flex-shrink: 0;
+}
+
+.n8n-xtend-graph-cmdbar-input {
+  width: 200px;
   height: 30px;
   border: none;
   background: transparent;
   color: var(--n8n-xtend-color-text-primary);
-  font-size: 13px;
+  font-size: 12px;
+  font-family: inherit;
   outline: none;
 }
 
-.n8n-xtend-graph-search-input::placeholder {
+.n8n-xtend-graph-cmdbar-input::placeholder {
   color: var(--n8n-xtend-color-text-muted);
 }
 
-.n8n-xtend-graph-search-counter {
+.n8n-xtend-graph-cmdbar-counter {
   font-size: 11px;
   color: var(--n8n-xtend-color-text-muted);
   white-space: nowrap;
+}
+
+.n8n-xtend-graph-cmdbar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--n8n-xtend-color-text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s, background 0.12s;
+}
+
+.n8n-xtend-graph-cmdbar-nav:hover {
+  color: var(--n8n-xtend-color-text-primary);
+  background: var(--n8n-xtend-color-bg-hover);
+}
+
+.n8n-xtend-graph-cmdbar-ghost {
+  position: absolute;
+  left: 28px;
+  top: 0;
+  height: 30px;
+  line-height: 30px;
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--n8n-xtend-color-text-dim);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .n8n-xtend-graph-card-highlight {
@@ -154,8 +209,28 @@
   z-index: 5;
 }
 
+.n8n-xtend-graph-card-upstream {
+  border-color: var(--n8n-xtend-color-brand-primary);
+  box-shadow: 0 0 0 2px var(--n8n-xtend-color-brand-primary);
+  opacity: 0.7;
+  z-index: 4;
+}
+
+.n8n-xtend-graph-card-downstream {
+  border-color: var(--n8n-xtend-color-brand-primary);
+  box-shadow: 0 0 0 2px var(--n8n-xtend-color-brand-primary);
+  opacity: 0.7;
+  z-index: 4;
+}
+
 .n8n-xtend-graph-card-dim {
-  opacity: 0.25;
+  opacity: 0.2;
+  transition: opacity 0.15s ease;
+}
+
+.n8n-xtend-graph-edge-dim {
+  opacity: 0.1;
+  transition: opacity 0.15s ease;
 }
 
 .n8n-xtend-graph-toolbar {
@@ -220,8 +295,9 @@
 
 .n8n-xtend-graph-edge {
   fill: none;
-  stroke: var(--n8n-xtend-color-border-secondary);
-  stroke-width: 1.5;
+  stroke: var(--n8n-xtend-color-text-muted);
+  stroke-width: 2;
+  transition: opacity 0.15s ease;
 }
 
 .n8n-xtend-graph-edge.mcp {

@@ -34,6 +34,8 @@ export interface LayoutNode {
 }
 
 export interface LayoutEdge {
+  fromId: string;
+  toId: string;
   fromX: number;
   fromY: number;
   toX: number;
@@ -41,11 +43,17 @@ export interface LayoutEdge {
   type: ConnectionType;
 }
 
+export interface DependencyMap {
+  upstream: Map<string, Set<string>>;
+  downstream: Map<string, Set<string>>;
+}
+
 export interface GraphLayout {
   roots: LayoutNode[];
   standalone: LayoutNode[];
   edges: LayoutEdge[];
   uncoveredIds: string[];
+  dependencies: DependencyMap;
 }
 
 const CARD_WIDTH = 220;
@@ -393,6 +401,8 @@ function positionNode(
 function collectEdges(node: LayoutNode, edges: LayoutEdge[]): void {
   for (const child of node.children) {
     edges.push({
+      fromId: node.workflowId,
+      toId: child.workflowId,
       fromX: node.x + CARD_WIDTH,
       fromY: node.y + CARD_HEIGHT / 2,
       toX: child.x,
@@ -408,6 +418,31 @@ function collectNodeIds(node: CallTreeNode, ids: Set<string>): void {
   for (const child of node.children) {
     collectNodeIds(child, ids);
   }
+}
+
+function walkDependencies(
+  node: LayoutNode,
+  upstream: Map<string, Set<string>>,
+  downstream: Map<string, Set<string>>,
+): void {
+  for (const child of node.children) {
+    if (!downstream.has(node.workflowId)) downstream.set(node.workflowId, new Set());
+    downstream.get(node.workflowId)?.add(child.workflowId);
+
+    if (!upstream.has(child.workflowId)) upstream.set(child.workflowId, new Set());
+    upstream.get(child.workflowId)?.add(node.workflowId);
+
+    walkDependencies(child, upstream, downstream);
+  }
+}
+
+function buildDependencyMap(roots: LayoutNode[]): DependencyMap {
+  const upstream = new Map<string, Set<string>>();
+  const downstream = new Map<string, Set<string>>();
+  for (const root of roots) {
+    walkDependencies(root, upstream, downstream);
+  }
+  return { upstream, downstream };
 }
 
 export function buildCallGraph(workflows: Map<string, WorkflowDetail>): GraphLayout {
@@ -496,5 +531,7 @@ export function buildCallGraph(workflows: Map<string, WorkflowDetail>): GraphLay
     `Graph built: ${roots.length} connected, ${standalone.length} standalone, ${edges.length} edges`,
   );
 
-  return { roots, standalone, edges, uncoveredIds };
+  const dependencies = buildDependencyMap(roots);
+
+  return { roots, standalone, edges, uncoveredIds, dependencies };
 }

@@ -145,6 +145,15 @@ async function withAdjustedViewport<T>(
   }
 }
 
+async function copyBlobToClipboard(blob: Blob): Promise<boolean> {
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function capturePng(): Promise<void> {
   await withAdjustedViewport(async ({ canvas, captureWidth, captureHeight }) => {
     const blob = await domToBlob(canvas, {
@@ -160,7 +169,10 @@ async function capturePng(): Promise<void> {
     if (blob) {
       const filename = `${getWorkflowName()}.png`;
       downloadFile(blob, filename);
-      showToast({ message: `Saved ${filename}` });
+      const copied = await copyBlobToClipboard(blob);
+      showToast({
+        message: copied ? `Saved ${filename} (copied to clipboard)` : `Saved ${filename}`,
+      });
     }
   });
 }
@@ -197,15 +209,72 @@ async function captureSvg(): Promise<void> {
   });
 }
 
+function getGraphViewElement(): HTMLElement | null {
+  return document.getElementById('n8n-xtend-graph-view');
+}
+
+async function captureGraphPng(): Promise<void> {
+  const graphView = getGraphViewElement();
+  if (!graphView) return;
+
+  const blob = await domToBlob(graphView, {
+    width: graphView.clientWidth,
+    height: graphView.clientHeight,
+    scale: SCALE,
+    backgroundColor: getCaptureBackgroundColor(),
+  });
+
+  if (blob) {
+    const filename = 'graph.png';
+    downloadFile(blob, filename);
+    const copied = await copyBlobToClipboard(blob);
+    showToast({
+      message: copied ? `Saved ${filename} (copied to clipboard)` : `Saved ${filename}`,
+    });
+  }
+}
+
+async function captureGraphSvg(): Promise<void> {
+  const graphView = getGraphViewElement();
+  if (!graphView) return;
+
+  const svgDataUrl = await domToSvg(graphView, {
+    width: graphView.clientWidth,
+    height: graphView.clientHeight,
+    backgroundColor: getCaptureBackgroundColor(),
+  });
+
+  if (svgDataUrl) {
+    const base64Match = svgDataUrl.match(/^data:image\/svg\+xml;base64,(.+)$/);
+    const utf8Match = svgDataUrl.match(/^data:image\/svg\+xml;charset=utf-8,(.+)$/);
+
+    let svgContent: string;
+    if (base64Match?.[1]) {
+      svgContent = atob(base64Match[1]);
+    } else if (utf8Match?.[1]) {
+      svgContent = decodeURIComponent(utf8Match[1]);
+    } else {
+      svgContent = svgDataUrl;
+    }
+
+    const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+    downloadFile(blob, 'graph.svg');
+    showToast({ message: 'Saved graph.svg' });
+  }
+}
+
 export async function captureWorkflow(format: 'png' | 'svg'): Promise<void> {
   try {
-    if (format === 'png') {
-      await capturePng();
+    const isGraphView = !!getGraphViewElement();
+    if (isGraphView) {
+      if (format === 'png') await captureGraphPng();
+      else await captureGraphSvg();
     } else {
-      await captureSvg();
+      if (format === 'png') await capturePng();
+      else await captureSvg();
     }
   } catch (error) {
-    log.warn('Failed to capture workflow', { error });
-    showToast({ message: 'Failed to capture workflow' });
+    log.warn('Failed to capture', { error });
+    showToast({ message: 'Failed to capture' });
   }
 }

@@ -2,6 +2,7 @@ export {
   clearContentCacheEntry,
   clearFolderCache,
   copyFolder,
+  createNewFolder,
   deleteFolder,
   fetchFolder,
   fetchFolderPath,
@@ -12,6 +13,7 @@ export {
 } from './folders';
 export {
   copyWorkflow,
+  createNewWorkflow,
   deleteWorkflow,
   fetchWorkflowProjectId,
   moveWorkflow,
