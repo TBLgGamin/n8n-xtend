@@ -205,7 +205,7 @@ export async function captureWorkflow(format: 'png' | 'svg'): Promise<void> {
       await captureSvg();
     }
   } catch (error) {
-    log.debug('Failed to capture workflow', error);
+    log.warn('Failed to capture workflow', { error });
     showToast({ message: 'Failed to capture workflow' });
   }
 }

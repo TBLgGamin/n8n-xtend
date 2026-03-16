@@ -1,5 +1,12 @@
 import type { TreeItemType } from '@/shared/types';
-import { buildFolderUrl, buildWorkflowUrl, escapeHtml, isValidId, showToast } from '@/shared/utils';
+import {
+  CLOSE_ICON_SVG,
+  buildFolderUrl,
+  buildWorkflowUrl,
+  isValidId,
+  logger,
+  showToast,
+} from '@/shared/utils';
 import {
   clearFolderCache,
   copyFolder,
@@ -11,13 +18,12 @@ import {
 } from '../api';
 import { getTreeState, loadTree } from './tree';
 
+const log = logger.child('folder-tree:contextmenu');
+
 const MENU_CLASS = 'n8n-xtend-folder-tree-context-menu';
 const MENU_ITEM_CLASS = 'n8n-xtend-folder-tree-context-menu-item';
 const MENU_SEPARATOR_CLASS = 'n8n-xtend-folder-tree-context-menu-separator';
 const MENU_ITEM_DANGER_CLASS = 'n8n-xtend-folder-tree-context-menu-item-danger';
-
-const CLOSE_ICON =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z"></path></svg>';
 
 interface ContextTarget {
   type: TreeItemType;
@@ -99,7 +105,7 @@ function showRenameDialog(type: TreeItemType, currentName: string): Promise<stri
     closeBtn.type = 'button';
     closeBtn.className = 'el-message-box__headerbtn';
     closeBtn.setAttribute('aria-label', 'Close this dialog');
-    closeBtn.innerHTML = `<i class="el-icon el-message-box__close">${CLOSE_ICON}</i>`;
+    closeBtn.innerHTML = `<i class="el-icon el-message-box__close">${CLOSE_ICON_SVG}</i>`;
 
     header.appendChild(titleDiv);
     header.appendChild(closeBtn);
@@ -233,7 +239,7 @@ function showDeleteDialog(type: TreeItemType, name: string): Promise<boolean> {
     closeBtn.type = 'button';
     closeBtn.className = 'el-message-box__headerbtn';
     closeBtn.setAttribute('aria-label', 'Close this dialog');
-    closeBtn.innerHTML = `<i class="el-icon el-message-box__close">${CLOSE_ICON}</i>`;
+    closeBtn.innerHTML = `<i class="el-icon el-message-box__close">${CLOSE_ICON_SVG}</i>`;
 
     header.appendChild(titleDiv);
     header.appendChild(closeBtn);
@@ -323,9 +329,11 @@ async function handleRename(target: ContextTarget): Promise<void> {
       : await renameWorkflow(target.id, newName);
 
   if (success) {
-    showToast({ message: `Renamed to "${escapeHtml(newName)}"` });
+    log.debug('Rename completed', { type: target.type, id: target.id, newName });
+    showToast({ message: `Renamed to "${newName}"` });
     refreshTree();
   } else {
+    log.warn('Rename failed', { type: target.type, id: target.id });
     showToast({ message: `Failed to rename ${target.type}` });
   }
 }
@@ -339,10 +347,12 @@ async function handleDuplicate(target: ContextTarget): Promise<void> {
       : await copyWorkflow(target.id, target.parentFolderId, target.projectId);
 
   if (success) {
-    showToast({ message: `Duplicated "${escapeHtml(target.name)}"` });
+    log.debug('Duplicate completed', { type: target.type, id: target.id });
+    showToast({ message: `Duplicated "${target.name}"` });
     clearFolderCache();
     refreshTree();
   } else {
+    log.warn('Duplicate failed', { type: target.type, id: target.id });
     showToast({ message: `Failed to duplicate ${target.type}` });
   }
 }
@@ -357,9 +367,11 @@ async function handleDelete(target: ContextTarget): Promise<void> {
       : await deleteWorkflow(target.id);
 
   if (success) {
-    showToast({ message: `Deleted "${escapeHtml(target.name)}"` });
+    log.debug('Delete completed', { type: target.type, id: target.id });
+    showToast({ message: `Deleted "${target.name}"` });
     refreshTree();
   } else {
+    log.warn('Delete failed', { type: target.type, id: target.id });
     showToast({ message: `Failed to delete ${target.type}` });
   }
 }

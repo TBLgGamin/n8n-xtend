@@ -6,8 +6,13 @@ import {
   registerUndo,
   showToast,
 } from '@/shared/utils';
-import { fetchWorkflowForLint, fetchWorkflowVersionId, saveLintedWorkflow } from '../api';
-import { loadLintConfig, showLintDialog } from '../config';
+import {
+  fetchNodeTypeNames,
+  fetchWorkflowForLint,
+  fetchWorkflowVersionId,
+  saveLintedWorkflow,
+} from '../api';
+import { loadLintConfig, loadLintPositions, saveLintPositions, showLintDialog } from '../config';
 import { lintWorkflow } from '../engine';
 import type { ConnectionMap, LintableNode } from '../engine/types';
 import { measureNodeDimensions } from './measure';
@@ -76,10 +81,14 @@ async function runLint(): Promise<void> {
 
   const nodeSizes = measureNodeDimensions();
   const config = loadLintConfig();
+  const nodeTypeNames = await fetchNodeTypeNames();
+  const previousPositions = loadLintPositions(workflowId);
   const result = lintWorkflow(
     { nodes: workflowData.nodes, connections: workflowData.connections },
     config,
     nodeSizes,
+    nodeTypeNames,
+    previousPositions,
   );
 
   if (!result.isModified) {
@@ -101,6 +110,7 @@ async function runLint(): Promise<void> {
     return;
   }
 
+  saveLintPositions(workflowId, result.lintPositions);
   emit('workflow-lint:applied', { workflowId, changes: result.changes });
   log.debug('Workflow linted', { workflowId, changes: result.changes });
 

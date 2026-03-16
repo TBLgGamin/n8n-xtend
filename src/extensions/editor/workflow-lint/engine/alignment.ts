@@ -1,26 +1,18 @@
+import { buildPositionMap, snapToGrid } from './shared';
+import { STICKY_NOTE_TYPE } from './types';
 import type {
   AlignmentConfig,
   ConnectionMap,
   GraphNode,
+  LayoutConfig,
   LintableNode,
   TopologyResult,
 } from './types';
 
-const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
-
-function buildPositionMap(nodes: LintableNode[]): Map<string, [number, number]> {
-  const map = new Map<string, [number, number]>();
-  for (const node of nodes) {
-    if (node.type !== STICKY_NOTE_TYPE) {
-      map.set(node.name, [...node.position]);
-    }
-  }
-  return map;
-}
-
 function straightenConnections(
   positionMap: Map<string, [number, number]>,
   topology: TopologyResult,
+  crossIdx: 0 | 1,
 ): void {
   const sortedNodes = [...topology.nodes.values()]
     .filter((n) => n.incomingMain.length === 1 && n.outgoingMain.length === 1)
@@ -34,26 +26,30 @@ function straightenConnections(
     const currentPos = positionMap.get(graphNode.name);
     if (!predPos || !currentPos) continue;
 
-    positionMap.set(graphNode.name, [currentPos[0], predPos[1]]);
+    const aligned: [number, number] = [...currentPos];
+    aligned[crossIdx] = predPos[crossIdx];
+    positionMap.set(graphNode.name, aligned);
   }
 }
 
-function computeMergeY(
+function computeMergeCrossValue(
   graphNode: GraphNode,
   positionMap: Map<string, [number, number]>,
+  crossIdx: 0 | 1,
 ): number | null {
-  const incomingYs = graphNode.incomingMain
-    .map((name) => positionMap.get(name)?.[1])
-    .filter((y): y is number => y !== undefined);
+  const incomingValues = graphNode.incomingMain
+    .map((name) => positionMap.get(name)?.[crossIdx])
+    .filter((v): v is number => v !== undefined);
 
-  if (incomingYs.length === 0) return null;
-  return Math.round(incomingYs.reduce((a, b) => a + b, 0) / incomingYs.length);
+  if (incomingValues.length === 0) return null;
+  return Math.round(incomingValues.reduce((a, b) => a + b, 0) / incomingValues.length);
 }
 
 function propagateDownstream(
   startName: string,
   topology: TopologyResult,
   positionMap: Map<string, [number, number]>,
+  crossIdx: 0 | 1,
 ): void {
   let current = startName;
   while (true) {
@@ -69,7 +65,9 @@ function propagateDownstream(
     const prevPos = positionMap.get(current);
     if (!nextPos || !prevPos) break;
 
-    positionMap.set(next, [nextPos[0], prevPos[1]]);
+    const aligned: [number, number] = [...nextPos];
+    aligned[crossIdx] = prevPos[crossIdx];
+    positionMap.set(next, aligned);
     current = next;
   }
 }
@@ -77,16 +75,32 @@ function propagateDownstream(
 function centerBranches(
   positionMap: Map<string, [number, number]>,
   topology: TopologyResult,
+  crossIdx: 0 | 1,
 ): void {
   for (const [, graphNode] of topology.nodes) {
     if (graphNode.role !== 'merge-point' || graphNode.incomingMain.length < 2) continue;
 
-    const avgY = computeMergeY(graphNode, positionMap);
+    const avgCross = computeMergeCrossValue(graphNode, positionMap, crossIdx);
     const currentPos = positionMap.get(graphNode.name);
-    if (avgY === null || !currentPos) continue;
+    if (avgCross === null || !currentPos) continue;
 
-    positionMap.set(graphNode.name, [currentPos[0], avgY]);
-    propagateDownstream(graphNode.name, topology, positionMap);
+    const aligned: [number, number] = [...currentPos];
+    aligned[crossIdx] = avgCross;
+    positionMap.set(graphNode.name, aligned);
+    propagateDownstream(graphNode.name, topology, positionMap, crossIdx);
+  }
+}
+
+function snapPositionsToGrid(
+  positionMap: Map<string, [number, number]>,
+  layoutConfig: LayoutConfig,
+): void {
+  if (!layoutConfig.snapToGrid) return;
+  for (const [name, pos] of positionMap) {
+    positionMap.set(name, [
+      snapToGrid(pos[0], layoutConfig.gridSize),
+      snapToGrid(pos[1], layoutConfig.gridSize),
+    ]);
   }
 }
 
@@ -95,18 +109,22 @@ export function applyAlignment(
   _connections: ConnectionMap,
   topology: TopologyResult,
   config: AlignmentConfig,
+  layoutConfig: LayoutConfig,
 ): LintableNode[] {
   if (!config.enabled) return nodes;
 
+  const crossIdx: 0 | 1 = layoutConfig.direction === 'vertical' ? 0 : 1;
   const positionMap = buildPositionMap(nodes);
 
   if (config.straightenConnections) {
-    straightenConnections(positionMap, topology);
+    straightenConnections(positionMap, topology, crossIdx);
   }
 
   if (config.centerBranches) {
-    centerBranches(positionMap, topology);
+    centerBranches(positionMap, topology, crossIdx);
   }
+
+  snapPositionsToGrid(positionMap, layoutConfig);
 
   return nodes.map((node) => {
     if (node.type === STICKY_NOTE_TYPE) return node;

@@ -1,5 +1,8 @@
 import { getNodeSize } from './node-sizes';
+import { snapToGrid } from './shared';
+import { STICKY_NOTE_TYPE } from './types';
 import type {
+  LayoutConfig,
   LintableNode,
   NodeRole,
   NodeSizeMap,
@@ -9,24 +12,38 @@ import type {
   TopologyResult,
 } from './types';
 
-const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
 const STICKY_LINT_PREFIX = 'sticky-lint-';
 
-function interpolateTitle(pattern: string, number: number, label: string): string {
+interface TitleVars {
+  number: number;
+  label: string;
+  index: number;
+  total: number;
+  depth: number;
+  type: string;
+  role: string;
+}
+
+function interpolateTitle(pattern: string, vars: TitleVars): string {
   return pattern
-    .replaceAll('{number}', String(number))
-    .replaceAll('{label}', label)
-    .replaceAll('{name}', label);
+    .replaceAll('{number}', String(vars.number))
+    .replaceAll('{label}', vars.label)
+    .replaceAll('{name}', vars.label)
+    .replaceAll('{index}', String(vars.index))
+    .replaceAll('{total}', String(vars.total))
+    .replaceAll('{depth}', String(vars.depth))
+    .replaceAll('{type}', vars.type)
+    .replaceAll('{role}', vars.role);
 }
 
 function collectPositionsWithNames(
   names: string[],
-  nodes: LintableNode[],
+  nodesByName: Map<string, LintableNode>,
 ): { positions: [number, number][]; resolvedNames: string[] } {
   const positions: [number, number][] = [];
   const resolvedNames: string[] = [];
   for (const name of names) {
-    const node = nodes.find((n) => n.name === name);
+    const node = nodesByName.get(name);
     if (node) {
       positions.push(node.position);
       resolvedNames.push(name);
@@ -39,12 +56,7 @@ function computeSizedBounds(
   positions: [number, number][],
   names: string[],
   nodeSizes: NodeSizeMap,
-): {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-} {
+): { minX: number; minY: number; maxX: number; maxY: number } {
   const result = {
     minX: Number.POSITIVE_INFINITY,
     minY: Number.POSITIVE_INFINITY,
@@ -66,11 +78,29 @@ function computeSizedBounds(
   return result;
 }
 
-function matchesRule(rule: StickyNoteRule, role: NodeRole, nodeType: string): boolean {
+function matchesRule(
+  rule: StickyNoteRule,
+  role: NodeRole,
+  nodeType: string,
+  nodeName?: string,
+  depth?: number,
+  sectionIndex?: number,
+): boolean {
   if (rule.roles && !rule.roles.includes(role)) return false;
   if (rule.types && !rule.types.includes(nodeType)) return false;
   if (rule.notRoles?.includes(role)) return false;
   if (rule.notTypes?.includes(nodeType)) return false;
+  if (rule.namePatterns && nodeName !== undefined) {
+    const matches = rule.namePatterns.some((p) => new RegExp(p).test(nodeName));
+    if (!matches) return false;
+  }
+  if (rule.depths && depth !== undefined && !rule.depths.includes(depth)) return false;
+  if (
+    rule.sectionIndexes &&
+    sectionIndex !== undefined &&
+    !rule.sectionIndexes.includes(sectionIndex)
+  )
+    return false;
   return true;
 }
 
@@ -80,11 +110,23 @@ function resolveColor(
   role: NodeRole,
   nodeType: string,
   config: StickyNoteConfig,
+  nodeName?: string,
+  depth?: number,
+  sectionIndex?: number,
 ): StickyColor {
   for (const rule of config.colorRules) {
-    if (matchesRule(rule, role, nodeType)) return rule.color;
+    if (matchesRule(rule, role, nodeType, nodeName, depth, sectionIndex)) return rule.color;
   }
   return config.colors[label] ?? config.colors[String(index)] ?? config.color;
+}
+
+function interpolateName(pattern: string, label: string): string {
+  return pattern.replaceAll('{label}', label);
+}
+
+function clampDimension(value: number, min: number, max: number): number {
+  const clamped = Math.max(value, min);
+  return max > 0 ? Math.min(clamped, max) : clamped;
 }
 
 function createStickyNode(
@@ -96,20 +138,56 @@ function createStickyNode(
   role: NodeRole,
   nodeType: string,
   config: StickyNoteConfig,
+  nodeName?: string,
+  depth?: number,
+  sectionIndex?: number,
 ): LintableNode {
   const calcWidth = bounds.maxX - bounds.minX + config.padding.left + config.padding.right;
   const calcHeight = bounds.maxY - bounds.minY + config.padding.top + config.padding.bottom;
 
   return {
     id,
-    name: `Sticky Note - ${label}`,
+    name: interpolateName(config.namePattern, label),
     type: STICKY_NOTE_TYPE,
     position: [bounds.minX - config.padding.left, bounds.minY - config.padding.top],
     parameters: {
       content: title,
-      width: Math.max(calcWidth, config.minWidth),
-      height: Math.max(calcHeight, config.minHeight),
-      color: resolveColor(index, label, role, nodeType, config),
+      width: clampDimension(calcWidth, config.minWidth, config.maxWidth),
+      height: clampDimension(calcHeight, config.minHeight, config.maxHeight),
+      color: resolveColor(index, label, role, nodeType, config, nodeName, depth, sectionIndex),
+    },
+  };
+}
+
+const NUMBER_PREFIX_PATTERN = /^(##\s*)\d+\.\s*/;
+
+function updateStickyNumbering(existingContent: string, generatedContent: string): string {
+  const genMatch = (generatedContent as string).match(NUMBER_PREFIX_PATTERN);
+  if (!genMatch) return existingContent;
+  const newPrefix = genMatch[0];
+
+  const existMatch = (existingContent as string).match(NUMBER_PREFIX_PATTERN);
+  if (existMatch) {
+    return (existingContent as string).replace(NUMBER_PREFIX_PATTERN, newPrefix);
+  }
+
+  const headingMatch = (existingContent as string).match(/^##\s*/);
+  if (headingMatch) {
+    return (existingContent as string).replace(/^##\s*/, newPrefix);
+  }
+
+  return existingContent;
+}
+
+function updateExistingSticky(existing: LintableNode, generated: LintableNode): LintableNode {
+  return {
+    ...existing,
+    parameters: {
+      ...existing.parameters,
+      content: updateStickyNumbering(
+        existing.parameters.content as string,
+        generated.parameters.content as string,
+      ),
     },
   };
 }
@@ -144,29 +222,28 @@ function getNodeLabel(nodeName: string, nodeIndex: number, config: StickyNoteCon
   return nodeName;
 }
 
-const ROLE_PRIORITY: Record<NodeRole, number> = {
-  trigger: 5,
-  'branch-point': 4,
-  'merge-point': 3,
-  terminal: 2,
-  regular: 1,
-};
-
 function findRepresentativeNode(
   section: { nodeNames: string[] },
   topology: TopologyResult,
   config: StickyNoteConfig,
-): { role: NodeRole; type: string } {
+): { role: NodeRole; type: string; name: string; depth: number } {
   const fallback = () => {
     const firstName = section.nodeNames[0];
     const firstNode = firstName ? topology.nodes.get(firstName) : undefined;
-    return { role: (firstNode?.role ?? 'regular') as NodeRole, type: firstNode?.type ?? '' };
+    return {
+      role: (firstNode?.role ?? 'regular') as NodeRole,
+      type: firstNode?.type ?? '',
+      name: firstName ?? '',
+      depth: firstNode?.depth ?? 0,
+    };
   };
 
   if (config.colorRules.length === 0) return fallback();
 
   let bestRole: NodeRole = 'regular';
   let bestType = '';
+  let bestName = '';
+  let bestDepth = 0;
   let bestPriority = -1;
 
   for (const nodeName of section.nodeNames) {
@@ -174,62 +251,80 @@ function findRepresentativeNode(
     if (!graphNode) continue;
 
     for (const rule of config.colorRules) {
-      if (matchesRule(rule, graphNode.role, graphNode.type)) {
-        const priority = ROLE_PRIORITY[graphNode.role];
+      if (matchesRule(rule, graphNode.role, graphNode.type, graphNode.name, graphNode.depth)) {
+        const priority = config.rolePriority[graphNode.role];
         if (priority > bestPriority) {
           bestPriority = priority;
           bestRole = graphNode.role;
           bestType = graphNode.type;
+          bestName = graphNode.name;
+          bestDepth = graphNode.depth;
         }
       }
     }
   }
 
   if (bestPriority === -1) return fallback();
-  return { role: bestRole, type: bestType };
+  return { role: bestRole, type: bestType, name: bestName, depth: bestDepth };
 }
 
 function applySectionGrouping(
-  result: LintableNode[],
+  nonStickyNodes: LintableNode[],
+  existingLintStickies: Map<string, LintableNode>,
   topology: TopologyResult,
   sectionLabels: Map<number, string>,
   config: StickyNoteConfig,
   nodeSizes: NodeSizeMap,
 ): LintableNode[] {
-  let nodes = [...result];
+  const newStickies: LintableNode[] = [];
+  const nodesByName = new Map(nonStickyNodes.map((n) => [n.name, n]));
+  const usedIds = new Set<string>();
 
   for (let i = 0; i < topology.sections.length; i++) {
     const section = topology.sections[i];
     if (!section) continue;
     const allNames = [...section.nodeNames, ...section.subNodeNames];
-
     if (allNames.length === 0) continue;
 
-    const { positions, resolvedNames } = collectPositionsWithNames(allNames, nodes);
+    const { positions, resolvedNames } = collectPositionsWithNames(allNames, nodesByName);
     if (positions.length === 0) continue;
 
     const bounds = computeSizedBounds(positions, resolvedNames, nodeSizes);
     const label = getSectionLabel(section, sectionLabels, section.id, config);
-    const stickyTitle = interpolateTitle(config.titlePattern, i + 1, label);
+    const rep = findRepresentativeNode(section, topology, config);
+    const triggerNode = section.triggerName
+      ? topology.nodes.get(section.triggerName)
+      : topology.nodes.get(section.nodeNames[0] ?? '');
+    const stickyId = `sticky-lint-sec-${triggerNode?.id ?? section.id}`;
+    usedIds.add(stickyId);
 
-    const { role, type: nodeType } = findRepresentativeNode(section, topology, config);
-
-    nodes = [
-      ...nodes,
-      createStickyNode(
-        `sticky-lint-${section.id}`,
-        i,
+    const generated = createStickyNode(
+      stickyId,
+      i,
+      label,
+      interpolateTitle(config.titlePattern, {
+        number: i + 1,
         label,
-        stickyTitle,
-        bounds,
-        role,
-        nodeType,
-        config,
-      ),
-    ];
+        index: i,
+        total: topology.sections.length,
+        depth: rep.depth,
+        type: rep.type,
+        role: rep.role,
+      }),
+      bounds,
+      rep.role,
+      rep.type,
+      config,
+      rep.name,
+      rep.depth,
+      i,
+    );
+
+    const existing = existingLintStickies.get(stickyId);
+    newStickies.push(existing ? updateExistingSticky(existing, generated) : generated);
   }
 
-  return nodes;
+  return newStickies;
 }
 
 function computeParentAnchoredBounds(
@@ -239,10 +334,8 @@ function computeParentAnchoredBounds(
   nodeSizes: NodeSizeMap,
 ): { minX: number; minY: number; maxX: number; maxY: number } {
   const rawBounds = computeSizedBounds(positions, names, nodeSizes);
-
   const parentSize = getNodeSize(names[0] ?? '', nodeSizes);
   const parentCenterX = parentPos[0] + parentSize.width / 2;
-
   const leftExtent = parentCenterX - rawBounds.minX;
   const rightExtent = rawBounds.maxX - parentCenterX;
   const symmetricExtent = Math.max(leftExtent, rightExtent);
@@ -255,117 +348,119 @@ function computeParentAnchoredBounds(
   };
 }
 
-function collectNodeStickyEntries(
-  nodes: LintableNode[],
+function computeNodeBounds(
+  graphNode: { subNodes: string[] },
+  nodeName: string,
+  nodesByName: Map<string, LintableNode>,
+  nodeSizes: NodeSizeMap,
+): { minX: number; minY: number; maxX: number; maxY: number } | null {
+  const relatedNames = [nodeName, ...graphNode.subNodes];
+  const { positions, resolvedNames } = collectPositionsWithNames(relatedNames, nodesByName);
+  if (positions.length === 0) return null;
+
+  const parentPos = positions[0];
+  const hasSubNodes = graphNode.subNodes.length > 0 && parentPos;
+  return hasSubNodes
+    ? computeParentAnchoredBounds(parentPos, positions, resolvedNames, nodeSizes)
+    : computeSizedBounds(positions, resolvedNames, nodeSizes);
+}
+
+function buildNodeLintSticky(
+  nodeId: string,
+  nodeName: string,
+  graphNode: { role: NodeRole; type: string; name: string; depth: number },
+  nodeIndex: number,
+  sectionIndex: number,
+  totalSections: number,
+  bounds: { minX: number; minY: number; maxX: number; maxY: number },
+  config: StickyNoteConfig,
+): LintableNode {
+  const label = getNodeLabel(nodeName, nodeIndex, config);
+  return createStickyNode(
+    `sticky-lint-${nodeId}`,
+    nodeIndex,
+    label,
+    interpolateTitle(config.titlePattern, {
+      number: nodeIndex + 1,
+      label,
+      index: sectionIndex,
+      total: totalSections,
+      depth: graphNode.depth,
+      type: graphNode.type,
+      role: graphNode.role,
+    }),
+    bounds,
+    graphNode.role,
+    graphNode.type,
+    config,
+    graphNode.name,
+    graphNode.depth,
+    sectionIndex,
+  );
+}
+
+function applyNodeGrouping(
+  nonStickyNodes: LintableNode[],
+  existingLintStickies: Map<string, LintableNode>,
   topology: TopologyResult,
   config: StickyNoteConfig,
   nodeSizes: NodeSizeMap,
-): Array<{ mainNodeName: string; subNodeNames: string[]; sticky: LintableNode }> {
-  const entries: Array<{ mainNodeName: string; subNodeNames: string[]; sticky: LintableNode }> = [];
+): LintableNode[] {
+  const newStickies: LintableNode[] = [];
+  const nodesByName = new Map(nonStickyNodes.map((n) => [n.name, n]));
   let nodeIndex = 0;
 
+  let sectionIndex = 0;
   for (const section of topology.sections) {
     for (const nodeName of section.nodeNames) {
       const graphNode = topology.nodes.get(nodeName);
       if (!graphNode) continue;
 
-      const relatedNames = [nodeName, ...graphNode.subNodes];
-      const { positions, resolvedNames } = collectPositionsWithNames(relatedNames, nodes);
-      if (positions.length === 0) continue;
+      const bounds = computeNodeBounds(graphNode, nodeName, nodesByName, nodeSizes);
+      if (!bounds) continue;
 
-      const parentPos = positions[0];
-      const hasSubNodes = graphNode.subNodes.length > 0 && parentPos;
-      const bounds = hasSubNodes
-        ? computeParentAnchoredBounds(parentPos, positions, resolvedNames, nodeSizes)
-        : computeSizedBounds(positions, resolvedNames, nodeSizes);
-      const label = getNodeLabel(nodeName, nodeIndex, config);
-      const stickyTitle = interpolateTitle(config.titlePattern, nodeIndex + 1, label);
+      const stickyId = `sticky-lint-${graphNode.id}`;
+      const generated = buildNodeLintSticky(
+        graphNode.id,
+        nodeName,
+        graphNode,
+        nodeIndex,
+        sectionIndex,
+        topology.sections.length,
+        bounds,
+        config,
+      );
 
-      entries.push({
-        mainNodeName: nodeName,
-        subNodeNames: [...graphNode.subNodes],
-        sticky: createStickyNode(
-          `sticky-lint-node-${nodeIndex}`,
-          nodeIndex,
-          label,
-          stickyTitle,
-          bounds,
-          graphNode.role,
-          graphNode.type,
-          config,
-        ),
-      });
+      const existing = existingLintStickies.get(stickyId);
+      newStickies.push(existing ? updateExistingSticky(existing, generated) : generated);
       nodeIndex++;
     }
+    sectionIndex++;
   }
 
-  return entries;
+  return newStickies;
 }
 
-function resolveNodeStickyOverlaps(
-  entries: Array<{ mainNodeName: string; subNodeNames: string[]; sticky: LintableNode }>,
-): Map<string, number> {
-  if (entries.length <= 1) return new Map();
-
-  const sorted = [...entries].sort((a, b) => a.sticky.position[0] - b.sticky.position[0]);
-  const shifts = new Map<string, number>();
-  let cumulativeShift = 0;
-  const first = sorted[0];
-  if (!first) return shifts;
-  let prevRight = first.sticky.position[0] + ((first.sticky.parameters.width as number) ?? 0);
-
-  for (let i = 1; i < sorted.length; i++) {
-    const entry = sorted[i];
-    if (!entry) continue;
-    const stickyWidth = (entry.sticky.parameters.width as number) ?? 0;
-    const currLeft = entry.sticky.position[0] + cumulativeShift;
-
-    if (currLeft < prevRight) {
-      cumulativeShift += prevRight - currLeft;
-    }
-
-    if (cumulativeShift > 0) {
-      shifts.set(entry.mainNodeName, cumulativeShift);
-      for (const subName of entry.subNodeNames) {
-        shifts.set(subName, cumulativeShift);
-      }
-    }
-
-    prevRight = entry.sticky.position[0] + cumulativeShift + stickyWidth;
-  }
-
-  return shifts;
-}
-
-function applyNodeGrouping(
-  result: LintableNode[],
-  topology: TopologyResult,
-  config: StickyNoteConfig,
-  nodeSizes: NodeSizeMap,
-): LintableNode[] {
-  const entries = collectNodeStickyEntries(result, topology, config, nodeSizes);
-  const shifts = resolveNodeStickyOverlaps(entries);
-
-  if (shifts.size === 0) {
-    return [...result, ...entries.map((e) => e.sticky)];
-  }
-
-  const shiftedNodes = result.map((node) => {
-    const shift = shifts.get(node.name);
-    if (!shift) return node;
-    return { ...node, position: [node.position[0] + shift, node.position[1]] as [number, number] };
-  });
-
-  const shiftedStickies = entries.map((entry) => {
-    const shift = shifts.get(entry.mainNodeName) ?? 0;
-    if (shift === 0) return entry.sticky;
+function snapStickyDimensions(nodes: LintableNode[], layoutConfig: LayoutConfig): LintableNode[] {
+  if (!layoutConfig.snapToGrid) return nodes;
+  return nodes.map((node) => {
+    if (node.type !== STICKY_NOTE_TYPE) return node;
+    const width = node.parameters.width as number | undefined;
+    const height = node.parameters.height as number | undefined;
+    if (width === undefined && height === undefined) return node;
     return {
-      ...entry.sticky,
-      position: [entry.sticky.position[0] + shift, entry.sticky.position[1]] as [number, number],
+      ...node,
+      position: [
+        snapToGrid(node.position[0], layoutConfig.gridSize),
+        snapToGrid(node.position[1], layoutConfig.gridSize),
+      ],
+      parameters: {
+        ...node.parameters,
+        ...(width !== undefined && { width: snapToGrid(width, layoutConfig.gridSize) }),
+        ...(height !== undefined && { height: snapToGrid(height, layoutConfig.gridSize) }),
+      },
     };
   });
-
-  return [...shiftedNodes, ...shiftedStickies];
 }
 
 export function applyStickyNotes(
@@ -374,16 +469,33 @@ export function applyStickyNotes(
   sectionLabels: Map<number, string>,
   config: StickyNoteConfig,
   nodeSizes: NodeSizeMap,
+  layoutConfig: LayoutConfig,
 ): LintableNode[] {
   if (!config.enabled) return nodes;
 
-  const result = config.removeExisting
-    ? nodes.filter((n) => n.type !== STICKY_NOTE_TYPE || !n.id.startsWith(STICKY_LINT_PREFIX))
-    : [...nodes];
-
-  if (config.grouping === 'node') {
-    return applyNodeGrouping(result, topology, config, nodeSizes);
+  const userStickies = nodes.filter(
+    (n) => n.type === STICKY_NOTE_TYPE && !n.id.startsWith(STICKY_LINT_PREFIX),
+  );
+  const existingLintStickies = new Map<string, LintableNode>();
+  for (const node of nodes) {
+    if (node.type === STICKY_NOTE_TYPE && node.id.startsWith(STICKY_LINT_PREFIX)) {
+      existingLintStickies.set(node.id, node);
+    }
   }
+  const nonStickyNodes = nodes.filter((n) => n.type !== STICKY_NOTE_TYPE);
 
-  return applySectionGrouping(result, topology, sectionLabels, config, nodeSizes);
+  const lintStickies =
+    config.grouping === 'node'
+      ? applyNodeGrouping(nonStickyNodes, existingLintStickies, topology, config, nodeSizes)
+      : applySectionGrouping(
+          nonStickyNodes,
+          existingLintStickies,
+          topology,
+          sectionLabels,
+          config,
+          nodeSizes,
+        );
+
+  const result = [...nonStickyNodes, ...userStickies, ...lintStickies];
+  return snapStickyDimensions(result, layoutConfig);
 }

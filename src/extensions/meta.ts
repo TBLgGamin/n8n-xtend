@@ -2,6 +2,7 @@ import type { ExtensionMetadata } from './types';
 
 export interface ExtensionMetaEntry extends ExtensionMetadata {
   group: string;
+  usage?: string;
 }
 
 import { metadata as captureMetadata } from './editor/capture';

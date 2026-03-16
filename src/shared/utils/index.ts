@@ -11,6 +11,7 @@ export {
 } from './chrome-storage';
 export { findElementByClassPattern, findElementBySelectors } from './dom';
 export { escapeHtml } from './html';
+export { CLOSE_ICON_SVG } from './icons';
 export { logger } from './logger';
 export {
   createAdaptivePollMonitor,

@@ -1,3 +1,5 @@
+import { logger } from '@/shared/utils';
+import { STICKY_NOTE_TYPE } from './types';
 import type {
   Branch,
   ConnectionMap,
@@ -6,29 +8,34 @@ import type {
   LintableNode,
   NodeRole,
   Section,
+  SectionOrder,
   TopologyResult,
 } from './types';
-
-const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
 
 interface AdjacencyResult {
   mainOutgoing: Map<string, string[]>;
   mainIncoming: Map<string, string[]>;
+  outgoingSets: Map<string, Set<string>>;
+  incomingSets: Map<string, Set<string>>;
   subNodeParents: Map<string, string>;
 }
 
 function initNodeMaps(nodes: LintableNode[]): AdjacencyResult {
   const mainOutgoing = new Map<string, string[]>();
   const mainIncoming = new Map<string, string[]>();
+  const outgoingSets = new Map<string, Set<string>>();
+  const incomingSets = new Map<string, Set<string>>();
 
   for (const node of nodes) {
     if (node.type !== STICKY_NOTE_TYPE) {
       mainOutgoing.set(node.name, []);
       mainIncoming.set(node.name, []);
+      outgoingSets.set(node.name, new Set());
+      incomingSets.set(node.name, new Set());
     }
   }
 
-  return { mainOutgoing, mainIncoming, subNodeParents: new Map() };
+  return { mainOutgoing, mainIncoming, outgoingSets, incomingSets, subNodeParents: new Map() };
 }
 
 function addMainConnection(
@@ -36,11 +43,21 @@ function addMainConnection(
   target: ConnectionTarget,
   mainOutgoing: Map<string, string[]>,
   mainIncoming: Map<string, string[]>,
+  outgoingSets: Map<string, Set<string>>,
+  incomingSets: Map<string, Set<string>>,
 ): void {
   const outgoing = mainOutgoing.get(sourceName);
-  if (outgoing && !outgoing.includes(target.node)) outgoing.push(target.node);
+  const outSet = outgoingSets.get(sourceName);
+  if (outgoing && outSet && !outSet.has(target.node)) {
+    outgoing.push(target.node);
+    outSet.add(target.node);
+  }
   const incoming = mainIncoming.get(target.node);
-  if (incoming && !incoming.includes(sourceName)) incoming.push(sourceName);
+  const inSet = incomingSets.get(target.node);
+  if (incoming && inSet && !inSet.has(sourceName)) {
+    incoming.push(sourceName);
+    inSet.add(sourceName);
+  }
 }
 
 function processTargets(
@@ -51,7 +68,14 @@ function processTargets(
 ): void {
   for (const target of targets) {
     if (connectionType === 'main') {
-      addMainConnection(sourceName, target, adjacency.mainOutgoing, adjacency.mainIncoming);
+      addMainConnection(
+        sourceName,
+        target,
+        adjacency.mainOutgoing,
+        adjacency.mainIncoming,
+        adjacency.outgoingSets,
+        adjacency.incomingSets,
+      );
     } else {
       adjacency.subNodeParents.set(sourceName, target.node);
     }
@@ -74,8 +98,9 @@ function buildAdjacency(nodes: LintableNode[], connections: ConnectionMap): Adja
 }
 
 function isTriggerNodeType(type: string, triggerTypes: string[]): boolean {
-  if (triggerTypes.length > 0 && triggerTypes.includes(type)) return true;
-  return type.toLowerCase().includes('trigger');
+  if (triggerTypes.includes(type)) return true;
+  const lastSegment = type.split('.').pop() ?? '';
+  return lastSegment.toLowerCase().endsWith('trigger');
 }
 
 function assignRole(
@@ -439,14 +464,12 @@ function detectBranches(
 
 function buildGraphNode(
   node: LintableNode,
-  sections: Section[],
+  nodeSectionMap: Map<string, number>,
   adjacency: AdjacencyResult,
   depths: Map<string, number>,
   triggerTypes: string[],
 ): GraphNode {
-  const sectionId =
-    sections.find((s) => s.nodeNames.includes(node.name) || s.subNodeNames.includes(node.name))
-      ?.id ?? 0;
+  const sectionId = nodeSectionMap.get(node.name) ?? 0;
 
   const subNodes = [...adjacency.subNodeParents.entries()]
     .filter(([, parent]) => parent === node.name)
@@ -502,10 +525,61 @@ export function analyzeTopology(
     section.branches = detectBranches(section, adjacency.mainOutgoing, adjacency.mainIncoming);
   }
 
-  const graphNodes = new Map<string, GraphNode>();
-  for (const node of filteredNodes) {
-    graphNodes.set(node.name, buildGraphNode(node, sections, adjacency, depths, triggerTypes));
+  const nodeSectionMap = new Map<string, number>();
+  for (const section of sections) {
+    for (const name of section.nodeNames) nodeSectionMap.set(name, section.id);
+    for (const name of section.subNodeNames) nodeSectionMap.set(name, section.id);
   }
 
+  const graphNodes = new Map<string, GraphNode>();
+  for (const node of filteredNodes) {
+    graphNodes.set(
+      node.name,
+      buildGraphNode(node, nodeSectionMap, adjacency, depths, triggerTypes),
+    );
+  }
+
+  const log = logger.child('lint:topology');
+  log.debug('Topology analyzed', { sections: sections.length, nodes: filteredNodes.length });
+
   return { nodes: graphNodes, sections, disconnected, hasCycles };
+}
+
+function getTriggerPosition(
+  section: Section,
+  nodes: LintableNode[],
+  direction: 'horizontal' | 'vertical',
+): number {
+  const triggerNode = section.triggerName
+    ? nodes.find((n) => n.name === section.triggerName)
+    : undefined;
+  if (!triggerNode) return Number.MAX_SAFE_INTEGER;
+  return direction === 'vertical' ? triggerNode.position[0] : triggerNode.position[1];
+}
+
+export function sortSections(
+  topology: TopologyResult,
+  order: SectionOrder,
+  nodes: LintableNode[],
+  direction: 'horizontal' | 'vertical',
+): void {
+  if (order === 'discovery' || topology.sections.length <= 1) return;
+
+  const disconnectedIdx = topology.sections.findIndex((s) => s.triggerName === null);
+  const disconnected = disconnectedIdx >= 0 ? topology.sections.splice(disconnectedIdx, 1) : [];
+
+  if (order === 'position') {
+    topology.sections.sort(
+      (a, b) => getTriggerPosition(a, nodes, direction) - getTriggerPosition(b, nodes, direction),
+    );
+  } else if (order === 'name') {
+    topology.sections.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+  }
+
+  topology.sections.push(...disconnected);
+
+  for (let i = 0; i < topology.sections.length; i++) {
+    const section = topology.sections[i];
+    if (section) section.id = i;
+  }
 }

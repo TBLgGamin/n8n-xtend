@@ -1,6 +1,6 @@
 # Privacy Policy for n8n-xtend
 
-**Last updated:** February 2026
+**Last updated:** March 2026
 
 ## Summary
 
@@ -24,10 +24,13 @@ The extension stores minimal data in your browser:
 
 | Data | Purpose | Storage Location |
 |------|---------|------------------|
-| Expanded folder IDs | Remember which folders you had open | Browser IndexedDB |
-| Theme preference | Match n8n's dark/light mode | Read from n8n's localStorage |
-| Extension toggle states | Remember which extensions are enabled/disabled | Browser IndexedDB |
+| Extension toggle states | Remember which extensions are enabled/disabled | Chrome sync storage |
 | Self-hosted instance URLs | Register content scripts for your n8n instances | Chrome sync storage |
+| User preferences | Update check preference | Chrome sync storage |
+| Expanded folder IDs | Remember which folders you had open | Chrome local storage |
+| Theme preference | Match n8n's dark/light mode | Chrome local storage |
+| Workflow lint config | Remember your lint formatting settings | Chrome local storage |
+| Workflow lint positions | Track which node positions the linter set (to detect user-moved nodes) | Chrome local storage |
 
 This data:
 - Never leaves your device (Chrome sync storage syncs only to your own signed-in browsers)
@@ -38,16 +41,22 @@ This data:
 
 n8n-xtend enhances your n8n workflow automation interface with additional features:
 
-1. **Tree Navigation** — Displays your projects, folders, and workflows in a collapsible tree
-2. **Workflow Capture** — Exports workflow diagrams as PNG/SVG images
-3. **Variables Enhancement** — Improves variable syntax display with click-to-copy
+1. **Tree Navigation** — Displays your projects, folders, and workflows in a collapsible tree with drag-and-drop
+2. **Dependency Graph** — Visualizes workflow relationships and dependencies
+3. **Workflow Capture** — Exports workflow diagrams as PNG/SVG images
+4. **Workflow Linter** — Automatically formats workflows (layout, numbering, sticky notes) while preserving all user customizations
+5. **Note Title** — Rename sticky note titles with a keyboard shortcut
+6. **Show Password** — Toggle password field visibility in credential forms
+7. **Variables Enhancement** — Improves variable syntax display with click-to-copy
 
 ### Network Requests
 
 The extension makes API requests **only to your own n8n instance** (the same domain you're viewing). These requests:
 - Use your existing authenticated session (browser cookies)
-- Fetch folder/workflow structure for display
-- Move items when you drag-and-drop
+- Fetch folder/workflow structure for tree navigation and dependency graph
+- Move, copy, rename, or delete items when you use drag-and-drop or context menu actions
+- Read and write workflow definitions when using the workflow linter (same as editing in the n8n UI)
+- Check for extension updates via the GitHub API (if enabled in settings)
 
 **No data is sent to the extension developer, third parties, or any external servers.**
 
@@ -79,7 +88,7 @@ As an additional safety layer, the content script also verifies it is running on
 - **No credentials stored** — Uses your existing n8n session
 - **No external transmission** — All data stays between your browser and your n8n instance
 - **No code evaluation** — No use of `eval()` or dynamic code execution
-- **HTTPS only** — All n8n API communication uses your instance's existing secure connection
+- **Secure connections** — All n8n API communication uses your instance's existing connection (HTTPS for n8n Cloud; self-hosted instances use whatever protocol you configure)
 
 ## Third Parties
 
@@ -88,6 +97,10 @@ This extension:
 - Does NOT contain analytics or tracking
 - Does NOT serve advertisements
 - Does NOT sell or monetize user data
+
+### Update Checks
+
+If enabled in settings, the extension checks for new versions by fetching the latest release tag from the public GitHub repository (`api.github.com`). This is a read-only, unauthenticated request that does not transmit any personal data. You can disable this in the extension settings.
 
 ### Bundled Dependencies
 

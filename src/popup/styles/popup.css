@@ -333,6 +333,112 @@ body {
   color: var(--n8n-xtend-color-text-primary);
 }
 
+.detail-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px 0;
+}
+
+.detail-docs-content {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--n8n-xtend-color-text-primary);
+}
+
+.detail-docs-content h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px 0 4px;
+}
+
+.detail-docs-content h2:first-child {
+  margin-top: 0;
+}
+
+.detail-docs-content h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 10px 0 4px;
+}
+
+.detail-docs-content h4 {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+
+.detail-docs-content p {
+  margin: 6px 0;
+}
+
+.detail-docs-content ul,
+.detail-docs-content ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.detail-docs-content li {
+  margin: 2px 0;
+}
+
+.detail-docs-content code {
+  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--n8n-xtend-color-bg-elevated);
+  border: 1px solid var(--n8n-xtend-color-border-subtle);
+}
+
+.detail-docs-content pre {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--n8n-xtend-color-bg-elevated);
+  border: 1px solid var(--n8n-xtend-color-border-subtle);
+  overflow-x: auto;
+}
+
+.detail-docs-content pre code {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.detail-docs-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+.detail-docs-content th {
+  text-align: left;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-bottom: 2px solid var(--n8n-xtend-color-border-primary);
+  white-space: nowrap;
+}
+
+.detail-docs-content td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--n8n-xtend-color-border-subtle);
+  vertical-align: top;
+}
+
+.detail-docs-content strong {
+  font-weight: 600;
+}
+
+.detail-docs-content hr {
+  border: none;
+  border-top: 1px solid var(--n8n-xtend-color-border-subtle);
+  margin: 12px 0;
+}
+
 .detail-toggle-card {
   display: flex;
   align-items: center;

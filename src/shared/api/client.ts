@@ -1,5 +1,5 @@
+import { getSyncItem } from '@/shared/utils/chrome-storage';
 import { logger } from '@/shared/utils/logger';
-import { isN8nHost } from '@/shared/utils/url';
 
 const log = logger.child('api:client');
 
@@ -8,6 +8,7 @@ const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 1000;
 const RETRYABLE_STATUS_CODES = [408, 429, 500, 502, 503, 504];
 const BROWSER_ID_KEY = 'n8n-browserId';
+const ORIGINS_KEY = 'n8n-xtend-origins';
 
 function getBrowserId(): string {
   return localStorage.getItem(BROWSER_ID_KEY) ?? '';
@@ -24,7 +25,10 @@ export class ApiError extends Error {
 }
 
 function assertTrustedOrigin(): void {
-  if (!isN8nHost()) {
+  const isCloud = location.hostname.endsWith('.n8n.cloud');
+  const storedOrigins = getSyncItem<string[]>(ORIGINS_KEY) ?? [];
+  const isKnownOrigin = isCloud || storedOrigins.includes(location.origin);
+  if (!isKnownOrigin) {
     log.error('Blocked request to untrusted origin');
     throw new ApiError('Untrusted origin', 403);
   }

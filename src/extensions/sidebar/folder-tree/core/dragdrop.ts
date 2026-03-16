@@ -366,13 +366,12 @@ async function executeMultiDrop(
   const fromFolderIds = items.map((item) => item.parentFolderId || '0');
   const targetName = resolveFolderName(normalizedTarget);
 
-  let successCount = 0;
-  for (const item of items) {
-    const success = isCopy
-      ? await handleCopy(item, normalizedTarget)
-      : await handleMove(item, normalizedTarget);
-    if (success) successCount++;
-  }
+  const results = await Promise.all(
+    items.map((item) =>
+      isCopy ? handleCopy(item, normalizedTarget) : handleMove(item, normalizedTarget),
+    ),
+  );
+  const successCount = results.filter(Boolean).length;
 
   if (successCount === 0) {
     showToast({ message: `Failed to ${isCopy ? 'copy' : 'move'} items` });
@@ -440,12 +439,15 @@ export function setupDropZone(container: HTMLElement): void {
     dragEnterCount++;
   });
 
+  let lastDragOverTarget: EventTarget | null = null;
   container.addEventListener('dragover', (event) => {
     event.preventDefault();
     const isCopy = event.ctrlKey || event.metaKey;
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = isCopy ? 'copy' : 'move';
     }
+    if (event.target === lastDragOverTarget) return;
+    lastDragOverTarget = event.target;
     const targetId = resolveDropTarget(event.target as HTMLElement);
     highlightTarget(targetId);
   });
@@ -535,14 +537,24 @@ function getSelectedDragData(): DragData[] {
   return result;
 }
 
+const selectedElements = new Map<string, HTMLElement>();
+
 function updateSelectionVisuals(): void {
-  const allItems = document.querySelectorAll<HTMLElement>('.n8n-xtend-folder-tree-item');
-  for (const item of allItems) {
-    const itemId = item.dataset.itemId;
-    if (itemId && selectedItems.has(itemId)) {
-      item.classList.add('n8n-xtend-folder-tree-selected');
-    } else {
-      item.classList.remove('n8n-xtend-folder-tree-selected');
+  for (const [id, el] of selectedElements) {
+    if (!selectedItems.has(id)) {
+      el.classList.remove('n8n-xtend-folder-tree-selected');
+      selectedElements.delete(id);
+    }
+  }
+  for (const id of selectedItems) {
+    if (!selectedElements.has(id)) {
+      const el = document.querySelector<HTMLElement>(
+        `.n8n-xtend-folder-tree-item[data-item-id="${id}"]`,
+      );
+      if (el) {
+        el.classList.add('n8n-xtend-folder-tree-selected');
+        selectedElements.set(id, el);
+      }
     }
   }
 }

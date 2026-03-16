@@ -6,7 +6,7 @@ import {
 } from '@/shared/utils';
 import { injectCaptureMenuItem } from './injector';
 
-const log = logger.child('capture');
+const log = logger.child('capture:monitor');
 
 const WORKFLOW_MENU_SELECTOR = '.el-dropdown__popper ul.el-dropdown-menu';
 const DOWNLOAD_ITEM_SELECTOR = '[data-test-id="workflow-menu-item-download"]';

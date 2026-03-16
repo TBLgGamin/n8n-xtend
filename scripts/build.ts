@@ -14,6 +14,7 @@ const isGenerateOnly = process.argv.includes('--generate-registry');
 const rootDir = join(import.meta.dir, '..');
 const srcDir = join(rootDir, 'src');
 const distDir = join(rootDir, 'dist');
+const dataDir = join(rootDir, 'data');
 const extensionsDir = join(srcDir, 'extensions');
 
 function getVersionFromPackageJson(): string {
@@ -124,7 +125,14 @@ function generateMeta(): void {
     const importPath = `./${group}/${name}`;
 
     imports.push(`import { metadata as ${alias}Metadata } from '${importPath}';`);
-    entries.push(`  { ...${alias}Metadata, group: '${group}' },`);
+
+    const usagePath = join(extensionsDir, group, name, 'usage.md');
+    if (existsSync(usagePath)) {
+      const usageContent = readFileSync(usagePath, 'utf-8');
+      entries.push(`  { ...${alias}Metadata, group: '${group}', usage: ${JSON.stringify(usageContent)} },`);
+    } else {
+      entries.push(`  { ...${alias}Metadata, group: '${group}' },`);
+    }
   }
 
   const content = [
@@ -132,6 +140,7 @@ function generateMeta(): void {
     '',
     'export interface ExtensionMetaEntry extends ExtensionMetadata {',
     "  group: string;",
+    "  usage?: string;",
     '}',
     '',
     ...imports,
@@ -148,6 +157,40 @@ function generateMeta(): void {
   if (existing !== content) {
     writeFileSync(metaPath, content);
     console.log('Meta updated.');
+  }
+}
+
+function generateNodeNames(): void {
+  const dataPath = join(dataDir, 'node-names.json');
+  const outputPath = join(
+    srcDir, 'extensions', 'editor', 'workflow-lint', 'engine', 'generated-node-names.ts'
+  );
+
+  if (!existsSync(dataPath)) {
+    if (existsSync(outputPath)) return;
+    const fallback = 'export const generatedNodeNames: Record<string, string> = {};\n';
+    writeFileSync(outputPath, fallback);
+    console.log('Node names: empty (no data/node-names.json found).');
+    return;
+  }
+
+  const raw = JSON.parse(readFileSync(dataPath, 'utf-8')) as Record<string, string>;
+  const entries = Object.entries(raw)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([type, name]) => `  '${type}': '${name.replace(/'/g, "\\'")}',`)
+    .join('\n');
+
+  const content = [
+    'export const generatedNodeNames: Record<string, string> = {',
+    entries,
+    '};',
+    '',
+  ].join('\n');
+
+  const existing = existsSync(outputPath) ? readFileSync(outputPath, 'utf-8') : '';
+  if (existing !== content) {
+    writeFileSync(outputPath, content);
+    console.log(`Node names updated (${Object.keys(raw).length} entries).`);
   }
 }
 
@@ -207,6 +250,7 @@ function buildPopupCss(): string {
 if (isGenerateOnly) {
   generateRegistry();
   generateMeta();
+  generateNodeNames();
   process.exit(0);
 }
 
@@ -215,6 +259,7 @@ async function build() {
 
   generateRegistry();
   generateMeta();
+  generateNodeNames();
 
   if (existsSync(distDir)) {
     rmSync(distDir, { recursive: true });

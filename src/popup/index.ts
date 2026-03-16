@@ -9,6 +9,7 @@ import {
 } from '../shared/utils/chrome-storage';
 import { logger } from '../shared/utils/logger';
 import { THEME_STORAGE_KEY } from '../shared/utils/theme-manager';
+import { renderMarkdown } from './markdown';
 
 const log = logger.child('popup');
 
@@ -54,9 +55,10 @@ function savePreferences(): void {
   setSyncItem(PREFERENCES_KEY, preferences);
 }
 
+const extensionDefaultsMap = new Map(extensionMeta.map((e) => [e.id, e.enabledByDefault]));
+
 function isEnabled(id: string): boolean {
-  const ext = extensionMeta.find((e) => e.id === id);
-  return settings[id] ?? ext?.enabledByDefault ?? true;
+  return settings[id] ?? extensionDefaultsMap.get(id) ?? true;
 }
 
 function showReloadBanner(): void {
@@ -168,6 +170,8 @@ function showExtensionDetail(ext: ExtensionMetaEntry): void {
   const howTo = document.getElementById('detail-how-to-use');
   const toggle = document.getElementById('detail-toggle') as HTMLInputElement | null;
   const hint = document.getElementById('detail-hint');
+  const docsWrap = document.getElementById('detail-docs');
+  const docsContent = document.getElementById('detail-docs-content');
 
   if (pageEl) pageEl.textContent = ext.name;
   if (nameEl) nameEl.textContent = ext.name;
@@ -175,6 +179,16 @@ function showExtensionDetail(ext: ExtensionMetaEntry): void {
   if (howTo) howTo.textContent = ext.howToUse;
   if (toggle) toggle.checked = isEnabled(ext.id);
   if (hint) hint.hidden = true;
+
+  if (docsWrap && docsContent) {
+    if (ext.usage) {
+      docsContent.innerHTML = renderMarkdown(ext.usage);
+      docsWrap.hidden = false;
+    } else {
+      docsContent.innerHTML = '';
+      docsWrap.hidden = true;
+    }
+  }
 
   setupVideo(ext);
   showView('detail');
@@ -241,6 +255,7 @@ function renderExtensions(): void {
         settings[ext.id] = toggleInput.checked;
         saveSettings();
         showReloadBanner();
+        log.debug('Extension toggled', { id: ext.id, enabled: toggleInput.checked });
       });
 
       row.appendChild(info);
@@ -317,6 +332,7 @@ function renderOriginsList(origins: string[]): void {
     removeBtn.innerHTML = TRASH_ICON_SVG;
     removeBtn.setAttribute('aria-label', 'Remove');
     removeBtn.addEventListener('click', async () => {
+      log.debug('Origin removed', { origin });
       await sendMessage({ type: 'REMOVE_ORIGIN', origin });
       await loadOrigins();
     });
@@ -435,6 +451,7 @@ function setupAddOrigin(): void {
       return;
     }
 
+    log.debug('Origin added', { origin });
     input.value = '';
     await loadOrigins();
   });
@@ -456,6 +473,7 @@ function setupPreferences(): void {
 
   const resetBtn = document.getElementById('reset-settings');
   resetBtn?.addEventListener('click', () => {
+    log.debug('Settings reset');
     settings = {};
     saveSettings();
     renderExtensions();
@@ -483,19 +501,20 @@ async function checkForUpdate(currentVersion: string): Promise<void> {
     if (!response.ok) return;
     const data = (await response.json()) as Record<string, unknown>;
     const tagName = typeof data.tag_name === 'string' ? data.tag_name : null;
-    if (!tagName) return;
+    if (!tagName || !/^v?\d+\.\d+\.\d+$/.test(tagName)) return;
     const latestVersion = tagName.replace(/^v/, '');
     if (!isNewerVersion(latestVersion, currentVersion)) return;
 
+    const safeTag = encodeURIComponent(tagName);
     const badge = document.getElementById('update-badge') as HTMLAnchorElement | null;
     if (badge) {
-      badge.href = `https://github.com/${GITHUB_REPO}/releases/tag/${tagName}`;
+      badge.href = `https://github.com/${GITHUB_REPO}/releases/tag/${safeTag}`;
       badge.hidden = false;
     }
 
     const updateLink = document.getElementById('settings-update-link') as HTMLAnchorElement | null;
     if (updateLink) {
-      updateLink.href = `https://github.com/${GITHUB_REPO}/releases/tag/${tagName}`;
+      updateLink.href = `https://github.com/${GITHUB_REPO}/releases/tag/${safeTag}`;
       updateLink.textContent = `Update available \u2014 Download v${latestVersion}`;
       updateLink.hidden = false;
     }

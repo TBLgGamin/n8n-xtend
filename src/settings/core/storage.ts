@@ -1,6 +1,5 @@
 import { extensionRegistry } from '@/extensions/registry';
-import type { ExtensionEntry } from '@/extensions/types';
-import { getSyncItem, setSyncItem } from '@/shared/utils/chrome-storage';
+import { getSyncItem } from '@/shared/utils/chrome-storage';
 import { logger } from '@/shared/utils/logger';
 
 const log = logger.child('settings:storage');
@@ -33,17 +32,4 @@ export function isExtensionEnabled(extensionId: string): boolean {
   const settings = resolveSettings();
   const extension = extensionRegistry.find((ext) => ext.id === extensionId);
   return settings[extensionId] ?? extension?.enabledByDefault ?? true;
-}
-
-export function setExtensionEnabled(extensionId: string, enabled: boolean): void {
-  log.debug('Extension setting changed', { extensionId, enabled });
-  const settings = resolveSettings();
-  settings[extensionId] = enabled;
-  cachedSettings = settings;
-  setSyncItem(SETTINGS_KEY, settings);
-}
-
-export function getEnabledExtensions(): ExtensionEntry[] {
-  const settings = resolveSettings();
-  return extensionRegistry.filter((ext) => settings[ext.id] ?? ext.enabledByDefault);
 }

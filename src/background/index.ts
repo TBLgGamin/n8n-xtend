@@ -4,7 +4,10 @@ import {
   setSyncItem,
   waitForChromeStorage,
 } from '../shared/utils/chrome-storage';
+import { logger } from '../shared/utils/logger';
 import { DYNAMIC_SCRIPT_ID, type MessageRequest, type MessageResponse, STORAGE_KEY } from './types';
+
+const log = logger.child('background');
 
 function getStoredOrigins(): string[] {
   const stored = getSyncItem<string[]>(STORAGE_KEY);
@@ -22,14 +25,14 @@ function toMatchPattern(origin: string): string {
 async function registerDynamicScripts(origins: string[]): Promise<void> {
   try {
     await chrome.scripting.unregisterContentScripts({ ids: [DYNAMIC_SCRIPT_ID] });
-  } catch {
-    /* not registered yet */
-  }
+  } catch {}
 
   if (origins.length === 0) {
+    log.debug('No origins to register');
     return;
   }
 
+  log.debug('Registering dynamic scripts', { count: origins.length });
   await chrome.scripting.registerContentScripts([
     {
       id: DYNAMIC_SCRIPT_ID,
@@ -70,27 +73,34 @@ async function removeOrigin(origin: string): Promise<MessageResponse> {
 }
 
 chrome.runtime.onInstalled.addListener(async () => {
+  log.info('Extension installed/updated');
   await syncScriptsFromStorage();
 });
 
 chrome.runtime.onStartup.addListener(async () => {
+  log.info('Browser started');
   await syncScriptsFromStorage();
 });
 
 chrome.runtime.onMessage.addListener(
   (
     message: MessageRequest,
-    _sender: chrome.runtime.MessageSender,
+    sender: chrome.runtime.MessageSender,
     sendResponse: (response: MessageResponse) => void,
   ) => {
+    if (sender.id !== chrome.runtime.id) return;
+
+    log.debug('Message received', { type: message.type });
     const handleMessage = async (): Promise<MessageResponse> => {
       await waitForChromeStorage();
       switch (message.type) {
         case 'GET_ORIGINS':
           return { success: true, origins: getStoredOrigins() };
         case 'ADD_ORIGIN':
+          log.debug('Origin added', { origin: message.origin });
           return addOrigin(message.origin);
         case 'REMOVE_ORIGIN':
+          log.debug('Origin removed', { origin: message.origin });
           return removeOrigin(message.origin);
       }
     };

@@ -1,7 +1,7 @@
 import { type Folder, type TreeItem, type Workflow, isFolder } from '@/shared/types';
 import { emit, logger } from '@/shared/utils';
 
-const log = logger.child('folder-tree');
+const log = logger.child('folder-tree:tree');
 import { getFolderIdFromUrl } from '@/shared/utils/url';
 import { clearFolderCache, fetchFolderPath, fetchFolders, fetchFoldersFresh } from '../api';
 import { createFolderElement, createWorkflowElement } from '../components';
@@ -194,7 +194,7 @@ export async function loadTree(container: HTMLElement, projectId: string): Promi
     setupDropZone(container);
     emit('folder-tree:tree-loaded', { projectId });
   } catch (error) {
-    log.debug('Failed to load folder tree', error);
+    log.warn('Failed to load folder tree', { error });
     container.innerHTML =
       '<div class="n8n-xtend-folder-tree-empty n8n-xtend-folder-tree-error">Failed to load</div>';
   }

@@ -1,19 +1,17 @@
 export { applyAlignment } from './alignment';
-export {
-  DEFAULT_LINT_CONFIG,
-  N8N_DEFAULT_STICKY_HEX,
-  N8N_STICKY_COLOR_MAP,
-  normalizeStickyColor,
-} from './defaults';
+export { DEFAULT_LINT_CONFIG, normalizeStickyColor } from './defaults';
 export { applyLayout } from './layout';
-export { applyNaming } from './naming';
+export { applyNaming, formatCollisionSuffix, NUMBER_SUFFIX_PATTERN } from './naming';
 export { buildNodeSizesByName } from './node-sizes';
 export { applyNumbering } from './numbering';
+export { buildPositionMap, renameConnections, snapToGrid } from './shared';
 export { applyStickyNotes } from './sticky-notes';
-export { analyzeTopology } from './topology';
+export { analyzeTopology, sortSections } from './topology';
+export { STICKY_NOTE_TYPE } from './types';
 export type {
   ConnectionMap,
   LintConfig,
+  LintPositionMap,
   LintResult,
   LintableNode,
   LintableWorkflow,
@@ -22,30 +20,38 @@ export type {
   TopologyResult,
 } from './types';
 
+import { logger } from '@/shared/utils';
 import { applyAlignment } from './alignment';
 import { applyLayout } from './layout';
 import { applyNaming } from './naming';
 import { buildNodeSizesByName } from './node-sizes';
 import { applyNumbering } from './numbering';
 import { applyStickyNotes } from './sticky-notes';
-import { analyzeTopology } from './topology';
-import type { LintConfig, LintResult, LintableWorkflow, NodeSize } from './types';
+import { analyzeTopology, sortSections } from './topology';
+import { STICKY_NOTE_TYPE } from './types';
+import type { LintConfig, LintPositionMap, LintResult, LintableWorkflow, NodeSize } from './types';
+
+const log = logger.child('lint:engine');
 
 export function lintWorkflow(
   workflow: LintableWorkflow,
   config: LintConfig,
   nodeSizesById?: Map<string, NodeSize>,
+  nodeTypeNames?: Map<string, string>,
+  previousLintPositions: LintPositionMap = {},
 ): LintResult {
   const changes: string[] = [];
 
   if (workflow.nodes.length === 0) {
-    return { nodes: [], connections: {}, isModified: false, changes: [] };
+    return { nodes: [], connections: {}, isModified: false, changes: [], lintPositions: {} };
   }
 
-  let nodes = structuredClone(workflow.nodes);
-  let connections = structuredClone(workflow.connections);
+  log.debug('Running lint pipeline', { nodeCount: workflow.nodes.length });
 
-  const namingResult = applyNaming(nodes, connections, config.naming);
+  let nodes = workflow.nodes.map((n) => ({ ...n }));
+  let connections = { ...workflow.connections };
+
+  const namingResult = applyNaming(nodes, connections, config.naming, nodeTypeNames);
   nodes = namingResult.nodes;
   connections = namingResult.connections;
   if (namingResult.renames.size > 0) {
@@ -53,8 +59,15 @@ export function lintWorkflow(
   }
 
   const prelimTopology = analyzeTopology(nodes, connections, config.triggerTypes);
+  sortSections(prelimTopology, config.layout.sectionOrder, nodes, config.layout.direction);
 
-  const numberingResult = applyNumbering(nodes, connections, prelimTopology, config.numbering);
+  const numberingResult = applyNumbering(
+    nodes,
+    connections,
+    prelimTopology,
+    config.numbering,
+    config.naming.collisionFormat,
+  );
   nodes = numberingResult.nodes;
   connections = numberingResult.connections;
   if (config.numbering.enabled) {
@@ -62,10 +75,11 @@ export function lintWorkflow(
   }
 
   const topology = analyzeTopology(nodes, connections, config.triggerTypes);
+  sortSections(topology, config.layout.sectionOrder, nodes, config.layout.direction);
 
   const nodeSizes = buildNodeSizesByName(nodes, nodeSizesById ?? new Map());
 
-  const layoutNodes = applyLayout(nodes, topology, config.layout, nodeSizes);
+  const layoutNodes = applyLayout(nodes, topology, config.layout, nodeSizes, previousLintPositions);
   if (config.layout.enabled) {
     const positionsChanged = layoutNodes.some((n, i) => {
       const orig = nodes[i];
@@ -78,7 +92,7 @@ export function lintWorkflow(
   }
   nodes = layoutNodes;
 
-  nodes = applyAlignment(nodes, connections, topology, config.alignment);
+  nodes = applyAlignment(nodes, connections, topology, config.alignment, config.layout);
   if (config.alignment.enabled) {
     changes.push('Aligned connections');
   }
@@ -89,6 +103,7 @@ export function lintWorkflow(
     numberingResult.sectionLabels,
     config.stickyNotes,
     nodeSizes,
+    config.layout,
   );
   if (stickyNodes.length !== nodes.length) {
     const added = stickyNodes.length - nodes.length;
@@ -100,7 +115,16 @@ export function lintWorkflow(
   }
   nodes = stickyNodes;
 
+  const lintPositions: LintPositionMap = {};
+  for (const node of nodes) {
+    if (node.type !== STICKY_NOTE_TYPE) {
+      lintPositions[node.id] = node.position;
+    }
+  }
+
   const isModified = changes.length > 0;
 
-  return { nodes, connections, isModified, changes };
+  log.debug('Lint pipeline complete', { isModified, changes });
+
+  return { nodes, connections, isModified, changes, lintPositions };
 }

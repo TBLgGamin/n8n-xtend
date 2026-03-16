@@ -6,7 +6,7 @@ import {
 } from '@/shared/utils';
 import { attachKeyboardListener, detachKeyboardListener } from './injector';
 
-const log = logger.child('note-title');
+const log = logger.child('note-title:monitor');
 
 const CANVAS_SELECTOR = '.vue-flow';
 const MARKER_ATTR = 'data-n8n-note-title';

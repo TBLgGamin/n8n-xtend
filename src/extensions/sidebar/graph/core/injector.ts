@@ -242,8 +242,8 @@ function createMinimap(canvas: CanvasController): HTMLDivElement {
       const el = card as HTMLElement;
       const x = Number.parseFloat(el.style.left);
       const y = Number.parseFloat(el.style.top);
-      const w = el.offsetWidth || 220;
-      const h = el.offsetHeight || 80;
+      const w = 220;
+      const h = 80;
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
       maxX = Math.max(maxX, x + w);
@@ -294,8 +294,8 @@ function createMinimap(canvas: CanvasController): HTMLDivElement {
       const el = card as HTMLElement;
       const x = Number.parseFloat(el.style.left);
       const y = Number.parseFloat(el.style.top);
-      const w = (el.offsetWidth || 220) * mapScale;
-      const h = (el.offsetHeight || 80) * mapScale;
+      const w = 220 * mapScale;
+      const h = 80 * mapScale;
       ctx.fillRect(toMX(x), toMY(y), Math.max(w, 2), Math.max(h, 2));
     }
 

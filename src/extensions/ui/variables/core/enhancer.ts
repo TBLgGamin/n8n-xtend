@@ -1,6 +1,6 @@
 import { logger } from '@/shared/utils';
 
-const log = logger.child('variables');
+const log = logger.child('variables:enhancer');
 
 const USAGE_SYNTAX_SELECTOR = '.usageSyntax';
 const ENHANCED_ATTR = 'data-n8n-xtend-enhanced';
@@ -38,12 +38,10 @@ function enhanceElement(element: HTMLElement): boolean {
     return false;
   }
 
-  const rawText = hasAttr ? (element.getAttribute(ENHANCED_ATTR) ?? currentText) : currentText;
-
-  element.textContent = wrapWithBraces(rawText);
+  element.textContent = wrapWithBraces(currentText);
+  element.setAttribute(ENHANCED_ATTR, currentText);
 
   if (!hasAttr) {
-    element.setAttribute(ENHANCED_ATTR, rawText);
     element.addEventListener('click', handleCopy);
   }
 

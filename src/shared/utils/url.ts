@@ -1,3 +1,5 @@
+import { isValidId } from './validation';
+
 export function getProjectIdFromUrl(): string | null {
   const match = location.pathname.match(/\/projects\/([^/]+)/);
   return match?.[1] ?? null;
@@ -105,8 +107,6 @@ export function isN8nHost(): boolean {
 
   return false;
 }
-
-import { isValidId } from './validation';
 
 export function buildWorkflowUrl(workflowId: string): string {
   if (!isValidId(workflowId)) {

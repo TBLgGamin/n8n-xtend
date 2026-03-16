@@ -1,1 +1,1 @@
-export { loadSettings, isExtensionEnabled, getEnabledExtensions } from './core';
+export { loadSettings, isExtensionEnabled } from './core';

@@ -3,7 +3,7 @@ export { fetchWorkflowProjectId } from '@/shared/api';
 import type { WorkflowDetailResponse } from '@/shared/types';
 import { logger } from '@/shared/utils';
 
-const log = logger.child('api');
+const log = logger.child('folder-tree:api:workflows');
 
 export async function fetchWorkflowVersionId(workflowId: string): Promise<string | null> {
   try {

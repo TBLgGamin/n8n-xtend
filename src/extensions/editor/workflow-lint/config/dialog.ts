@@ -1,4 +1,5 @@
 import {
+  CLOSE_ICON_SVG,
   createDebounced,
   emit,
   getThemeColors,
@@ -11,36 +12,26 @@ import { measureNodeDimensions } from '../core/measure';
 import { DEFAULT_LINT_CONFIG } from '../engine/defaults';
 import type { LintConfig } from '../engine/types';
 import { captureConfigFromWorkflow } from './capture';
-import { loadLintConfig, saveLintConfig } from './storage';
+import { loadLintConfig, saveLintConfig, validateLintConfig } from './storage';
 
 const log = logger.child('lint:dialog');
 
-const CLOSE_ICON =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z"></path></svg>';
+const MAX_UNDO = 50;
+
+type Colors = ReturnType<typeof getThemeColors>;
 
 function injectStyles(): void {
   if (document.getElementById('n8n-lint-dialog-styles')) return;
-
   const style = document.createElement('style');
   style.id = 'n8n-lint-dialog-styles';
   style.textContent = `
-    @keyframes n8n-lint-fade-in {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    @keyframes n8n-lint-slide-in {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    @keyframes n8n-lint-fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes n8n-lint-slide-in { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
   `;
   document.head.appendChild(style);
 }
 
-function createButton(
-  label: string,
-  primary: boolean,
-  colors: ReturnType<typeof getThemeColors>,
-): HTMLButtonElement {
+function createButton(label: string, primary: boolean, colors: Colors): HTMLButtonElement {
   const btn = document.createElement('button');
   btn.textContent = label;
   btn.style.cssText = `
@@ -72,6 +63,12 @@ export function showLintDialog(onLint: () => Promise<void>): void {
   injectStyles();
   const colors = getThemeColors();
   const config = loadLintConfig();
+  const undoStack: string[] = [];
+
+  function pushUndo(json: string): void {
+    undoStack.push(json);
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+  }
 
   const overlay = document.createElement('div');
   overlay.style.cssText = `
@@ -132,7 +129,7 @@ export function showLintDialog(onLint: () => Promise<void>): void {
     cursor: pointer;
     transition: color 0.15s;
   `;
-  closeBtn.innerHTML = `<i style="width: 16px; height: 16px;">${CLOSE_ICON}</i>`;
+  closeBtn.innerHTML = `<i style="width: 16px; height: 16px;">${CLOSE_ICON_SVG}</i>`;
   closeBtn.onmouseenter = () => {
     closeBtn.style.color = colors.brandPrimary;
   };
@@ -187,18 +184,25 @@ export function showLintDialog(onLint: () => Promise<void>): void {
     margin-top: 8px;
     padding: 8px 12px;
     border-radius: 4px;
-    background: #ff4d4f22;
-    color: #ff4d4f;
+    background: ${colors.errorBg};
+    color: ${colors.errorText};
     font-size: 12px;
+    white-space: pre-line;
     display: none;
   `;
 
   const debouncedSave = createDebounced(() => {
     try {
       const parsed = JSON.parse(textarea.value) as LintConfig;
-      saveLintConfig(parsed);
+      const { config: validated, errors } = validateLintConfig(parsed);
+      saveLintConfig(validated);
       emit('workflow-lint:config-changed', {});
-      errorArea.style.display = 'none';
+      if (errors.length > 0) {
+        errorArea.textContent = errors.join('\n');
+        errorArea.style.display = 'block';
+      } else {
+        errorArea.style.display = 'none';
+      }
     } catch {
       errorArea.textContent = 'Invalid JSON';
       errorArea.style.display = 'block';
@@ -210,7 +214,7 @@ export function showLintDialog(onLint: () => Promise<void>): void {
   actionRow.style.cssText = 'display: flex; gap: 8px; margin-top: 12px;';
 
   const captureBtn = createButton('Capture', false, colors);
-  const resetBtn = createButton('Reset to defaults', false, colors);
+  const resetBtn = createButton('Reset', false, colors);
 
   captureBtn.onclick = async () => {
     const workflowId = getWorkflowIdFromUrl();
@@ -218,6 +222,7 @@ export function showLintDialog(onLint: () => Promise<void>): void {
       showToast({ message: 'No workflow detected' });
       return;
     }
+    const originalLabel = captureBtn.textContent;
     captureBtn.textContent = 'Capturing...';
     captureBtn.disabled = true;
     try {
@@ -232,18 +237,20 @@ export function showLintDialog(onLint: () => Promise<void>): void {
         workflowData.connections,
         nodeSizes,
       );
+      pushUndo(textarea.value);
       textarea.value = JSON.stringify(captured, null, 2);
       saveLintConfig(captured);
       emit('workflow-lint:config-changed', {});
       errorArea.style.display = 'none';
       log.debug('Config captured from workflow');
     } finally {
-      captureBtn.textContent = 'Capture';
+      captureBtn.textContent = originalLabel;
       captureBtn.disabled = false;
     }
   };
 
   resetBtn.onclick = () => {
+    pushUndo(textarea.value);
     textarea.value = JSON.stringify(DEFAULT_LINT_CONFIG, null, 2);
     saveLintConfig(DEFAULT_LINT_CONFIG);
     emit('workflow-lint:config-changed', {});
@@ -261,15 +268,21 @@ export function showLintDialog(onLint: () => Promise<void>): void {
   const close = () => {
     debouncedSave.cancel();
     overlay.remove();
+    document.removeEventListener('keydown', onKey);
   };
 
   lintBtn.onclick = () => {
     try {
       const parsed = JSON.parse(textarea.value) as LintConfig;
-      saveLintConfig(parsed);
+      const { config: validated, errors } = validateLintConfig(parsed);
+      if (errors.length > 0) {
+        textarea.value = JSON.stringify(validated, null, 2);
+      }
+      saveLintConfig(validated);
       emit('workflow-lint:config-changed', {});
-    } catch {
-      errorArea.textContent = 'Invalid JSON — please fix syntax errors before linting';
+    } catch (error) {
+      log.debug('Invalid JSON in lint config dialog', { error });
+      errorArea.textContent = 'Invalid JSON \u2014 please fix syntax errors before linting';
       errorArea.style.display = 'block';
       return;
     }
@@ -294,7 +307,16 @@ export function showLintDialog(onLint: () => Promise<void>): void {
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       close();
-      document.removeEventListener('keydown', onKey);
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      const prev = undoStack.pop();
+      if (prev) {
+        e.preventDefault();
+        pushUndo(textarea.value);
+        textarea.value = prev;
+        debouncedSave();
+      }
     }
   };
   document.addEventListener('keydown', onKey);

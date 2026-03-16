@@ -1,21 +1,10 @@
 import type { LintConfig, StickyColor } from './types';
 
-export const N8N_STICKY_COLOR_MAP: Record<number, string> = {
-  1: '#332700',
-  2: '#2D1D06',
-  3: '#4F070D',
-  4: '#0A291A',
-  5: '#081A2B',
-  6: '#211B50',
-  7: '#212121',
-};
+const N8N_DEFAULT_COLOR_INDEX = 1;
 
-export const N8N_DEFAULT_STICKY_HEX = '#332700';
-
-export function normalizeStickyColor(color: StickyColor | undefined | null): string {
-  if (color === undefined || color === null) return N8N_DEFAULT_STICKY_HEX;
-  if (typeof color === 'string') return color;
-  return N8N_STICKY_COLOR_MAP[color] ?? N8N_DEFAULT_STICKY_HEX;
+export function normalizeStickyColor(color: StickyColor | undefined | null): StickyColor {
+  if (color === undefined || color === null) return N8N_DEFAULT_COLOR_INDEX;
+  return color;
 }
 
 export const DEFAULT_LINT_CONFIG: LintConfig = {
@@ -23,40 +12,55 @@ export const DEFAULT_LINT_CONFIG: LintConfig = {
   layout: {
     enabled: true,
     direction: 'horizontal',
+    originX: 0,
+    originY: 0,
     nodeSpacing: 280,
     branchSpacing: 200,
     subNodeOffset: 160,
     subNodeSpacing: 200,
     sectionGap: 400,
+    minGap: 80,
     snapToGrid: true,
     gridSize: 20,
     excludeTypes: [],
     pinNodes: [],
+    sectionOrder: 'discovery',
   },
   stickyNotes: {
     enabled: true,
-    removeExisting: true,
     grouping: 'node',
+    namePattern: 'Sticky Note - {label}',
     titlePattern: '## {number}. {label}',
-    color: '#FFF5D6',
+    color: 1,
     colors: {},
     colorRules: [],
     minWidth: 0,
     minHeight: 0,
+    maxWidth: 0,
+    maxHeight: 0,
     padding: { top: 80, right: 40, bottom: 40, left: 40 },
     labelSource: 'firstNode',
     customLabels: {},
+    rolePriority: {
+      trigger: 5,
+      'branch-point': 4,
+      'merge-point': 3,
+      terminal: 2,
+      regular: 1,
+    },
   },
   naming: {
     enabled: true,
     removeNumberSuffix: true,
     titleCase: true,
-    customNames: {},
     preserveCustom: true,
     excludeTypes: [],
+    collisionFormat: ' {n}',
   },
   numbering: {
     enabled: false,
+    numberSections: true,
+    numberNodes: true,
     startFrom: 1,
     format: 'numeric',
     sectionPattern: '{number}. {label}',

@@ -21,6 +21,8 @@ export interface ThemeColors {
   toggleKnob: string;
   shadow: string;
   overlay: string;
+  errorText: string;
+  errorBg: string;
 }
 
 const LIGHT_COLORS: ThemeColors = {
@@ -44,6 +46,8 @@ const LIGHT_COLORS: ThemeColors = {
   toggleKnob: 'rgb(255, 255, 255)',
   shadow: 'rgba(68, 28, 23, 0.06)',
   overlay: 'rgba(0, 0, 0, 0.5)',
+  errorText: 'rgb(255, 77, 79)',
+  errorBg: 'rgba(255, 77, 79, 0.13)',
 };
 
 const DARK_COLORS: ThemeColors = {
@@ -67,6 +71,8 @@ const DARK_COLORS: ThemeColors = {
   toggleKnob: 'rgb(224, 224, 224)',
   shadow: 'rgba(0, 0, 0, 0.3)',
   overlay: 'rgba(0, 0, 0, 0.7)',
+  errorText: 'rgb(255, 107, 107)',
+  errorBg: 'rgba(255, 107, 107, 0.13)',
 };
 
 export function getThemeColors(theme?: Theme): ThemeColors {

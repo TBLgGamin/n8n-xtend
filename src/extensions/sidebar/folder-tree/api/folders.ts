@@ -4,7 +4,7 @@ import { isFolder } from '@/shared/types/api';
 import { logger } from '@/shared/utils';
 import { copyWorkflow } from './workflows';
 
-const log = logger.child('api');
+const log = logger.child('folder-tree:api:folders');
 
 export async function fetchFolders(projectId: string, parentFolderId = '0'): Promise<TreeItem[]> {
   const cacheKey = `${projectId}:${parentFolderId}`;
@@ -33,6 +33,7 @@ export async function fetchFolders(projectId: string, parentFolderId = '0'): Pro
   }
 
   contentCache.set(cacheKey, { items, timestamp: Date.now() });
+  log.debug('Fetched folder contents', { projectId, parentFolderId, count: items.length });
   return items;
 }
 

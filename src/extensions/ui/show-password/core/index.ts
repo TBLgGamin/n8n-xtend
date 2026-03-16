@@ -1,1 +1,1 @@
-export { startMonitor } from './monitor';
+export { startMonitor, stopMonitor } from './monitor';

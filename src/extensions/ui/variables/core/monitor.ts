@@ -6,7 +6,7 @@ import {
 } from '@/shared/utils';
 import { enhanceUsageSyntax } from './enhancer';
 
-const log = logger.child('variables');
+const log = logger.child('variables:monitor');
 
 function onMutation(): void {
   if (!isVariablesPage()) return;
@@ -15,7 +15,7 @@ function onMutation(): void {
 
 const monitor: MutationMonitor = createMutationMonitor({
   onMutation,
-  options: { childList: true, subtree: true, characterData: true },
+  options: { childList: true, subtree: true },
   onStart: () => {
     log.debug('Variables monitor started');
     onMutation();

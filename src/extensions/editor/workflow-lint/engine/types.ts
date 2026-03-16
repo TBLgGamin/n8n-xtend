@@ -21,18 +21,24 @@ export interface LintableWorkflow {
   connections: ConnectionMap;
 }
 
+export type SectionOrder = 'discovery' | 'position' | 'name';
+
 export interface LayoutConfig {
   enabled: boolean;
   direction: 'horizontal' | 'vertical';
+  originX: number;
+  originY: number;
   nodeSpacing: number;
   branchSpacing: number;
   subNodeOffset: number;
   subNodeSpacing: number;
   sectionGap: number;
+  minGap: number;
   snapToGrid: boolean;
   gridSize: number;
   excludeTypes: string[];
   pinNodes: string[];
+  sectionOrder: SectionOrder;
 }
 
 export type StickyColor = string | number;
@@ -42,35 +48,43 @@ export interface StickyNoteRule {
   types?: string[];
   notRoles?: NodeRole[];
   notTypes?: string[];
+  namePatterns?: string[];
+  depths?: number[];
+  sectionIndexes?: number[];
   color: StickyColor;
 }
 
 export interface StickyNoteConfig {
   enabled: boolean;
-  removeExisting: boolean;
   grouping: 'section' | 'node';
+  namePattern: string;
   titlePattern: string;
   color: StickyColor;
   colors: Record<string, StickyColor>;
   colorRules: StickyNoteRule[];
   minWidth: number;
   minHeight: number;
+  maxWidth: number;
+  maxHeight: number;
   padding: { top: number; right: number; bottom: number; left: number };
   labelSource: 'firstNode' | 'triggerType' | 'custom';
   customLabels: Record<string, string>;
+  rolePriority: Record<NodeRole, number>;
 }
 
 export interface NamingConfig {
   enabled: boolean;
   removeNumberSuffix: boolean;
   titleCase: boolean;
-  customNames: Record<string, string>;
   preserveCustom: boolean;
   excludeTypes: string[];
+  collisionFormat: string;
 }
 
 export interface NumberingConfig {
   enabled: boolean;
+  numberSections: boolean;
+  numberNodes: boolean;
   startFrom: number;
   format: 'numeric' | 'roman' | 'alpha';
   sectionPattern: string;
@@ -141,9 +155,14 @@ export interface NodeSize {
 
 export type NodeSizeMap = Map<string, NodeSize>;
 
+export const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
+
+export type LintPositionMap = Record<string, [number, number]>;
+
 export interface LintResult {
   nodes: LintableNode[];
   connections: ConnectionMap;
   isModified: boolean;
   changes: string[];
+  lintPositions: LintPositionMap;
 }

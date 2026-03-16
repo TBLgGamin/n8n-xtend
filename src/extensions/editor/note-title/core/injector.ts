@@ -1,4 +1,4 @@
-import { emit, escapeHtml, logger } from '@/shared/utils';
+import { CLOSE_ICON_SVG, emit, escapeHtml, logger } from '@/shared/utils';
 
 const log = logger.child('note-title:injector');
 
@@ -6,9 +6,6 @@ const STICKY_SELECTOR = '[data-test-id="sticky"]';
 const SELECTED_CLASS_PATTERN = '_selected_';
 const MARKDOWN_H2_SELECTOR = '.n8n-markdown h2';
 const TEXTAREA_SELECTOR = '.sticky-textarea textarea';
-
-const CLOSE_ICON =
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M764.288 214.592 512 466.88 259.712 214.592a31.936 31.936 0 0 0-45.12 45.12L466.752 512 214.528 764.224a31.936 31.936 0 1 0 45.12 45.184L512 557.184l252.288 252.288a31.936 31.936 0 0 0 45.12-45.12L557.12 512.064l252.288-252.352a31.936 31.936 0 1 0-45.12-45.184z"></path></svg>';
 
 function findSelectedSticky(): HTMLElement | null {
   const stickies = document.querySelectorAll(STICKY_SELECTOR);
@@ -78,7 +75,7 @@ function showRenameDialog(sticky: HTMLElement, currentTitle: string): void {
   closeBtn.type = 'button';
   closeBtn.className = 'el-message-box__headerbtn';
   closeBtn.setAttribute('aria-label', 'Close this dialog');
-  closeBtn.innerHTML = `<i class="el-icon el-message-box__close">${CLOSE_ICON}</i>`;
+  closeBtn.innerHTML = `<i class="el-icon el-message-box__close">${CLOSE_ICON_SVG}</i>`;
 
   header.appendChild(titleDiv);
   header.appendChild(closeBtn);

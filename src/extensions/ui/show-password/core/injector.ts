@@ -2,7 +2,7 @@ import { getThemeColors, logger, onThemeColorsChange } from '@/shared/utils';
 import { icons } from '../icons';
 
 const log = logger.child('show-password:injector');
-const MARKER_ATTR = 'data-xtend-password-toggle';
+export const MARKER_ATTR = 'data-xtend-password-toggle';
 
 function createToggleButton(input: HTMLInputElement): HTMLSpanElement {
   const colors = getThemeColors();
@@ -57,6 +57,7 @@ function createToggleButton(input: HTMLInputElement): HTMLSpanElement {
     input.type = isVisible ? 'text' : 'password';
     button.innerHTML = isVisible ? icons.eyeOff : icons.eye;
     button.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
+    log.debug(`Password visibility toggled: ${isVisible ? 'visible' : 'hidden'}`);
   };
 
   button.addEventListener('click', (e) => {
@@ -82,10 +83,18 @@ function createToggleButton(input: HTMLInputElement): HTMLSpanElement {
     updateButtonColor();
   });
 
-  onThemeColorsChange((newColors) => {
+  const unsubscribeTheme = onThemeColorsChange((newColors) => {
     currentColors = newColors;
     updateButtonColor();
   });
+
+  const removalObserver = new MutationObserver(() => {
+    if (!document.contains(input)) {
+      unsubscribeTheme();
+      removalObserver.disconnect();
+    }
+  });
+  removalObserver.observe(document.body, { childList: true, subtree: true });
 
   inner.appendChild(button);
   suffix.appendChild(inner);
@@ -93,27 +102,33 @@ function createToggleButton(input: HTMLInputElement): HTMLSpanElement {
   return suffix;
 }
 
+function findWrapper(input: HTMLInputElement): HTMLElement | null {
+  const elInput = input.closest('.el-input') as HTMLElement | null;
+  if (elInput) return elInput;
+
+  const parent = input.parentElement;
+  if (parent) return parent;
+
+  return null;
+}
+
 export function injectToggle(input: HTMLInputElement): void {
-  if (input.hasAttribute(MARKER_ATTR)) {
-    return;
-  }
+  if (input.hasAttribute(MARKER_ATTR)) return;
 
-  const wrapper = input.closest('.el-input');
-  if (!wrapper) {
-    log.debug('No .el-input wrapper found for password input');
-    return;
-  }
+  const wrapper = findWrapper(input);
+  if (!wrapper) return;
 
-  if (wrapper.querySelector('.el-input__suffix [data-xtend-toggle]')) {
-    return;
-  }
+  if (wrapper.querySelector('[data-xtend-toggle]')) return;
+
+  const inputName = input.name || input.id || input.placeholder || 'unnamed';
+  log.debug(`Injecting toggle for password input "${inputName}"`);
 
   input.setAttribute(MARKER_ATTR, 'true');
   input.style.paddingRight = '36px';
 
-  const wrapperEl = wrapper as HTMLElement;
-  if (getComputedStyle(wrapperEl).position === 'static') {
-    wrapperEl.style.position = 'relative';
+  if (getComputedStyle(wrapper).position === 'static') {
+    log.debug('Setting wrapper position to relative');
+    wrapper.style.position = 'relative';
   }
 
   const toggle = createToggleButton(input);
@@ -125,10 +140,10 @@ export function injectToggle(input: HTMLInputElement): void {
     const toggleInner = toggle.querySelector('.el-input__suffix-inner');
     if (existingInner && toggleInner?.firstChild) {
       existingInner.appendChild(toggleInner.firstChild);
+      log.debug('Appended toggle to existing suffix');
     }
   } else {
     wrapper.appendChild(toggle);
+    log.debug('Created new suffix with toggle');
   }
-
-  log.debug('Password toggle injected');
 }

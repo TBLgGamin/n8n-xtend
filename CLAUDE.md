@@ -41,20 +41,21 @@ src/
 ├── popup/                      # Extension popup (multi-view SPA)
 │   ├── index.ts                # Extension list, detail, settings, instances views
 │   ├── popup.html              # Popup page markup
+│   ├── markdown.ts             # Lightweight markdown-to-HTML renderer for extension docs
 │   └── styles/
 │       └── popup.css           # Popup-specific styles (built separately from content CSS)
 ├── settings/                   # Extension enable/disable logic
 │   ├── index.ts                # Re-exports from core
 │   └── core/
 │       ├── index.ts            # Re-exports from storage
-│       └── storage.ts          # loadSettings(), isExtensionEnabled(), setExtensionEnabled()
+│       └── storage.ts          # loadSettings(), isExtensionEnabled()
 ├── shared/
 │   ├── api/
 │   │   ├── client.ts           # REST API client with retry logic (3 attempts, exponential backoff)
 │   │   ├── workflows.ts        # Workflow list/detail fetching helpers
 │   │   └── index.ts
 │   ├── types/
-│   │   ├── api.ts              # Folder, Workflow, TreeItem, WorkflowDetail interfaces
+│   │   ├── api.ts              # Folder, Workflow, TreeItem, WorkflowDetail, WorkflowNode interfaces
 │   │   └── index.ts
 │   ├── utils/
 │   │   ├── chrome-storage.ts   # In-memory cache over chrome.storage.sync + chrome.storage.local
@@ -62,15 +63,20 @@ src/
 │   │   ├── theme.ts            # Theme detection (dark/light)
 │   │   ├── theme-colors.ts     # Light/dark color palettes + onThemeColorsChange()
 │   │   ├── theme-manager.ts    # Manages n8n-xtend-dark class on html element
-│   │   ├── url.ts              # URL parsing, page detection, isN8nHost()
+│   │   ├── url.ts              # URL parsing, page detection, isN8nHost(), buildWorkflowUrl(), buildFolderUrl()
+│   │   ├── icons.ts            # Shared SVG icon constants (CLOSE_ICON_SVG)
 │   │   ├── dom.ts              # DOM query helpers (findElementBySelectors, findElementByClassPattern)
 │   │   ├── html.ts             # HTML escaping (XSS prevention)
 │   │   ├── validation.ts       # ID validation and object sanitization
 │   │   ├── timing.ts           # createDebounced(), createThrottled()
+│   │   ├── toast.ts            # Toast notification system (bottom-right, auto-dismiss)
+│   │   ├── event-bus.ts        # Typed pub-sub for cross-extension communication
+│   │   ├── undo.ts             # Single-operation undo stack with Ctrl+Z support
 │   │   ├── logger.ts           # Hierarchical logging with levels
 │   │   └── index.ts
 │   └── styles/
-│       └── variables.css       # CSS variables (colors, spacing)
+│       ├── variables.css       # CSS variables (colors, spacing)
+│       └── toast.css           # Toast notification styles
 ├── extensions/
 │   ├── index.ts                # Re-exports registry and types
 │   ├── registry.ts             # Auto-generated: assembles extensions from discovered index.ts files
@@ -79,8 +85,8 @@ src/
 │   ├── sidebar/                # Sidebar/navigation extensions
 │   │   ├── folder-tree/        # Collapsible tree navigation with drag-drop
 │   │   │   ├── api/            # fetchFolders, move/copy operations
-│   │   │   ├── components/     # folder.ts, workflow.ts element creation
-│   │   │   ├── core/           # injector, monitor, tree, state, dragdrop, sync
+│   │   │   ├── components/     # folder.ts, workflow.ts, selection.ts element creation
+│   │   │   ├── core/           # injector, monitor, tree, state, dragdrop, contextmenu, sync
 │   │   │   ├── icons/          # SVG icons (chevron, folder, workflow)
 │   │   │   ├── styles/
 │   │   │   └── video/
@@ -94,9 +100,15 @@ src/
 │   │   │   ├── core/           # injector, monitor
 │   │   │   ├── utils/          # capture.ts (modern-screenshot)
 │   │   │   └── video/
-│   │   └── note-title/         # Rename sticky note titles with Space shortcut
-│   │       ├── core/           # injector (keyboard listener + rename modal), monitor
-│   │       └── video/
+│   │   ├── note-title/         # Rename sticky note titles with Space shortcut
+│   │   │   ├── core/           # injector (keyboard listener + rename modal), monitor
+│   │   │   └── video/
+│   │   └── workflow-lint/      # Auto-format workflows (user-first: preserves all user changes)
+│   │       ├── api/            # Fetch/save workflows, node type names
+│   │       ├── config/         # Config storage, validation, dialog UI, capture (reverse-engineer), lint position persistence
+│   │       ├── core/           # injector, monitor, measure (DOM node dimensions)
+│   │       ├── engine/         # Lint pipeline: naming, topology, numbering, layout, alignment, sticky-notes, shared utils
+│   │       └── icons/
 │   └── ui/                     # UI enhancement extensions
 │       ├── show-password/      # Toggle password field visibility
 │       │   ├── core/           # injector, monitor
@@ -105,6 +117,10 @@ src/
 │       └── variables/          # Auto-wrap {{ }} with click-to-copy
 │           ├── core/           # enhancer, monitor
 │           └── video/
+├── scripts/
+│   ├── build.ts                # Build system (registry gen, bundling, CSS, manifest)
+│   ├── changelog.sh            # Auto-generate CHANGELOG from conventional commits
+│   └── fetch-node-names.ts     # Fetch node type names from n8n instance for lint engine
 └── icons/                      # Extension icons (16, 48, 128)
 ```
 
@@ -117,7 +133,8 @@ The extension uses narrow permissions instead of broad host access:
 - **n8n Cloud** (`*.n8n.cloud`) — Static content script, works automatically
 - **Self-hosted** — Users add their instance URL via the popup, which triggers `chrome.permissions.request()`. The background service worker then registers a dynamic content script for that origin via `chrome.scripting.registerContentScripts()`
 - Origins are persisted in `chrome.storage.sync` and re-registered on install/update/startup
-- `isN8nHost()` in the content script remains as defense-in-depth
+- `isN8nHost()` in the content script gates extension initialization as defense-in-depth
+- API client validates origin against stored origins list (not DOM heuristics)
 
 Three entry points are built separately:
 
@@ -174,6 +191,9 @@ Storage keys:
 | `n8n-xtend-origins` | sync | background + popup | `string[]` self-hosted origins |
 | `n8n-xtend-preferences` | sync | popup | `{ checkForUpdates: boolean }` |
 | `n8ntree-expanded` | local | folder-tree | expanded folder IDs |
+| `n8n-xtend-theme` | local | content + popup | `'dark' \| 'light'` persisted theme choice |
+| `n8n-xtend-lint-config` | local | workflow-lint | `LintConfig` lint settings |
+| `n8n-xtend-lint-positions` | local | workflow-lint | `Record<workflowId, Record<nodeId, position>>` lint position tracking |
 
 ### Theme System
 
@@ -197,10 +217,12 @@ Storage keys:
 - `emit(event, payload)` / `on(event, handler)` - Typed pub-sub
 - `on()` returns an unsubscribe function
 - Key cross-extension events:
-  - `folder-tree:item-moved` / `items-moved` → graph clears cached state
-  - `folder-tree:tree-refreshed` → graph invalidates when sync detects external changes
-  - `undo:operation-registered` → notifies listeners of new undoable action
-  - `undo:requested` → triggers undo execution
+  - `folder-tree:navigated` / `item-moved` / `item-copied` / `items-moved` / `items-copied` / `selection-changed` / `tree-loaded` / `tree-refreshed`
+  - `graph:activated` / `deactivated` / `workflow-clicked`
+  - `capture:exported` — workflow exported as PNG/SVG
+  - `note-title:renamed` — sticky note title changed
+  - `workflow-lint:applied` / `config-changed` — lint completed or config updated
+  - `undo:operation-registered` / `requested` — undo system events
 
 ### Undo System (`shared/utils/undo.ts`)
 
@@ -214,9 +236,10 @@ Storage keys:
 - `request<T>(endpoint)` - GET with retry
 - `post<T>(endpoint, body)` - POST with retry
 - `patch<T>(endpoint, body)` - PATCH with retry
+- `del(endpoint)` - DELETE with retry
 - Retry logic: 3 attempts (1 initial + 2 retries), exponential backoff (1s, 2s)
 - Retryable codes: 408, 429, 500, 502, 503, 504
-- `assertTrustedOrigin()` validates `isN8nHost()` before every request
+- `assertTrustedOrigin()` validates origin against stored origins list before every request
 - `fetchWithTimeout()` wraps fetch with 10s AbortController
 - Includes `browser-id` header from localStorage, `credentials: 'include'`
 
@@ -224,9 +247,12 @@ Storage keys:
 
 ```typescript
 interface Folder { id, name, resource: 'folder', parentFolderId?, workflowCount?, subFolderCount? }
-interface Workflow { id, name, resource?, versionId?, parentFolderId?, homeProject?: { id } }
-interface WorkflowDetail { id, name, active, nodes, connections, settings, pinData, tags, ... }
+interface Workflow { id, name, resource?, versionId?, parentFolderId?, homeProject?: { id }, shared?: WorkflowSharedEntry[] }
+interface WorkflowSharedEntry { role, projectId }
+interface WorkflowNode { id, name, type, position: [number, number], parameters }
+interface WorkflowDetail { id, name, active, nodes: WorkflowNode[], connections, settings, pinData, tags, versionId? }
 type TreeItem = Folder | Workflow
+type TreeItemType = 'folder' | 'workflow'
 function isFolder(item: TreeItem): item is Folder
 ```
 
@@ -236,7 +262,7 @@ function isFolder(item: TreeItem): item is Folder
 - **ID validation**: Always call `isValidId()` before using IDs in URLs or API endpoints
 - **URL encoding**: Always use `encodeURIComponent()` for IDs in constructed URLs (see `buildFolderUrl`, `buildWorkflowUrl`)
 - **Object sanitization**: Always use `sanitizeObject()` when parsing JSON from untrusted sources (localStorage, drag events)
-- **Origin validation**: API client validates `isN8nHost()` before sending credentialed requests
+- **Origin validation**: API client validates current origin against stored origins list (n8n Cloud or user-registered) before sending credentialed requests
 
 ## Adding a New Extension
 
@@ -245,6 +271,7 @@ function isFolder(item: TreeItem): item is Folder
 3. Create `core/injector.ts` - inject UI into DOM
 4. Create `index.ts` - export `metadata` (ExtensionMetadata) and `init()`
 5. Optionally add `video/` directory with demo video + `VIDEO.md`
+6. Optionally add `usage.md` - markdown documentation rendered in popup detail view
 
 That's it. The build system auto-generates the registry. No need to touch `src/index.ts`, `registry.ts`, or any config file.
 
@@ -295,14 +322,22 @@ Do not manually edit `CHANGELOG.md` during commits — write good conventional c
 ## Build System (`scripts/build.ts`)
 
 1. Auto-generates `extensions/registry.ts` and `extensions/meta.ts` from discovered extensions
-2. Cleans `dist/` directory
-3. Bundles three entry points: content script, background service worker, popup script
-4. Defines `__DEV__` as `true` in watch mode, `false` in production (all three entry points)
-5. Combines content CSS files (excludes `popup/**/*.css`), embeds fonts as base64
-6. Builds popup CSS separately (`variables.css` + `popup/styles/popup.css`)
-7. Copies `popup.html`, icons, and video assets to `dist/`
-8. Generates `manifest.json` with version from `package.json`
-9. Watch mode: `node:fs.watch` on `src/` recursive, 100ms debounce
+2. Auto-generates `extensions/meta.ts` with metadata + optional `usage.md` content for popup docs
+3. Auto-generates `engine/generated-node-names.ts` from `data/node-names.json` (for workflow-lint)
+4. Cleans `dist/` directory
+5. Bundles three entry points: content script, background service worker, popup script
+6. Defines `__DEV__` as `true` in watch mode, `false` in production (all three entry points)
+7. Combines content CSS files (excludes `popup/**/*.css`), embeds fonts as base64
+8. Builds popup CSS separately (`variables.css` + `popup/styles/popup.css`)
+9. Copies `popup.html`, icons, and video assets to `dist/`
+10. Generates `manifest.json` with version from `package.json`
+11. Watch mode: `node:fs.watch` on `src/` recursive, 100ms debounce
+
+### Scripts
+
+- `scripts/build.ts` — Main build orchestrator
+- `scripts/changelog.sh` — Auto-generate CHANGELOG from conventional commits since last tag
+- `scripts/fetch-node-names.ts` — Fetch node type names from n8n instance: `bun scripts/fetch-node-names.ts https://your-n8n.example.com`
 
 ### Build Output
 ```

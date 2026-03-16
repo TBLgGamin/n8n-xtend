@@ -18,13 +18,14 @@ function initExtensionSafely(name: string, init: () => void): void {
 
 async function initExtensions(): Promise<void> {
   if (!isN8nHost()) {
+    logger.debug('Not an n8n host, skipping initialization');
     return;
   }
 
   await initChromeStorage();
   loadSettings();
 
-  logger.debug('n8n-xtend loaded');
+  logger.info('n8n-xtend loaded');
 
   initThemeManager();
   initUndoSystem();

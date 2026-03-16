@@ -1,12 +1,7 @@
 import { getNodeSize } from './node-sizes';
+import { snapToGrid } from './shared';
+import { STICKY_NOTE_TYPE } from './types';
 import type { LayoutConfig, LintableNode, NodeSizeMap, Section, TopologyResult } from './types';
-
-const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
-const FALLBACK_MIN_GAP = 80;
-
-function snapToGrid(value: number, gridSize: number): number {
-  return Math.round(value / gridSize) * gridSize;
-}
 
 function applySnap(x: number, y: number, config: LayoutConfig): [number, number] {
   if (!config.snapToGrid) return [x, y];
@@ -272,7 +267,7 @@ function adjustForSubNodeOverlaps(
       mainIdx,
       nodeSizes,
     );
-    const minGap = Math.max(FALLBACK_MIN_GAP, config.nodeSpacing - widestCluster);
+    const minGap = Math.max(config.minGap, config.nodeSpacing - widestCluster);
 
     const gap = minLeft - maxRight;
     if (gap >= minGap) continue;
@@ -282,11 +277,22 @@ function adjustForSubNodeOverlaps(
   }
 }
 
+function isUserMoved(
+  nodeId: string,
+  currentPos: [number, number],
+  previousLintPositions: Record<string, [number, number]>,
+): boolean {
+  const prevPos = previousLintPositions[nodeId];
+  if (!prevPos) return false;
+  return prevPos[0] !== currentPos[0] || prevPos[1] !== currentPos[1];
+}
+
 export function applyLayout(
   nodes: LintableNode[],
   topology: TopologyResult,
   config: LayoutConfig,
   nodeSizes: NodeSizeMap,
+  previousLintPositions: Record<string, [number, number]> = {},
 ): LintableNode[] {
   if (!config.enabled) return nodes;
 
@@ -306,13 +312,21 @@ export function applyLayout(
     }
   }
 
+  if (config.originX !== 0 || config.originY !== 0) {
+    for (const [name, pos] of positionMap) {
+      positionMap.set(name, [pos[0] + config.originX, pos[1] + config.originY]);
+    }
+  }
+
   const excludeSet = new Set(config.excludeTypes);
   const pinSet = new Set(config.pinNodes);
+  const hasPrevious = Object.keys(previousLintPositions).length > 0;
 
   return nodes.map((node) => {
     if (node.type === STICKY_NOTE_TYPE) return node;
     if (excludeSet.has(node.type)) return node;
     if (pinSet.has(node.name)) return node;
+    if (hasPrevious && isUserMoved(node.id, node.position, previousLintPositions)) return node;
     const newPosition = positionMap.get(node.name);
     if (!newPosition) return node;
     return { ...node, position: newPosition };

@@ -1,46 +1,31 @@
 import { logger } from '@/shared/utils';
-import {
-  DEFAULT_LINT_CONFIG,
-  N8N_DEFAULT_STICKY_HEX,
-  normalizeStickyColor,
-} from '../engine/defaults';
+import { getCachedNodeTypeNames } from '../api/workflow';
+import { DEFAULT_LINT_CONFIG, normalizeStickyColor } from '../engine/defaults';
+import { generatedNodeNames } from '../engine/generated-node-names';
+import { NUMBER_SUFFIX_PATTERN } from '../engine/naming';
 import { buildNodeSizesByName, getNodeSize } from '../engine/node-sizes';
+import { buildPositionMap } from '../engine/shared';
 import { analyzeTopology } from '../engine/topology';
+import { STICKY_NOTE_TYPE } from '../engine/types';
 import type {
   ConnectionMap,
+  GraphNode,
   LintConfig,
   LintableNode,
   NodeSize,
   NodeSizeMap,
+  SectionOrder,
   StickyColor,
   StickyNoteRule,
   TopologyResult,
 } from '../engine/types';
 
 const log = logger.child('lint:capture');
-
-const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
 const ALIGNMENT_TOLERANCE = 5;
 const ALIGNMENT_THRESHOLD = 0.7;
 const MIN_GRID_SIZE = 10;
 
-const knownDefaultNames: Record<string, string> = {
-  'n8n-nodes-base.httpRequest': 'HTTP Request',
-  'n8n-nodes-base.set': 'Edit Fields',
-  'n8n-nodes-base.if': 'If',
-  'n8n-nodes-base.switch': 'Switch',
-  'n8n-nodes-base.code': 'Code',
-  'n8n-nodes-base.merge': 'Merge',
-  'n8n-nodes-base.noOp': 'No Operation',
-  'n8n-nodes-base.splitInBatches': 'Split In Batches',
-  'n8n-nodes-base.wait': 'Wait',
-  'n8n-nodes-base.function': 'Function',
-  'n8n-nodes-base.functionItem': 'Function Item',
-  'n8n-nodes-base.executeWorkflow': 'Execute Workflow',
-  'n8n-nodes-base.respondToWebhook': 'Respond to Webhook',
-};
-
-function median(values: number[]): number {
+function computeMedian(values: number[]): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
@@ -50,7 +35,7 @@ function median(values: number[]): number {
   return sorted[mid] ?? 0;
 }
 
-function gcd(x: number, y: number): number {
+function computeGcd(x: number, y: number): number {
   let a = Math.abs(x);
   let b = Math.abs(y);
   while (b > 0) {
@@ -59,23 +44,15 @@ function gcd(x: number, y: number): number {
   return a;
 }
 
-function gcdOfArray(values: number[]): number {
+function computeGcdOfArray(values: number[]): number {
   const nonZero = values.filter((v) => v !== 0).map((v) => Math.abs(v));
   if (nonZero.length === 0) return 0;
   let result = nonZero[0] ?? 0;
   for (let i = 1; i < nonZero.length; i++) {
-    result = gcd(result, nonZero[i] ?? 0);
+    result = computeGcd(result, nonZero[i] ?? 0);
     if (result === 1) return 1;
   }
   return result;
-}
-
-function getDefaultName(nodeType: string): string {
-  const known = knownDefaultNames[nodeType];
-  if (known) return known;
-  const parts = nodeType.split('.');
-  const lastPart = parts[parts.length - 1] ?? nodeType;
-  return lastPart.replace(/([A-Z])/g, ' $1').trim();
 }
 
 function isTitleCase(text: string): boolean {
@@ -175,13 +152,7 @@ function detectNodePattern(mainNodes: LintableNode[], format: string): string {
 function detectNumbering(
   nodes: LintableNode[],
   topology: TopologyResult,
-): {
-  enabled: boolean;
-  format: 'numeric' | 'roman' | 'alpha';
-  startFrom: number;
-  sectionPattern: string;
-  nodePattern: string;
-} {
+): typeof DEFAULT_LINT_CONFIG.numbering {
   const mainNodes = nodes.filter(
     (n) => n.type !== STICKY_NOTE_TYPE && !topology.nodes.get(n.name)?.subNodeParent,
   );
@@ -190,7 +161,9 @@ function detectNumbering(
   const { romanCount, numericCount, alphaCount } = countNumberingFormats(mainNodes);
 
   const maxCount = Math.max(romanCount, numericCount, alphaCount);
-  if (maxCount < mainNodes.length * 0.3) return { ...DEFAULT_LINT_CONFIG.numbering };
+  if (maxCount < 3 || maxCount < mainNodes.length * 0.5) {
+    return { ...DEFAULT_LINT_CONFIG.numbering };
+  }
 
   let format: 'numeric' | 'roman' | 'alpha' = 'numeric';
   if (romanCount >= numericCount && romanCount >= alphaCount) format = 'roman';
@@ -202,21 +175,13 @@ function detectNumbering(
 
   return {
     enabled: true,
+    numberSections: true,
+    numberNodes: true,
     format,
     startFrom: detectStartFrom(sectionTriggers, mainNodes),
     sectionPattern: '{number}. {label}',
     nodePattern: detectNodePattern(mainNodes, format),
   };
-}
-
-function buildPositionMap(nodes: LintableNode[]): Map<string, [number, number]> {
-  const positions = new Map<string, [number, number]>();
-  for (const node of nodes) {
-    if (node.type !== STICKY_NOTE_TYPE) {
-      positions.set(node.name, node.position);
-    }
-  }
-  return positions;
 }
 
 function detectDirection(
@@ -387,7 +352,7 @@ function detectSectionGap(
     }
   }
 
-  return gaps.length > 0 ? median(gaps) : DEFAULT_LINT_CONFIG.layout.sectionGap;
+  return gaps.length > 0 ? computeMedian(gaps) : DEFAULT_LINT_CONFIG.layout.sectionGap;
 }
 
 function detectGrid(positions: Map<string, [number, number]>): {
@@ -398,7 +363,7 @@ function detectGrid(positions: Map<string, [number, number]>): {
   for (const [, pos] of positions) {
     allValues.push(pos[0], pos[1]);
   }
-  const posGcd = gcdOfArray(allValues);
+  const posGcd = computeGcdOfArray(allValues);
   const hasGrid = posGcd >= MIN_GRID_SIZE;
   return {
     snapToGrid: hasGrid,
@@ -406,18 +371,68 @@ function detectGrid(positions: Map<string, [number, number]>): {
   };
 }
 
+function detectOrigin(positions: Map<string, [number, number]>): {
+  originX: number;
+  originY: number;
+} {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+
+  for (const [, pos] of positions) {
+    if (pos[0] < minX) minX = pos[0];
+    if (pos[1] < minY) minY = pos[1];
+  }
+
+  if (minX === Number.POSITIVE_INFINITY) return { originX: 0, originY: 0 };
+  return { originX: minX, originY: minY };
+}
+
+function detectSectionOrder(
+  topology: TopologyResult,
+  nodes: LintableNode[],
+  direction: 'horizontal' | 'vertical',
+): SectionOrder {
+  if (topology.sections.length <= 1) return 'discovery';
+
+  const crossIdx = direction === 'vertical' ? 0 : 1;
+  const triggerPositions: number[] = [];
+  const triggerNames: string[] = [];
+
+  for (const section of topology.sections) {
+    if (!section.triggerName) continue;
+    const node = nodes.find((n) => n.name === section.triggerName);
+    triggerPositions.push(node ? node.position[crossIdx] : Number.MAX_SAFE_INTEGER);
+    triggerNames.push(section.triggerName ?? '');
+  }
+
+  const isSortedByPosition = triggerPositions.every(
+    (v, i) => i === 0 || v >= (triggerPositions[i - 1] ?? 0),
+  );
+  const isSortedByName = triggerNames.every(
+    (v, i) => i === 0 || v.localeCompare(triggerNames[i - 1] ?? '') >= 0,
+  );
+
+  if (isSortedByName && !isSortedByPosition) return 'name';
+  if (isSortedByPosition) return 'position';
+  return 'discovery';
+}
+
 function extractLayout(
   nodes: LintableNode[],
   topology: TopologyResult,
 ): {
   direction: 'horizontal' | 'vertical';
+  originX: number;
+  originY: number;
   nodeSpacing: number;
   branchSpacing: number;
   subNodeOffset: number;
   subNodeSpacing: number;
   sectionGap: number;
+  minGap: number;
   snapToGrid: boolean;
   gridSize: number;
+  sectionOrder: SectionOrder;
 } {
   const positions = buildPositionMap(nodes);
   const direction = detectDirection(topology, positions);
@@ -432,16 +447,33 @@ function extractLayout(
   const subSpacings = collectSubNodeSpacings(topology, positions, mainAxis);
   const sectionGap = detectSectionGap(topology, positions, crossAxis);
   const grid = detectGrid(positions);
+  const origin = detectOrigin(positions);
 
   return {
     direction,
-    nodeSpacing: median(nodeSpacings) || DEFAULT_LINT_CONFIG.layout.nodeSpacing,
-    branchSpacing: median(branchSpacings) || DEFAULT_LINT_CONFIG.layout.branchSpacing,
-    subNodeOffset: median(subOffsets) || DEFAULT_LINT_CONFIG.layout.subNodeOffset,
-    subNodeSpacing: median(subSpacings) || DEFAULT_LINT_CONFIG.layout.subNodeSpacing,
+    ...origin,
+    nodeSpacing: computeMedian(nodeSpacings) || DEFAULT_LINT_CONFIG.layout.nodeSpacing,
+    branchSpacing: computeMedian(branchSpacings) || DEFAULT_LINT_CONFIG.layout.branchSpacing,
+    subNodeOffset: computeMedian(subOffsets) || DEFAULT_LINT_CONFIG.layout.subNodeOffset,
+    subNodeSpacing: computeMedian(subSpacings) || DEFAULT_LINT_CONFIG.layout.subNodeSpacing,
     sectionGap,
+    minGap: DEFAULT_LINT_CONFIG.layout.minGap,
     ...grid,
+    sectionOrder: detectSectionOrder(topology, nodes, direction),
   };
+}
+
+function getDefaultNodeName(nodeType: string): string | null {
+  const cached = getCachedNodeTypeNames().get(nodeType);
+  if (cached) return cached;
+  return generatedNodeNames[nodeType] ?? null;
+}
+
+function hasDefaultName(nodeName: string, nodeType: string): boolean {
+  const defaultName = getDefaultNodeName(nodeType);
+  if (!defaultName) return false;
+  const baseName = nodeName.replace(NUMBER_SUFFIX_PATTERN, '').trim();
+  return baseName.toLowerCase() === defaultName.toLowerCase();
 }
 
 function extractNaming(
@@ -451,34 +483,25 @@ function extractNaming(
   enabled: boolean;
   removeNumberSuffix: boolean;
   titleCase: boolean;
-  customNames: Record<string, string>;
   preserveCustom: boolean;
   excludeTypes: string[];
+  collisionFormat: string;
 } {
   const mainNodes = nodes.filter((n) => n.type !== STICKY_NOTE_TYPE);
   if (mainNodes.length === 0) return { ...DEFAULT_LINT_CONFIG.naming };
 
-  const customNames: Record<string, string> = {};
   let titleCaseCount = 0;
   let nonTitleCaseCount = 0;
-  let hasNumberSuffix = false;
-  const seenTypes = new Set<string>();
+  let suffixCount = 0;
+  let customNameCount = 0;
 
   for (const node of mainNodes) {
     const cleanName = numberingFormat ? stripNumberingPrefix(node.name).stripped : node.name;
 
-    const defaultName = getDefaultName(node.type);
     const nameWithoutSuffix = cleanName.replace(/\s+\d+$/, '').trim();
-    const isDefault =
-      nameWithoutSuffix.toLowerCase() === defaultName.toLowerCase() ||
-      cleanName.toLowerCase() === defaultName.toLowerCase();
+    if (cleanName !== nameWithoutSuffix) suffixCount++;
 
-    if (cleanName !== nameWithoutSuffix) hasNumberSuffix = true;
-
-    if (!isDefault && !seenTypes.has(node.type)) {
-      customNames[node.type] = cleanName;
-      seenTypes.add(node.type);
-    }
+    if (!hasDefaultName(cleanName, node.type)) customNameCount++;
 
     if (isTitleCase(cleanName)) titleCaseCount++;
     else nonTitleCaseCount++;
@@ -486,11 +509,11 @@ function extractNaming(
 
   return {
     enabled: true,
-    removeNumberSuffix: !hasNumberSuffix,
+    removeNumberSuffix: suffixCount >= mainNodes.length * 0.3,
     titleCase: titleCaseCount >= nonTitleCaseCount,
-    customNames,
-    preserveCustom: true,
+    preserveCustom: customNameCount >= mainNodes.length * 0.3,
     excludeTypes: [],
+    collisionFormat: DEFAULT_LINT_CONFIG.naming.collisionFormat,
   };
 }
 
@@ -506,21 +529,27 @@ function detectStickyGrouping(
 }
 
 function findDominantColor(stickyNodes: LintableNode[]): {
-  dominantColor: string;
-  allColors: string[];
+  dominantColor: StickyColor;
+  allColors: StickyColor[];
 } {
-  const colorCounts = new Map<string, number>();
-  const allColors: string[] = [];
+  const colorCounts = new Map<string, { color: StickyColor; count: number }>();
+  const allColors: StickyColor[] = [];
 
   for (const sticky of stickyNodes) {
     const color = normalizeStickyColor(sticky.parameters.color as StickyColor | undefined);
     allColors.push(color);
-    colorCounts.set(color, (colorCounts.get(color) ?? 0) + 1);
+    const key = String(color);
+    const entry = colorCounts.get(key);
+    if (entry) {
+      entry.count++;
+    } else {
+      colorCounts.set(key, { color, count: 1 });
+    }
   }
 
-  let dominantColor = N8N_DEFAULT_STICKY_HEX;
+  let dominantColor: StickyColor = normalizeStickyColor(null);
   let maxCount = 0;
-  for (const [color, count] of colorCounts) {
+  for (const { color, count } of colorCounts.values()) {
     if (count > maxCount) {
       maxCount = count;
       dominantColor = color;
@@ -575,10 +604,10 @@ function computeStickyPadding(
   }
 
   return {
-    top: median(paddings.top) || DEFAULT_LINT_CONFIG.stickyNotes.padding.top,
-    right: median(paddings.right) || DEFAULT_LINT_CONFIG.stickyNotes.padding.right,
-    bottom: median(paddings.bottom) || DEFAULT_LINT_CONFIG.stickyNotes.padding.bottom,
-    left: median(paddings.left) || DEFAULT_LINT_CONFIG.stickyNotes.padding.left,
+    top: computeMedian(paddings.top) || DEFAULT_LINT_CONFIG.stickyNotes.padding.top,
+    right: computeMedian(paddings.right) || DEFAULT_LINT_CONFIG.stickyNotes.padding.right,
+    bottom: computeMedian(paddings.bottom) || DEFAULT_LINT_CONFIG.stickyNotes.padding.bottom,
+    left: computeMedian(paddings.left) || DEFAULT_LINT_CONFIG.stickyNotes.padding.left,
   };
 }
 
@@ -591,6 +620,30 @@ function inferTitlePattern(content: string): string {
   if (hasNumbering) return `${prefix}{number}. {label}`;
   if (body.trim().length > 0) return `${prefix}{label}`;
   return DEFAULT_LINT_CONFIG.stickyNotes.titlePattern;
+}
+
+function inferMostCommonTitlePattern(stickyNodes: LintableNode[]): string {
+  const patternCounts = new Map<string, number>();
+
+  for (const sticky of stickyNodes) {
+    const content = sticky.parameters.content as string | undefined;
+    if (!content) continue;
+    const pattern = inferTitlePattern(content);
+    patternCounts.set(pattern, (patternCounts.get(pattern) ?? 0) + 1);
+  }
+
+  if (patternCounts.size === 0) return DEFAULT_LINT_CONFIG.stickyNotes.titlePattern;
+
+  let bestPattern = DEFAULT_LINT_CONFIG.stickyNotes.titlePattern;
+  let bestCount = 0;
+  for (const [pattern, count] of patternCounts) {
+    if (count > bestCount) {
+      bestCount = count;
+      bestPattern = pattern;
+    }
+  }
+
+  return bestPattern;
 }
 
 function stripLabelPrefixes(content: string): string {
@@ -650,18 +703,19 @@ function findContainedNodeNames(
 function buildColorMappings(
   stickyNodes: LintableNode[],
   nonStickyNodes: LintableNode[],
-  allColors: string[],
-  dominantColor: string,
+  allColors: StickyColor[],
+  dominantColor: StickyColor,
   topology: TopologyResult,
   nodeSizes: NodeSizeMap,
-): { colors: Record<string, string>; colorRules: StickyNoteRule[] } {
-  const colors: Record<string, string> = {};
+): { colors: Record<string, StickyColor>; colorRules: StickyNoteRule[] } {
+  const colors: Record<string, StickyColor> = {};
   const colorRules: StickyNoteRule[] = [];
   const seenRoles = new Set<string>();
+  const dominantKey = String(dominantColor);
 
   for (let i = 0; i < allColors.length; i++) {
     const color = allColors[i] ?? dominantColor;
-    if (color === dominantColor) continue;
+    if (String(color) === dominantKey) continue;
 
     const sticky = stickyNodes[i];
     if (!sticky) continue;
@@ -679,7 +733,7 @@ function buildColorMappings(
 
 function tryMatchRoleColor(
   containedNames: string[],
-  color: string,
+  color: StickyColor,
   topology: TopologyResult,
   colorRules: StickyNoteRule[],
   seenRoles: Set<string>,
@@ -688,10 +742,7 @@ function tryMatchRoleColor(
     const graphNode = topology.nodes.get(nodeName);
     if (!graphNode || graphNode.subNodeParent) continue;
 
-    if (
-      (graphNode.role === 'trigger' || graphNode.role === 'terminal') &&
-      !seenRoles.has(graphNode.role)
-    ) {
+    if (graphNode.role !== 'regular' && !seenRoles.has(graphNode.role)) {
       colorRules.push({ roles: [graphNode.role], color });
       seenRoles.add(graphNode.role);
       return true;
@@ -703,8 +754,8 @@ function tryMatchRoleColor(
 function storeLabelColor(
   sticky: LintableNode,
   index: number,
-  color: string,
-  colors: Record<string, string>,
+  color: StickyColor,
+  colors: Record<string, StickyColor>,
 ): void {
   const label = stripLabelPrefixes((sticky.parameters.content as string) ?? '');
   if (label) {
@@ -714,24 +765,23 @@ function storeLabelColor(
   }
 }
 
+function inferNamePattern(stickyNodes: LintableNode[]): string {
+  for (const sticky of stickyNodes) {
+    const name = sticky.name;
+    if (!name.startsWith('Sticky Note')) continue;
+    const dashIdx = name.indexOf(' - ');
+    if (dashIdx !== -1) {
+      return `${name.slice(0, dashIdx + 3)}{label}`;
+    }
+  }
+  return DEFAULT_LINT_CONFIG.stickyNotes.namePattern;
+}
+
 function extractStickyNotes(
   nodes: LintableNode[],
   topology: TopologyResult,
   nodeSizes: NodeSizeMap,
-): {
-  enabled: boolean;
-  removeExisting: boolean;
-  grouping: 'section' | 'node';
-  titlePattern: string;
-  color: string;
-  colors: Record<string, string>;
-  colorRules: StickyNoteRule[];
-  minWidth: number;
-  minHeight: number;
-  padding: { top: number; right: number; bottom: number; left: number };
-  labelSource: 'firstNode' | 'triggerType' | 'custom';
-  customLabels: Record<string, string>;
-} {
+): typeof DEFAULT_LINT_CONFIG.stickyNotes {
   const stickyNodes = nodes.filter((n) => n.type === STICKY_NOTE_TYPE);
   const nonStickyNodes = nodes.filter((n) => n.type !== STICKY_NOTE_TYPE);
 
@@ -760,34 +810,36 @@ function extractStickyNotes(
   );
 
   const padding = computeStickyPadding(stickyNodes, nonStickyNodes, nodeSizes);
-  const sampleContent = stickyNodes[0]?.parameters.content as string | undefined;
-  const titlePattern = sampleContent
-    ? inferTitlePattern(sampleContent)
-    : DEFAULT_LINT_CONFIG.stickyNotes.titlePattern;
+  const titlePattern = inferMostCommonTitlePattern(stickyNodes);
   const labelSource = inferLabelSource(stickyNodes, topology);
+  const namePattern = inferNamePattern(stickyNodes);
 
   const widths = stickyNodes.map((n) => (n.parameters.width as number) ?? 0).filter((w) => w > 0);
   const heights = stickyNodes.map((n) => (n.parameters.height as number) ?? 0).filter((h) => h > 0);
 
   return {
     enabled: true,
-    removeExisting: true,
     grouping,
+    namePattern,
     titlePattern,
     color: dominantColor,
     colors,
     colorRules,
     minWidth: widths.length > 0 ? Math.min(...widths) : 0,
     minHeight: heights.length > 0 ? Math.min(...heights) : 0,
+    maxWidth: widths.length > 0 ? Math.max(...widths) : 0,
+    maxHeight: heights.length > 0 ? Math.max(...heights) : 0,
     padding,
     labelSource,
     customLabels: {},
+    rolePriority: { ...DEFAULT_LINT_CONFIG.stickyNotes.rolePriority },
   };
 }
 
 function checkStraightenConnections(
   topology: TopologyResult,
   positions: Map<string, [number, number]>,
+  crossIdx: 0 | 1,
 ): { total: number; aligned: number } {
   let total = 0;
   let aligned = 0;
@@ -804,7 +856,7 @@ function checkStraightenConnections(
     if (!predPos || !currentPos) continue;
 
     total++;
-    if (Math.abs(currentPos[1] - predPos[1]) <= ALIGNMENT_TOLERANCE) aligned++;
+    if (Math.abs(currentPos[crossIdx] - predPos[crossIdx]) <= ALIGNMENT_TOLERANCE) aligned++;
   }
 
   return { total, aligned };
@@ -813,6 +865,7 @@ function checkStraightenConnections(
 function checkCenterBranches(
   topology: TopologyResult,
   positions: Map<string, [number, number]>,
+  crossIdx: 0 | 1,
 ): { total: number; aligned: number } {
   let total = 0;
   let aligned = 0;
@@ -820,17 +873,17 @@ function checkCenterBranches(
   for (const [, graphNode] of topology.nodes) {
     if (graphNode.role !== 'merge-point' || graphNode.incomingMain.length < 2) continue;
 
-    const incomingYs = graphNode.incomingMain
-      .map((name) => positions.get(name)?.[1])
-      .filter((y): y is number => y !== undefined);
-    if (incomingYs.length < 2) continue;
+    const incomingValues = graphNode.incomingMain
+      .map((name) => positions.get(name)?.[crossIdx])
+      .filter((v): v is number => v !== undefined);
+    if (incomingValues.length < 2) continue;
 
-    const avgY = incomingYs.reduce((a, b) => a + b, 0) / incomingYs.length;
+    const avg = incomingValues.reduce((a, b) => a + b, 0) / incomingValues.length;
     const currentPos = positions.get(graphNode.name);
     if (!currentPos) continue;
 
     total++;
-    if (Math.abs(currentPos[1] - avgY) <= ALIGNMENT_TOLERANCE) aligned++;
+    if (Math.abs(currentPos[crossIdx] - avg) <= ALIGNMENT_TOLERANCE) aligned++;
   }
 
   return { total, aligned };
@@ -839,14 +892,16 @@ function checkCenterBranches(
 function extractAlignment(
   nodes: LintableNode[],
   topology: TopologyResult,
+  direction: 'horizontal' | 'vertical',
 ): {
   enabled: boolean;
   straightenConnections: boolean;
   centerBranches: boolean;
 } {
+  const crossIdx: 0 | 1 = direction === 'vertical' ? 0 : 1;
   const positions = buildPositionMap(nodes);
-  const straighten = checkStraightenConnections(topology, positions);
-  const center = checkCenterBranches(topology, positions);
+  const straighten = checkStraightenConnections(topology, positions, crossIdx);
+  const center = checkCenterBranches(topology, positions, crossIdx);
 
   const hasStraighten =
     straighten.total > 0 && straighten.aligned / straighten.total >= ALIGNMENT_THRESHOLD;
@@ -857,6 +912,113 @@ function extractAlignment(
     straightenConnections: hasStraighten,
     centerBranches: hasCenter,
   };
+}
+
+const POSITION_DEVIATION_THRESHOLD = 0.5;
+
+function isNodePositionOutlier(
+  graphNode: GraphNode,
+  positions: Map<string, [number, number]>,
+  topology: TopologyResult,
+  mainAxis: (pos: [number, number]) => number,
+  nodeSpacing: number,
+): boolean {
+  const pos = positions.get(graphNode.name);
+  if (!pos) return false;
+
+  for (const targetName of graphNode.outgoingMain) {
+    const targetNode = topology.nodes.get(targetName);
+    if (!targetNode || targetNode.subNodeParent) continue;
+    const targetPos = positions.get(targetName);
+    if (!targetPos) continue;
+
+    const depthDiff = targetNode.depth - graphNode.depth;
+    if (depthDiff <= 0) continue;
+
+    const expectedSpacing = depthDiff * nodeSpacing;
+    const actualSpacing = Math.abs(mainAxis(targetPos) - mainAxis(pos));
+    const ratio = Math.abs(actualSpacing - expectedSpacing) / nodeSpacing;
+    if (ratio > POSITION_DEVIATION_THRESHOLD) return true;
+  }
+
+  return false;
+}
+
+function buildDeviationMap(
+  topology: TopologyResult,
+  positions: Map<string, [number, number]>,
+  mainAxis: (pos: [number, number]) => number,
+  nodeSpacing: number,
+): Map<string, boolean> {
+  const deviations = new Map<string, boolean>();
+  for (const [, graphNode] of topology.nodes) {
+    if (graphNode.subNodeParent) continue;
+    deviations.set(
+      graphNode.name,
+      isNodePositionOutlier(graphNode, positions, topology, mainAxis, nodeSpacing),
+    );
+  }
+  return deviations;
+}
+
+function findExcludedTypes(
+  nodes: LintableNode[],
+  topology: TopologyResult,
+  deviations: Map<string, boolean>,
+): string[] {
+  const typeOutlierCounts = new Map<string, { outliers: number; total: number }>();
+
+  for (const node of nodes) {
+    if (node.type === STICKY_NOTE_TYPE) continue;
+    const graphNode = topology.nodes.get(node.name);
+    if (!graphNode || graphNode.subNodeParent) continue;
+
+    const entry = typeOutlierCounts.get(node.type) ?? { outliers: 0, total: 0 };
+    entry.total++;
+    if (deviations.get(node.name)) entry.outliers++;
+    typeOutlierCounts.set(node.type, entry);
+  }
+
+  const excludeTypes: string[] = [];
+  for (const [type, counts] of typeOutlierCounts) {
+    if (counts.total >= 2 && counts.outliers === counts.total) {
+      excludeTypes.push(type);
+    }
+  }
+  return excludeTypes;
+}
+
+function findPinnedNodes(
+  nodes: LintableNode[],
+  deviations: Map<string, boolean>,
+  excludeSet: Set<string>,
+): string[] {
+  const pinNodes: string[] = [];
+  for (const [name, isOutlier] of deviations) {
+    if (!isOutlier) continue;
+    const node = nodes.find((n) => n.name === name);
+    if (node && !excludeSet.has(node.type)) {
+      pinNodes.push(name);
+    }
+  }
+  return pinNodes;
+}
+
+function detectExcludedAndPinned(
+  nodes: LintableNode[],
+  topology: TopologyResult,
+  direction: 'horizontal' | 'vertical',
+  nodeSpacing: number,
+): { excludeTypes: string[]; pinNodes: string[] } {
+  const positions = buildPositionMap(nodes);
+  const isVertical = direction === 'vertical';
+  const mainAxis = (pos: [number, number]) => (isVertical ? pos[1] : pos[0]);
+
+  const deviations = buildDeviationMap(topology, positions, mainAxis, nodeSpacing);
+  const excludeTypes = findExcludedTypes(nodes, topology, deviations);
+  const pinNodes = findPinnedNodes(nodes, deviations, new Set(excludeTypes));
+
+  return { excludeTypes, pinNodes };
 }
 
 function detectTriggerTypes(topology: TopologyResult): string[] {
@@ -895,16 +1057,23 @@ export function captureConfigFromWorkflow(
   const numbering = detectNumbering(nodes, topology);
   const naming = extractNaming(nodes, numbering.enabled ? numbering.format : null);
   const stickyNotes = extractStickyNotes(nodes, topology, nodeSizes);
-  const alignment = extractAlignment(nodes, topology);
+  const alignment = extractAlignment(nodes, topology, layout.direction);
   const triggerTypes = detectTriggerTypes(topology);
+
+  const { excludeTypes, pinNodes } = detectExcludedAndPinned(
+    nodes,
+    topology,
+    layout.direction,
+    layout.nodeSpacing,
+  );
 
   const config: LintConfig = {
     triggerTypes,
     layout: {
       enabled: true,
       ...layout,
-      excludeTypes: [],
-      pinNodes: [],
+      excludeTypes,
+      pinNodes,
     },
     stickyNotes,
     naming,

@@ -1,6 +1,1 @@
-export {
-  loadSettings,
-  isExtensionEnabled,
-  setExtensionEnabled,
-  getEnabledExtensions,
-} from './storage';
+export { loadSettings, isExtensionEnabled } from './storage';

@@ -1,1 +1,7 @@
-export { fetchWorkflowForLint, fetchWorkflowVersionId, saveLintedWorkflow } from './workflow';
+export {
+  fetchNodeTypeNames,
+  fetchWorkflowForLint,
+  fetchWorkflowVersionId,
+  getCachedNodeTypeNames,
+  saveLintedWorkflow,
+} from './workflow';
