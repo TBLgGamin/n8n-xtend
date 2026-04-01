@@ -2,13 +2,18 @@
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-04-01
+
+### Added
+
+- overhaul graph extension with n8n-native UI, smart caching, and expand/collapse
+
+
 ## [1.11.0] - 2026-03-16
 
 ### Added
 
 - improve popup, graph, capture, and folder tree extensions
-
-
 ## [1.10.0] - 2026-03-16
 
 ### Added
