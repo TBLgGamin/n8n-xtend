@@ -1,5 +1,5 @@
 export { type CanvasController, createCanvas } from './canvas';
-export { loadProjectWorkflows } from './data';
+export { loadProjectWorkflowsSmart } from './data';
 export { startMonitor } from './monitor';
 export { buildCallGraph } from './graph-builder';
 export { renderCallGraph, extractTriggerInputNames } from './renderer';

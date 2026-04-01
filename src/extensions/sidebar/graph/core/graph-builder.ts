@@ -29,6 +29,7 @@ export interface LayoutNode {
   workflow: WorkflowDetail;
   connectionType: ConnectionType;
   children: LayoutNode[];
+  hasChildren: boolean;
   x: number;
   y: number;
 }
@@ -56,10 +57,10 @@ export interface GraphLayout {
   dependencies: DependencyMap;
 }
 
-const CARD_WIDTH = 220;
-const CARD_HEIGHT = 80;
-const LEVEL_GAP = 80;
-const SIBLING_GAP = 24;
+export const CARD_WIDTH = 200;
+export const CARD_HEIGHT = 52;
+const LEVEL_GAP = 60;
+const SIBLING_GAP = 16;
 const TREE_GAP = 48;
 const SECTION_GAP = 64;
 const LABEL_HEIGHT = 32;
@@ -227,8 +228,13 @@ function extractCallChains(workflow: WorkflowDetail): CallChainNode[] {
   const adjacency = buildAdjacencyFromConnections(workflow.connections as ConnectionMap);
 
   const ewTargets = new Map<string, string>();
+  const subWorkflowTypes = new Set([
+    'n8n-nodes-base.executeWorkflow',
+    '@n8n/n8n-nodes-langchain.toolWorkflow',
+  ]);
+
   for (const node of workflow.nodes) {
-    if (node.type !== 'n8n-nodes-base.executeWorkflow') continue;
+    if (!subWorkflowTypes.has(node.type)) continue;
     const targetId = extractWorkflowTargetId(node);
     if (targetId && isValidId(targetId)) {
       ewTargets.set(node.name, targetId);
@@ -340,13 +346,17 @@ function buildTree(
   return { workflowId, workflow, connectionType: 'sub-workflow', children };
 }
 
-function measureSubtreeHeight(node: CallTreeNode): number {
-  if (node.children.length === 0) return CARD_HEIGHT;
+function isNodeExpanded(node: CallTreeNode, expandedIds: Set<string>): boolean {
+  return node.children.length > 0 && expandedIds.has(node.workflowId);
+}
+
+function measureSubtreeHeight(node: CallTreeNode, expandedIds: Set<string>): number {
+  if (!isNodeExpanded(node, expandedIds)) return CARD_HEIGHT;
 
   let totalHeight = 0;
   for (const [i, child] of node.children.entries()) {
     if (i > 0) totalHeight += SIBLING_GAP;
-    totalHeight += measureSubtreeHeight(child);
+    totalHeight += measureSubtreeHeight(child, expandedIds);
   }
   return totalHeight;
 }
@@ -356,16 +366,20 @@ function positionNode(
   depth: number,
   topOffset: number,
   subtreeHeight: number,
+  expandedIds: Set<string>,
 ): LayoutNode {
   const x = depth * (CARD_WIDTH + LEVEL_GAP);
 
-  if (node.children.length === 0) {
+  const nodeHasChildren = node.children.length > 0;
+
+  if (!isNodeExpanded(node, expandedIds)) {
     const y = topOffset + (subtreeHeight - CARD_HEIGHT) / 2;
     return {
       workflowId: node.workflowId,
       workflow: node.workflow,
       connectionType: node.connectionType,
       children: [],
+      hasChildren: nodeHasChildren,
       x,
       y,
     };
@@ -375,8 +389,8 @@ function positionNode(
   let currentY = topOffset;
 
   for (const childNode of node.children) {
-    const childHeight = measureSubtreeHeight(childNode);
-    const child = positionNode(childNode, depth + 1, currentY, childHeight);
+    const childHeight = measureSubtreeHeight(childNode, expandedIds);
+    const child = positionNode(childNode, depth + 1, currentY, childHeight, expandedIds);
     layoutChildren.push(child);
     currentY += childHeight + SIBLING_GAP;
   }
@@ -393,6 +407,7 @@ function positionNode(
     workflow: node.workflow,
     connectionType: node.connectionType,
     children: layoutChildren,
+    hasChildren: nodeHasChildren,
     x,
     y,
   };
@@ -421,7 +436,7 @@ function collectNodeIds(node: CallTreeNode, ids: Set<string>): void {
 }
 
 function walkDependencies(
-  node: LayoutNode,
+  node: CallTreeNode,
   upstream: Map<string, Set<string>>,
   downstream: Map<string, Set<string>>,
 ): void {
@@ -436,7 +451,7 @@ function walkDependencies(
   }
 }
 
-function buildDependencyMap(roots: LayoutNode[]): DependencyMap {
+function buildDependencyMap(roots: CallTreeNode[]): DependencyMap {
   const upstream = new Map<string, Set<string>>();
   const downstream = new Map<string, Set<string>>();
   for (const root of roots) {
@@ -445,7 +460,10 @@ function buildDependencyMap(roots: LayoutNode[]): DependencyMap {
   return { upstream, downstream };
 }
 
-export function buildCallGraph(workflows: Map<string, WorkflowDetail>): GraphLayout {
+function buildChainMaps(workflows: Map<string, WorkflowDetail>): {
+  chainMap: Map<string, CallChainNode[]>;
+  calledSet: Set<string>;
+} {
   const toolIndex = buildMcpToolIndex(workflows);
   const chainMap = new Map<string, CallChainNode[]>();
   const calledSet = new Set<string>();
@@ -462,6 +480,15 @@ export function buildCallGraph(workflows: Map<string, WorkflowDetail>): GraphLay
     chainMap.set(id, allChains);
     collectChainTargetIds(allChains, calledSet);
   }
+
+  return { chainMap, calledSet };
+}
+
+export function buildCallGraph(
+  workflows: Map<string, WorkflowDetail>,
+  expandedIds?: Set<string>,
+): GraphLayout {
+  const { chainMap, calledSet } = buildChainMaps(workflows);
 
   const rootWorkflows = [...workflows.values()]
     .filter((w) => hasEntryTrigger(w) || !calledSet.has(w.id))
@@ -488,9 +515,11 @@ export function buildCallGraph(workflows: Map<string, WorkflowDetail>): GraphLay
   const edges: LayoutEdge[] = [];
   let cumulativeY = showLabels ? LABEL_HEIGHT : 0;
 
+  const expanded = expandedIds ?? new Set<string>();
+
   for (const tree of connectedTrees) {
-    const subtreeHeight = measureSubtreeHeight(tree);
-    const layoutNode = positionNode(tree, 0, cumulativeY, subtreeHeight);
+    const subtreeHeight = measureSubtreeHeight(tree, expanded);
+    const layoutNode = positionNode(tree, 0, cumulativeY, subtreeHeight, expanded);
     roots.push(layoutNode);
     collectEdges(layoutNode, edges);
     cumulativeY += subtreeHeight + TREE_GAP;
@@ -509,6 +538,7 @@ export function buildCallGraph(workflows: Map<string, WorkflowDetail>): GraphLay
       workflow: tree.workflow,
       connectionType: 'sub-workflow',
       children: [],
+      hasChildren: false,
       x,
       y,
     });
@@ -531,7 +561,11 @@ export function buildCallGraph(workflows: Map<string, WorkflowDetail>): GraphLay
     `Graph built: ${roots.length} connected, ${standalone.length} standalone, ${edges.length} edges`,
   );
 
-  const dependencies = buildDependencyMap(roots);
+  const dependencies = buildDependencyMap(connectedTrees);
+  log.debug('Dependency map built', {
+    upstreamEntries: dependencies.upstream.size,
+    downstreamEntries: dependencies.downstream.size,
+  });
 
   return { roots, standalone, edges, uncoveredIds, dependencies };
 }

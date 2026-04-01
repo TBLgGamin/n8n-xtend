@@ -1,9 +1,22 @@
+import { logger } from '@/shared/utils';
+
+const log = logger.child('graph:canvas');
+
+export interface ViewportBounds {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
 export interface CanvasController {
   viewport: HTMLDivElement;
   transformLayer: HTMLDivElement;
   fitToView: () => void;
   panTo: (canvasX: number, canvasY: number) => void;
   getTransform: () => { panX: number; panY: number; scale: number };
+  setTransform: (t: { panX: number; panY: number; scale: number }) => void;
+  getViewportBounds: () => ViewportBounds;
   onTransformChange: (cb: () => void) => void;
   destroy: () => void;
 }
@@ -30,42 +43,58 @@ export function createCanvas(container: HTMLElement): CanvasController {
   let startX = 0;
   let startY = 0;
 
-  let transformChangeCallback: (() => void) | null = null;
+  const transformChangeCallbacks: (() => void)[] = [];
 
   function onTransformChange(cb: () => void): void {
-    transformChangeCallback = cb;
+    transformChangeCallbacks.push(cb);
   }
 
   function applyTransform(): void {
     transformLayer.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
-    transformChangeCallback?.();
+    for (const cb of transformChangeCallbacks) {
+      cb();
+    }
   }
 
   applyTransform();
 
-  function fitToView(): void {
+  function computeVisibleBounds(): {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+  } | null {
     const cards = transformLayer.querySelectorAll('.n8n-xtend-graph-card');
-    if (cards.length === 0) return;
-
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
+    let count = 0;
 
     for (const card of cards) {
       const el = card as HTMLElement;
+      if (el.style.display === 'none') continue;
+      count++;
       const x = Number.parseFloat(el.style.left);
       const y = Number.parseFloat(el.style.top);
-      const w = el.offsetWidth || 220;
-      const h = el.offsetHeight || 80;
+      const w = el.offsetWidth || 200;
+      const h = el.offsetHeight || 52;
       minX = Math.min(minX, x);
       minY = Math.min(minY, y);
       maxX = Math.max(maxX, x + w);
       maxY = Math.max(maxY, y + h);
     }
 
-    const contentWidth = maxX - minX;
-    const contentHeight = maxY - minY;
+    log.debug(`Computed bounds from ${count}/${cards.length} visible cards`);
+    return count > 0 ? { minX, minY, maxX, maxY } : null;
+  }
+
+  function fitToView(): void {
+    const bounds = computeVisibleBounds();
+    if (!bounds) return;
+
+    const contentWidth = bounds.maxX - bounds.minX;
+    const contentHeight = bounds.maxY - bounds.minY;
     if (contentWidth <= 0 || contentHeight <= 0) return;
 
     const viewWidth = viewport.clientWidth - FIT_PADDING * 2;
@@ -77,8 +106,16 @@ export function createCanvas(container: HTMLElement): CanvasController {
       MAX_SCALE,
     );
     scale = Math.max(MIN_SCALE, newScale);
-    panX = FIT_PADDING - minX * scale + (viewWidth - contentWidth * scale) / 2;
-    panY = FIT_PADDING - minY * scale + (viewHeight - contentHeight * scale) / 2;
+    panX = FIT_PADDING - bounds.minX * scale + (viewWidth - contentWidth * scale) / 2;
+    panY = FIT_PADDING - bounds.minY * scale + (viewHeight - contentHeight * scale) / 2;
+    log.debug('Computed transform', { scale, panX, panY, contentWidth, contentHeight });
+    applyTransform();
+  }
+
+  function setTransform(t: { panX: number; panY: number; scale: number }): void {
+    panX = t.panX;
+    panY = t.panY;
+    scale = t.scale;
     applyTransform();
   }
 
@@ -90,6 +127,17 @@ export function createCanvas(container: HTMLElement): CanvasController {
 
   function getTransform(): { panX: number; panY: number; scale: number } {
     return { panX, panY, scale };
+  }
+
+  function getViewportBounds(): ViewportBounds {
+    const vw = viewport.clientWidth;
+    const vh = viewport.clientHeight;
+    return {
+      left: -panX / scale,
+      top: -panY / scale,
+      right: (vw - panX) / scale,
+      bottom: (vh - panY) / scale,
+    };
   }
 
   function onMouseDown(e: MouseEvent): void {
@@ -162,5 +210,15 @@ export function createCanvas(container: HTMLElement): CanvasController {
     document.removeEventListener('keydown', onKeyDown);
   }
 
-  return { viewport, transformLayer, fitToView, panTo, getTransform, onTransformChange, destroy };
+  return {
+    viewport,
+    transformLayer,
+    fitToView,
+    panTo,
+    getTransform,
+    setTransform,
+    getViewportBounds,
+    onTransformChange,
+    destroy,
+  };
 }

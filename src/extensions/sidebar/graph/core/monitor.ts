@@ -51,8 +51,12 @@ async function checkAndInject(): Promise<void> {
   }
 
   if (projectId !== currentProjectId) {
-    log.debug('Project changed', { from: currentProjectId, to: projectId });
-    clearGraphState();
+    if (currentProjectId !== null) {
+      log.debug('Project changed, clearing cache', { from: currentProjectId, to: projectId });
+      clearGraphState();
+    } else {
+      log.debug('Initial project detected', { projectId });
+    }
     currentProjectId = projectId;
   }
 

@@ -9,7 +9,7 @@ import { request } from './client';
 
 const log = logger.child('api:workflows');
 
-const BATCH_CONCURRENCY = 5;
+const BATCH_CONCURRENCY = 20;
 const PAGE_LIMIT = 250;
 
 const workflowProjectCache = new Map<string, string | null>();
@@ -80,15 +80,43 @@ export async function fetchWorkflowDetail(workflowId: string): Promise<WorkflowD
   }
 }
 
+export async function fetchWorkflowDetailsBatch(
+  ids: string[],
+  onProgress?: (loaded: number, total: number) => void,
+): Promise<Map<string, WorkflowDetail>> {
+  const results = new Map<string, WorkflowDetail>();
+  const total = ids.length;
+  let loaded = 0;
+
+  log.debug(`Fetching details for ${total} specific workflows`);
+  onProgress?.(0, total);
+
+  for (let i = 0; i < ids.length; i += BATCH_CONCURRENCY) {
+    const batch = ids.slice(i, i + BATCH_CONCURRENCY);
+    const details = await Promise.all(batch.map((id) => fetchWorkflowDetail(id)));
+
+    for (const detail of details) {
+      if (detail) {
+        results.set(detail.id, detail);
+      }
+      loaded++;
+      onProgress?.(loaded, total);
+    }
+  }
+
+  return results;
+}
+
 export interface FetchAllWorkflowDetailsOptions {
   onProgress?: (loaded: number, total: number) => void;
+  prefetchedList?: WorkflowListResponse['data'];
 }
 
 export async function fetchAllWorkflowDetails(
   projectId: string,
   options?: FetchAllWorkflowDetailsOptions,
 ): Promise<Map<string, WorkflowDetail>> {
-  const workflows = await fetchProjectWorkflows(projectId);
+  const workflows = options?.prefetchedList ?? (await fetchProjectWorkflows(projectId));
   const results = new Map<string, WorkflowDetail>();
   const total = workflows.length;
   let loaded = 0;

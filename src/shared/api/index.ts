@@ -3,6 +3,7 @@ export {
   fetchAllWorkflowDetails,
   fetchProjectWorkflows,
   fetchWorkflowDetail,
+  fetchWorkflowDetailsBatch,
   fetchWorkflowProjectId,
   type FetchAllWorkflowDetailsOptions,
 } from './workflows';
